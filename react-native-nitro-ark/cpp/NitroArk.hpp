@@ -249,6 +249,7 @@ public:
         BarkArkInfo info;
         info.network = std::string(rust_info.network.data(), rust_info.network.length());
         info.server_pubkey = std::string(rust_info.server_pubkey.data(), rust_info.server_pubkey.length());
+        info.mailbox_pubkey = std::string(rust_info.mailbox_pubkey.data(), rust_info.mailbox_pubkey.length());
         info.round_interval = static_cast<double>(rust_info.round_interval);
         info.nb_round_nonces = static_cast<double>(rust_info.nb_round_nonces);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
@@ -256,6 +257,8 @@ public:
         info.htlc_send_expiry_delta = static_cast<double>(rust_info.htlc_send_expiry_delta);
         info.max_vtxo_amount = static_cast<double>(rust_info.max_vtxo_amount);
         info.required_board_confirmations = static_cast<double>(rust_info.required_board_confirmations);
+        info.min_board_amount = static_cast<double>(rust_info.min_board_amount);
+        info.ln_receive_anti_dos_required = rust_info.ln_receive_anti_dos_required;
         return info;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -270,6 +273,7 @@ public:
         OffchainBalanceResult balance;
         balance.spendable = static_cast<double>(rust_balance.spendable);
         balance.pending_lightning_send = static_cast<double>(rust_balance.pending_lightning_send);
+        balance.claimable_lightning_receive = static_cast<double>(rust_balance.claimable_lightning_receive);
         balance.pending_in_round = static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         balance.pending_board = static_cast<double>(rust_balance.pending_board);

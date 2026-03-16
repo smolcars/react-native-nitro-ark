@@ -67,6 +67,7 @@ pub(crate) mod ffi {
     pub struct CxxArkInfo {
         network: String,
         server_pubkey: String,
+        mailbox_pubkey: String,
         round_interval: u64,
         nb_round_nonces: u16,
         vtxo_exit_delta: u16,
@@ -74,6 +75,8 @@ pub(crate) mod ffi {
         htlc_send_expiry_delta: u16,
         max_vtxo_amount: u64,
         required_board_confirmations: u8,
+        min_board_amount: u64,
+        ln_receive_anti_dos_required: bool,
     }
 
     pub struct ConfigOpts {
@@ -126,6 +129,8 @@ pub(crate) mod ffi {
         pub spendable: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
+        /// Coins that are in the process of being received over Lightning.
+        pub claimable_lightning_receive: u64,
         /// Coins locked in a round.
         pub pending_in_round: u64,
         /// Coins that are in the process of unilaterally exiting the Ark.
@@ -293,6 +298,7 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     Ok(ffi::CxxArkInfo {
         network: info.network.to_string(),
         server_pubkey: info.server_pubkey.to_string(),
+        mailbox_pubkey: info.mailbox_pubkey.to_string(),
         round_interval: info.round_interval.as_secs(),
         nb_round_nonces: info.nb_round_nonces as u16,
         vtxo_exit_delta: info.vtxo_exit_delta,
@@ -300,6 +306,8 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
         htlc_send_expiry_delta: info.htlc_send_expiry_delta,
         max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
         required_board_confirmations: info.required_board_confirmations as u8,
+        min_board_amount: info.min_board_amount.to_sat(),
+        ln_receive_anti_dos_required: info.ln_receive_anti_dos_required,
     })
 }
 
@@ -307,6 +315,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
     Ok(ffi::OffchainBalance {
         spendable: balance.spendable.to_sat(),
+        claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
 
         pending_in_round: balance.pending_in_round.to_sat(),

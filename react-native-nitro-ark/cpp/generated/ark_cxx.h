@@ -912,6 +912,7 @@ struct OnchainPaymentResult final {
 struct CxxArkInfo final {
   ::rust::String network;
   ::rust::String server_pubkey;
+  ::rust::String mailbox_pubkey;
   ::std::uint64_t round_interval CXX_DEFAULT_VALUE(0);
   ::std::uint16_t nb_round_nonces CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
@@ -919,6 +920,8 @@ struct CxxArkInfo final {
   ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
   ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t min_board_amount CXX_DEFAULT_VALUE(0);
+  bool ln_receive_anti_dos_required CXX_DEFAULT_VALUE(false);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -999,6 +1002,8 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
+  // Coins that are in the process of being received over Lightning.
+  ::std::uint64_t claimable_lightning_receive CXX_DEFAULT_VALUE(0);
   // Coins locked in a round.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.

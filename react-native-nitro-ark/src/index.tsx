@@ -28,7 +28,7 @@ export type BarkVtxo = {
   state: 'Spendable' | 'Spent' | 'Locked' | 'unknown';
 };
 
-export type MovementStatus = 'pending' | 'finished' | 'failed' | 'cancelled';
+export type MovementStatus = 'pending' | 'successful' | 'failed' | 'cancelled';
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
   payment_method:
