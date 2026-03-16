@@ -818,6 +818,7 @@ namespace bark_cxx {
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
+  struct MailboxAuthorizationResult;
   struct BarkMovementDestination;
   struct BarkMovement;
   struct RoundStatus;
@@ -1041,6 +1042,17 @@ struct KeyPairResult final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
+struct MailboxAuthorizationResult final {
+  ::rust::String mailbox_id;
+  ::std::int64_t expiry CXX_DEFAULT_VALUE(0);
+  ::rust::String encoded;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 struct BarkMovementDestination final {
@@ -1183,6 +1195,8 @@ void sync_exits();
 void sync_pending_rounds();
 
 ::bark_cxx::KeyPairResult mailbox_keypair();
+
+::bark_cxx::MailboxAuthorizationResult mailbox_authorization(::std::int64_t authorization_expiry);
 
 ::bark_cxx::OnChainBalance onchain_balance();
 

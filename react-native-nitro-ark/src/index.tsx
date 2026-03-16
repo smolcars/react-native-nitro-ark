@@ -12,6 +12,7 @@ import type {
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
+  MailboxAuthorizationResult,
   LightningReceive,
   BarkMovement as NitroBarkMovement,
   BarkMovementDestination as NitroBarkMovementDestination,
@@ -313,6 +314,19 @@ export function verifyMessage(
  */
 export function mailboxKeypair(): Promise<KeyPairResult> {
   return NitroArkHybridObject.mailboxKeypair() as Promise<KeyPairResult>;
+}
+
+/**
+ * Gets a mailbox authorization for the loaded wallet.
+ * @param authorizationExpiry Unix timestamp (seconds) for when the authorization expires.
+ * @returns A promise resolving to a MailboxAuthorizationResult object.
+ */
+export function mailboxAuthorization(
+  authorizationExpiry: number
+): Promise<MailboxAuthorizationResult> {
+  return NitroArkHybridObject.mailboxAuthorization(
+    authorizationExpiry
+  ) as Promise<MailboxAuthorizationResult>;
 }
 
 /**

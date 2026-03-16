@@ -155,6 +155,12 @@ pub(crate) mod ffi {
         pub secret_key: String,
     }
 
+    pub struct MailboxAuthorizationResult {
+        pub mailbox_id: String,
+        pub expiry: i64,
+        pub encoded: String,
+    }
+
     pub struct BarkMovementDestination {
         pub destination: String,
         pub payment_method: String,
@@ -258,6 +264,7 @@ pub(crate) mod ffi {
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
+        fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -836,6 +843,27 @@ pub(crate) fn mailbox_keypair() -> anyhow::Result<ffi::KeyPairResult> {
     Ok(ffi::KeyPairResult {
         public_key: keypair.public_key().to_string(),
         secret_key: keypair.secret_key().display_secret().to_string(),
+    })
+}
+
+pub(crate) fn mailbox_authorization(
+    authorization_expiry: i64,
+) -> anyhow::Result<ffi::MailboxAuthorizationResult> {
+    let expiry = chrono::DateTime::from_timestamp(authorization_expiry, 0)
+        .ok_or_else(|| anyhow::anyhow!("Invalid timestamp"))?
+        .with_timezone(&chrono::Local);
+    let auth = crate::TOKIO_RUNTIME.block_on(crate::mailbox_authorization(expiry))?;
+
+    // Encode the full authorization using ProtocolEncoding
+    use bark::ark::ProtocolEncoding;
+    let mut encoded_bytes = Vec::new();
+    auth.encode(&mut encoded_bytes)
+        .context("Failed to encode mailbox authorization")?;
+
+    Ok(ffi::MailboxAuthorizationResult {
+        mailbox_id: auth.mailbox().to_string(),
+        expiry: auth.expiry().timestamp(),
+        encoded: hex::encode(&encoded_bytes),
     })
 }
 

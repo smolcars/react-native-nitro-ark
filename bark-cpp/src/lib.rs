@@ -1,4 +1,5 @@
 use anyhow::{self, bail};
+use bark::ark::mailbox::MailboxAuthorization;
 use bark::persist::models::LightningSend;
 use bark::{self, ark::bitcoin::Address};
 use std::result::Result::Ok;
@@ -763,5 +764,16 @@ pub async fn mailbox_keypair() -> anyhow::Result<Keypair> {
         ctx.wallet
             .mailbox_keypair()
             .context("Failed to get mailbox keypair")
+    })
+}
+
+pub async fn mailbox_authorization(
+    authorization_expiry: chrono::DateTime<chrono::Local>,
+) -> anyhow::Result<MailboxAuthorization> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .mailbox_authorization(authorization_expiry)
+            .context("Failed to get mailbox authorization")
     })
 }

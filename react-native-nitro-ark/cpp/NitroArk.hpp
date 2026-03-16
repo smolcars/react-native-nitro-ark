@@ -399,14 +399,30 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<ffi::KeyPairResult>> mailboxKeypair() override {
-    return Promise<ffi::KeyPairResult>::async([]() {
+  std::shared_ptr<Promise<KeyPairResult>> mailboxKeypair() override {
+    return Promise<KeyPairResult>::async([]() {
       try {
         bark_cxx::KeyPairResult keypair_rs = bark_cxx::mailbox_keypair();
         KeyPairResult keypair;
         keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
         keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
         return keypair;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<MailboxAuthorizationResult>> mailboxAuthorization(double authorizationExpiry) override {
+    return Promise<MailboxAuthorizationResult>::async([authorizationExpiry]() {
+      try {
+        int64_t expiry_val = static_cast<int64_t>(authorizationExpiry);
+        bark_cxx::MailboxAuthorizationResult auth_rs = bark_cxx::mailbox_authorization(expiry_val);
+        MailboxAuthorizationResult result;
+        result.mailbox_id = std::string(auth_rs.mailbox_id.data(), auth_rs.mailbox_id.length());
+        result.expiry = static_cast<double>(auth_rs.expiry);
+        result.encoded = std::string(auth_rs.encoded.data(), auth_rs.encoded.length());
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

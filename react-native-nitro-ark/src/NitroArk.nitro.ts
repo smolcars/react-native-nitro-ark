@@ -121,6 +121,12 @@ export interface KeyPairResult {
   secret_key: string;
 }
 
+export interface MailboxAuthorizationResult {
+  mailbox_id: string;
+  expiry: number; // i64 unix timestamp
+  encoded: string; // hex-encoded full protocol encoding
+}
+
 export interface LightningReceive {
   payment_hash: string;
   payment_preimage: string;
@@ -203,6 +209,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     publicKey: string
   ): Promise<boolean>;
   mailboxKeypair(): Promise<KeyPairResult>;
+  mailboxAuthorization(
+    authorizationExpiry: number
+  ): Promise<MailboxAuthorizationResult>;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
