@@ -308,6 +308,20 @@ export const WalletTab = ({
     );
   };
 
+  const handleMailboxKeypair = () => {
+    runOperation('mailboxKeypair', () => NitroArk.mailboxKeypair(), 'info');
+  };
+
+  const handleMailboxAuthorization = () => {
+    // Set expiry to 1 hour from now
+    const expiryTimestamp = Math.floor(Date.now() / 1000) + 3600;
+    runOperation(
+      'mailboxAuthorization',
+      () => NitroArk.mailboxAuthorization(expiryTimestamp),
+      'info'
+    );
+  };
+
   const handleGetVtxos = () => {
     runOperation('vtxos', () => NitroArk.vtxos(), 'info');
   };
@@ -661,6 +675,20 @@ export const WalletTab = ({
           <CustomButton
             title="Derive from Mnemonic"
             onPress={handleDeriveKeypairFromMnemonic}
+            disabled={walletOpsDisabled}
+            small
+          />
+        </ButtonGrid>
+        <ButtonGrid>
+          <CustomButton
+            title="Mailbox Keypair"
+            onPress={handleMailboxKeypair}
+            disabled={walletOpsDisabled}
+            small
+          />
+          <CustomButton
+            title="Mailbox Auth"
+            onPress={handleMailboxAuthorization}
             disabled={walletOpsDisabled}
             small
           />

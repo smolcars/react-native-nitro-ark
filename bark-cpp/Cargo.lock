@@ -248,6 +248,7 @@ dependencies = [
  "bdk_bitcoind_rpc",
  "bdk_wallet",
  "bip39",
+ "chrono",
  "cxx",
  "cxx-build",
  "hex",

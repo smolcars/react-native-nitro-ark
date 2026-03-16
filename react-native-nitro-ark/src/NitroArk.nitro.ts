@@ -30,6 +30,7 @@ export interface BarkCreateOpts {
 export interface BarkArkInfo {
   network: string;
   server_pubkey: string;
+  mailbox_pubkey: string;
   round_interval: number; // u64
   nb_round_nonces: number; // u16
   vtxo_exit_delta: number; // u16
@@ -37,6 +38,8 @@ export interface BarkArkInfo {
   htlc_send_expiry_delta: number; // u16
   max_vtxo_amount: number; // u64
   required_board_confirmations: number; // u8
+  min_board_amount: number; // u64
+  ln_receive_anti_dos_required: boolean;
 }
 
 // Helper interface for sendManyOnchain
@@ -90,6 +93,7 @@ export interface OnchainPaymentResult {
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
+  claimable_lightning_receive: number; // u64
   pending_in_round: number; // u64
   pending_exit: number; // u64
   pending_board: number; // u64
@@ -117,6 +121,12 @@ export interface KeyPairResult {
   secret_key: string;
 }
 
+export interface MailboxAuthorizationResult {
+  mailbox_id: string;
+  expiry: number; // i64 unix timestamp
+  encoded: string; // hex-encoded full protocol encoding
+}
+
 export interface LightningReceive {
   payment_hash: string;
   payment_preimage: string;
@@ -138,7 +148,7 @@ export interface BarkMovementDestination {
 
 export interface BarkMovement {
   id: number;
-  status: string; // 'pending' | 'finished' | 'failed' | 'cancelled'
+  status: string; // 'pending' | 'successful' | 'failed' | 'cancelled'
   subsystem: BarkMovementSubsystem;
   metadata_json: string;
   intended_balance_sat: number;
@@ -198,6 +208,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
+  mailboxKeypair(): Promise<KeyPairResult>;
+  mailboxAuthorization(
+    authorizationExpiry: number
+  ): Promise<MailboxAuthorizationResult>;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;

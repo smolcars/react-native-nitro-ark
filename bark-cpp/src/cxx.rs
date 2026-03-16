@@ -67,6 +67,7 @@ pub(crate) mod ffi {
     pub struct CxxArkInfo {
         network: String,
         server_pubkey: String,
+        mailbox_pubkey: String,
         round_interval: u64,
         nb_round_nonces: u16,
         vtxo_exit_delta: u16,
@@ -74,6 +75,8 @@ pub(crate) mod ffi {
         htlc_send_expiry_delta: u16,
         max_vtxo_amount: u64,
         required_board_confirmations: u8,
+        min_board_amount: u64,
+        ln_receive_anti_dos_required: bool,
     }
 
     pub struct ConfigOpts {
@@ -126,6 +129,8 @@ pub(crate) mod ffi {
         pub spendable: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
+        /// Coins that are in the process of being received over Lightning.
+        pub claimable_lightning_receive: u64,
         /// Coins locked in a round.
         pub pending_in_round: u64,
         /// Coins that are in the process of unilaterally exiting the Ark.
@@ -148,6 +153,12 @@ pub(crate) mod ffi {
     pub struct KeyPairResult {
         pub public_key: String,
         pub secret_key: String,
+    }
+
+    pub struct MailboxAuthorizationResult {
+        pub mailbox_id: String,
+        pub expiry: i64,
+        pub encoded: String,
     }
 
     pub struct BarkMovementDestination {
@@ -252,6 +263,8 @@ pub(crate) mod ffi {
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
+        fn mailbox_keypair() -> Result<KeyPairResult>;
+        fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -293,6 +306,7 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     Ok(ffi::CxxArkInfo {
         network: info.network.to_string(),
         server_pubkey: info.server_pubkey.to_string(),
+        mailbox_pubkey: info.mailbox_pubkey.to_string(),
         round_interval: info.round_interval.as_secs(),
         nb_round_nonces: info.nb_round_nonces as u16,
         vtxo_exit_delta: info.vtxo_exit_delta,
@@ -300,6 +314,8 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
         htlc_send_expiry_delta: info.htlc_send_expiry_delta,
         max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
         required_board_confirmations: info.required_board_confirmations as u8,
+        min_board_amount: info.min_board_amount.to_sat(),
+        ln_receive_anti_dos_required: info.ln_receive_anti_dos_required,
     })
 }
 
@@ -307,6 +323,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
     Ok(ffi::OffchainBalance {
         spendable: balance.spendable.to_sat(),
+        claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
 
         pending_in_round: balance.pending_in_round.to_sat(),
@@ -819,6 +836,35 @@ pub(crate) fn sync_exits() -> anyhow::Result<()> {
 
 pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
+}
+
+pub(crate) fn mailbox_keypair() -> anyhow::Result<ffi::KeyPairResult> {
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::mailbox_keypair())?;
+    Ok(ffi::KeyPairResult {
+        public_key: keypair.public_key().to_string(),
+        secret_key: keypair.secret_key().display_secret().to_string(),
+    })
+}
+
+pub(crate) fn mailbox_authorization(
+    authorization_expiry: i64,
+) -> anyhow::Result<ffi::MailboxAuthorizationResult> {
+    let expiry = chrono::DateTime::from_timestamp(authorization_expiry, 0)
+        .ok_or_else(|| anyhow::anyhow!("Invalid timestamp"))?
+        .with_timezone(&chrono::Local);
+    let auth = crate::TOKIO_RUNTIME.block_on(crate::mailbox_authorization(expiry))?;
+
+    // Encode the full authorization using ProtocolEncoding
+    use bark::ark::ProtocolEncoding;
+    let mut encoded_bytes = Vec::new();
+    auth.encode(&mut encoded_bytes)
+        .context("Failed to encode mailbox authorization")?;
+
+    Ok(ffi::MailboxAuthorizationResult {
+        mailbox_id: auth.mailbox().to_string(),
+        expiry: auth.expiry().timestamp(),
+        encoded: hex::encode(&encoded_bytes),
+    })
 }
 
 // Onchain methods

@@ -818,6 +818,7 @@ namespace bark_cxx {
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
+  struct MailboxAuthorizationResult;
   struct BarkMovementDestination;
   struct BarkMovement;
   struct RoundStatus;
@@ -912,6 +913,7 @@ struct OnchainPaymentResult final {
 struct CxxArkInfo final {
   ::rust::String network;
   ::rust::String server_pubkey;
+  ::rust::String mailbox_pubkey;
   ::std::uint64_t round_interval CXX_DEFAULT_VALUE(0);
   ::std::uint16_t nb_round_nonces CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
@@ -919,6 +921,8 @@ struct CxxArkInfo final {
   ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
   ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t min_board_amount CXX_DEFAULT_VALUE(0);
+  bool ln_receive_anti_dos_required CXX_DEFAULT_VALUE(false);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -999,6 +1003,8 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
+  // Coins that are in the process of being received over Lightning.
+  ::std::uint64_t claimable_lightning_receive CXX_DEFAULT_VALUE(0);
   // Coins locked in a round.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
@@ -1035,6 +1041,17 @@ struct KeyPairResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
+struct MailboxAuthorizationResult final {
+  ::rust::String mailbox_id;
+  ::std::int64_t expiry CXX_DEFAULT_VALUE(0);
+  ::rust::String encoded;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$MailboxAuthorizationResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
@@ -1176,6 +1193,10 @@ void try_claim_all_lightning_receives(bool wait);
 void sync_exits();
 
 void sync_pending_rounds();
+
+::bark_cxx::KeyPairResult mailbox_keypair();
+
+::bark_cxx::MailboxAuthorizationResult mailbox_authorization(::std::int64_t authorization_expiry);
 
 ::bark_cxx::OnChainBalance onchain_balance();
 

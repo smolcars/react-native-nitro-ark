@@ -249,6 +249,7 @@ public:
         BarkArkInfo info;
         info.network = std::string(rust_info.network.data(), rust_info.network.length());
         info.server_pubkey = std::string(rust_info.server_pubkey.data(), rust_info.server_pubkey.length());
+        info.mailbox_pubkey = std::string(rust_info.mailbox_pubkey.data(), rust_info.mailbox_pubkey.length());
         info.round_interval = static_cast<double>(rust_info.round_interval);
         info.nb_round_nonces = static_cast<double>(rust_info.nb_round_nonces);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
@@ -256,6 +257,8 @@ public:
         info.htlc_send_expiry_delta = static_cast<double>(rust_info.htlc_send_expiry_delta);
         info.max_vtxo_amount = static_cast<double>(rust_info.max_vtxo_amount);
         info.required_board_confirmations = static_cast<double>(rust_info.required_board_confirmations);
+        info.min_board_amount = static_cast<double>(rust_info.min_board_amount);
+        info.ln_receive_anti_dos_required = rust_info.ln_receive_anti_dos_required;
         return info;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -270,6 +273,7 @@ public:
         OffchainBalanceResult balance;
         balance.spendable = static_cast<double>(rust_balance.spendable);
         balance.pending_lightning_send = static_cast<double>(rust_balance.pending_lightning_send);
+        balance.claimable_lightning_receive = static_cast<double>(rust_balance.claimable_lightning_receive);
         balance.pending_in_round = static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         balance.pending_board = static_cast<double>(rust_balance.pending_board);
@@ -389,6 +393,36 @@ public:
     return Promise<bool>::async([message, signature, publicKey]() {
       try {
         return bark_cxx::verify_message(message, signature, publicKey);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<KeyPairResult>> mailboxKeypair() override {
+    return Promise<KeyPairResult>::async([]() {
+      try {
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::mailbox_keypair();
+        KeyPairResult keypair;
+        keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
+        return keypair;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<MailboxAuthorizationResult>> mailboxAuthorization(double authorizationExpiry) override {
+    return Promise<MailboxAuthorizationResult>::async([authorizationExpiry]() {
+      try {
+        int64_t expiry_val = static_cast<int64_t>(authorizationExpiry);
+        bark_cxx::MailboxAuthorizationResult auth_rs = bark_cxx::mailbox_authorization(expiry_val);
+        MailboxAuthorizationResult result;
+        result.mailbox_id = std::string(auth_rs.mailbox_id.data(), auth_rs.mailbox_id.length());
+        result.expiry = static_cast<double>(auth_rs.expiry);
+        result.encoded = std::string(auth_rs.encoded.data(), auth_rs.encoded.length());
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
