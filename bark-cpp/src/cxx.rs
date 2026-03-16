@@ -257,6 +257,7 @@ pub(crate) mod ffi {
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
+        fn mailbox_keypair() -> Result<KeyPairResult>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -828,6 +829,14 @@ pub(crate) fn sync_exits() -> anyhow::Result<()> {
 
 pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
+}
+
+pub(crate) fn mailbox_keypair() -> anyhow::Result<ffi::KeyPairResult> {
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::mailbox_keypair())?;
+    Ok(ffi::KeyPairResult {
+        public_key: keypair.public_key().to_string(),
+        secret_key: keypair.secret_key().display_secret().to_string(),
+    })
 }
 
 // Onchain methods

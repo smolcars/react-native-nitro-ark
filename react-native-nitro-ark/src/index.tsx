@@ -25,7 +25,7 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: 'Spendable' | 'Spent' | 'Locked' | 'unknown';
+  state: 'Spendable' | 'Spent' | 'Locked';
 };
 
 export type MovementStatus = 'pending' | 'successful' | 'failed' | 'cancelled';
@@ -305,6 +305,14 @@ export function verifyMessage(
   publicKey: string
 ): Promise<boolean> {
   return NitroArkHybridObject.verifyMessage(message, signature, publicKey);
+}
+
+/**
+ * Gets the mailbox keypair for the loaded wallet.
+ * @returns A promise resolving to a KeyPairResult object.
+ */
+export function mailboxKeypair(): Promise<KeyPairResult> {
+  return NitroArkHybridObject.mailboxKeypair() as Promise<KeyPairResult>;
 }
 
 /**

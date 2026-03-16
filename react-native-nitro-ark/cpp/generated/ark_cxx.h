@@ -1182,6 +1182,8 @@ void sync_exits();
 
 void sync_pending_rounds();
 
+::bark_cxx::KeyPairResult mailbox_keypair();
+
 ::bark_cxx::OnChainBalance onchain_balance();
 
 void onchain_sync();

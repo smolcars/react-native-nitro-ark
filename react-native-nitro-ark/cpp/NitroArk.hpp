@@ -399,6 +399,20 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<ffi::KeyPairResult>> mailboxKeypair() override {
+    return Promise<ffi::KeyPairResult>::async([]() {
+      try {
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::mailbox_keypair();
+        KeyPairResult keypair;
+        keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
+        return keypair;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::vector<BarkMovement>>> history() override {
     return Promise<std::vector<BarkMovement>>::async([]() {
       try {

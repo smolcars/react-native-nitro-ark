@@ -756,3 +756,12 @@ pub async fn sync_pending_rounds() -> anyhow::Result<()> {
         })
         .await
 }
+
+pub async fn mailbox_keypair() -> anyhow::Result<Keypair> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .mailbox_keypair()
+            .context("Failed to get mailbox keypair")
+    })
+}

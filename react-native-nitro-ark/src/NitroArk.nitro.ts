@@ -202,6 +202,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
+  mailboxKeypair(): Promise<KeyPairResult>;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
