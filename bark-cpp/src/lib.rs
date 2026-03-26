@@ -31,6 +31,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
 mod onchain;
+mod subscriptions;
 mod utils;
 
 use bip39::Mnemonic;
@@ -42,6 +43,7 @@ use std::sync::Once;
 use utils::DB_FILE;
 use utils::try_create_wallet;
 
+pub use subscriptions::*;
 pub use utils::*;
 
 use std::str::FromStr;

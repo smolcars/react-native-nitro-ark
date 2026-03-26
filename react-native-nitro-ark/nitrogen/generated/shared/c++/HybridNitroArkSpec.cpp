@@ -41,6 +41,9 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("verifyMessage", &HybridNitroArkSpec::verifyMessage);
       prototype.registerHybridMethod("mailboxKeypair", &HybridNitroArkSpec::mailboxKeypair);
       prototype.registerHybridMethod("mailboxAuthorization", &HybridNitroArkSpec::mailboxAuthorization);
+      prototype.registerHybridMethod("subscribeNotifications", &HybridNitroArkSpec::subscribeNotifications);
+      prototype.registerHybridMethod("subscribeArkoorAddressMovements", &HybridNitroArkSpec::subscribeArkoorAddressMovements);
+      prototype.registerHybridMethod("subscribeLightningPaymentMovements", &HybridNitroArkSpec::subscribeLightningPaymentMovements);
       prototype.registerHybridMethod("history", &HybridNitroArkSpec::history);
       prototype.registerHybridMethod("vtxos", &HybridNitroArkSpec::vtxos);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);

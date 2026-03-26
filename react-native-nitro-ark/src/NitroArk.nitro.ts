@@ -164,6 +164,17 @@ export interface BarkMovement {
   completed_at?: string;
 }
 
+export interface BarkNotificationEvent {
+  kind: string; // 'movementCreated' | 'movementUpdated' | 'channelLagging'
+  movement?: BarkMovement;
+}
+
+export interface BarkNotificationSubscription
+  extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
+  stop(): void;
+  isActive(): boolean;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -212,6 +223,17 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   mailboxAuthorization(
     authorizationExpiry: number
   ): Promise<MailboxAuthorizationResult>;
+  subscribeNotifications(
+    onEvent: (event: BarkNotificationEvent) => void
+  ): BarkNotificationSubscription;
+  subscribeArkoorAddressMovements(
+    address: string,
+    onEvent: (event: BarkNotificationEvent) => void
+  ): BarkNotificationSubscription;
+  subscribeLightningPaymentMovements(
+    paymentHash: string,
+    onEvent: (event: BarkNotificationEvent) => void
+  ): BarkNotificationSubscription;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;

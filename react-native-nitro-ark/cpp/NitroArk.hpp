@@ -1,9 +1,11 @@
 #pragma once
 
+#include "BarkNotificationSubscription.hpp"
 #include "HybridNitroArkSpec.hpp"
 #include "generated/ark_cxx.h"
 #include "generated/cxx.h"
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <sys/wait.h>
@@ -32,9 +34,92 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
   return vtxos;
 }
 
+inline BarkMovementDestination convertRustMovementDestination(const bark_cxx::BarkMovementDestination& destination_rs) {
+  BarkMovementDestination destination;
+  destination.destination = std::string(destination_rs.destination.data(), destination_rs.destination.length());
+  destination.payment_method = std::string(destination_rs.payment_method.data(), destination_rs.payment_method.length());
+  destination.amount_sat = static_cast<double>(destination_rs.amount_sat);
+  return destination;
+}
+
+inline BarkMovement convertRustMovement(const bark_cxx::BarkMovement& movement_rs) {
+  BarkMovement movement;
+  movement.id = static_cast<double>(movement_rs.id);
+  movement.status = std::string(movement_rs.status.data(), movement_rs.status.length());
+  movement.metadata_json = std::string(movement_rs.metadata_json.data(), movement_rs.metadata_json.length());
+  movement.intended_balance_sat = static_cast<double>(movement_rs.intended_balance_sat);
+  movement.effective_balance_sat = static_cast<double>(movement_rs.effective_balance_sat);
+  movement.offchain_fee_sat = static_cast<double>(movement_rs.offchain_fee_sat);
+  movement.created_at = std::string(movement_rs.created_at.data(), movement_rs.created_at.length());
+  movement.updated_at = std::string(movement_rs.updated_at.data(), movement_rs.updated_at.length());
+  if (movement_rs.completed_at.length() == 0) {
+    movement.completed_at = std::nullopt;
+  } else {
+    movement.completed_at = std::string(movement_rs.completed_at.data(), movement_rs.completed_at.length());
+  }
+
+  movement.subsystem.name = std::string(movement_rs.subsystem_name.data(), movement_rs.subsystem_name.length());
+  movement.subsystem.kind = std::string(movement_rs.subsystem_kind.data(), movement_rs.subsystem_kind.length());
+
+  movement.sent_to.reserve(movement_rs.sent_to.size());
+  for (const auto& destination_rs : movement_rs.sent_to) {
+    movement.sent_to.push_back(convertRustMovementDestination(destination_rs));
+  }
+
+  movement.received_on.reserve(movement_rs.received_on.size());
+  for (const auto& destination_rs : movement_rs.received_on) {
+    movement.received_on.push_back(convertRustMovementDestination(destination_rs));
+  }
+
+  movement.input_vtxos.reserve(movement_rs.input_vtxos.size());
+  for (const auto& vtxo_id : movement_rs.input_vtxos) {
+    movement.input_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
+  }
+
+  movement.output_vtxos.reserve(movement_rs.output_vtxos.size());
+  for (const auto& vtxo_id : movement_rs.output_vtxos) {
+    movement.output_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
+  }
+
+  movement.exited_vtxos.reserve(movement_rs.exited_vtxos.size());
+  for (const auto& vtxo_id : movement_rs.exited_vtxos) {
+    movement.exited_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
+  }
+
+  return movement;
+}
+
 class NitroArk : public HybridNitroArkSpec {
 
 private:
+  void trackSubscription(const std::shared_ptr<HybridBarkNotificationSubscriptionSpec>& subscription) {
+    std::lock_guard<std::mutex> lock(subscriptions_mutex_);
+    subscriptions_.push_back(subscription);
+  }
+
+  void stopAllSubscriptions() {
+    std::vector<std::shared_ptr<HybridBarkNotificationSubscriptionSpec>> active_subscriptions;
+    {
+      std::lock_guard<std::mutex> lock(subscriptions_mutex_);
+      auto it = subscriptions_.begin();
+      while (it != subscriptions_.end()) {
+        if (auto subscription = it->lock()) {
+          active_subscriptions.push_back(std::move(subscription));
+          ++it;
+        } else {
+          it = subscriptions_.erase(it);
+        }
+      }
+    }
+
+    for (const auto& subscription : active_subscriptions) {
+      try {
+        subscription->stop();
+      } catch (...) {
+      }
+    }
+  }
+
   // Helper function to create ConfigOpts from BarkConfigOpts
   static bark_cxx::ConfigOpts createConfigOpts(const std::optional<BarkConfigOpts>& config) {
     bark_cxx::ConfigOpts config_opts;
@@ -59,6 +144,10 @@ public:
   NitroArk() : HybridObject(TAG) {
     // Initialize the Rust logger once when a NitroArk object is created.
     bark_cxx::init_logger();
+  }
+
+  ~NitroArk() override {
+    stopAllSubscriptions();
   }
 
   // --- Management ---
@@ -127,6 +216,8 @@ public:
   }
 
   std::shared_ptr<Promise<void>> closeWallet() override {
+    stopAllSubscriptions();
+
     return Promise<void>::async([]() {
       try {
         bark_cxx::close_wallet();
@@ -429,6 +520,46 @@ public:
     });
   }
 
+  std::shared_ptr<HybridBarkNotificationSubscriptionSpec>
+  subscribeNotifications(const std::function<void(const BarkNotificationEvent&)>& onEvent) override {
+    try {
+      auto subscription = std::make_shared<BarkNotificationSubscription>(
+          bark_cxx::subscribe_notifications(), std::function<void(const BarkNotificationEvent&)>(onEvent));
+      trackSubscription(subscription);
+      return subscription;
+    } catch (const rust::Error& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+
+  std::shared_ptr<HybridBarkNotificationSubscriptionSpec>
+  subscribeArkoorAddressMovements(const std::string& address,
+                                  const std::function<void(const BarkNotificationEvent&)>& onEvent) override {
+    try {
+      auto subscription = std::make_shared<BarkNotificationSubscription>(
+          bark_cxx::subscribe_arkoor_address_movements(address),
+          std::function<void(const BarkNotificationEvent&)>(onEvent));
+      trackSubscription(subscription);
+      return subscription;
+    } catch (const rust::Error& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+
+  std::shared_ptr<HybridBarkNotificationSubscriptionSpec>
+  subscribeLightningPaymentMovements(const std::string& paymentHash,
+                                     const std::function<void(const BarkNotificationEvent&)>& onEvent) override {
+    try {
+      auto subscription = std::make_shared<BarkNotificationSubscription>(
+          bark_cxx::subscribe_lightning_payment_movements(paymentHash),
+          std::function<void(const BarkNotificationEvent&)>(onEvent));
+      trackSubscription(subscription);
+      return subscription;
+    } catch (const rust::Error& e) {
+      throw std::runtime_error(e.what());
+    }
+  }
+
   std::shared_ptr<Promise<std::vector<BarkMovement>>> history() override {
     return Promise<std::vector<BarkMovement>>::async([]() {
       try {
@@ -438,58 +569,7 @@ public:
         movements.reserve(movements_rs.size());
 
         for (const auto& movement_rs : movements_rs) {
-          BarkMovement movement;
-          movement.id = static_cast<double>(movement_rs.id);
-          movement.status = std::string(movement_rs.status.data(), movement_rs.status.length());
-          movement.metadata_json = std::string(movement_rs.metadata_json.data(), movement_rs.metadata_json.length());
-          movement.intended_balance_sat = static_cast<double>(movement_rs.intended_balance_sat);
-          movement.effective_balance_sat = static_cast<double>(movement_rs.effective_balance_sat);
-          movement.offchain_fee_sat = static_cast<double>(movement_rs.offchain_fee_sat);
-          movement.created_at = std::string(movement_rs.created_at.data(), movement_rs.created_at.length());
-          movement.updated_at = std::string(movement_rs.updated_at.data(), movement_rs.updated_at.length());
-          if (movement_rs.completed_at.length() == 0) {
-            movement.completed_at = std::nullopt;
-          } else {
-            movement.completed_at = std::string(movement_rs.completed_at.data(), movement_rs.completed_at.length());
-          }
-
-          movement.subsystem.name = std::string(movement_rs.subsystem_name.data(), movement_rs.subsystem_name.length());
-          movement.subsystem.kind = std::string(movement_rs.subsystem_kind.data(), movement_rs.subsystem_kind.length());
-
-          movement.sent_to.reserve(movement_rs.sent_to.size());
-          for (const auto& dest_rs : movement_rs.sent_to) {
-            BarkMovementDestination destination;
-            destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
-            destination.payment_method = std::string(dest_rs.payment_method.data(), dest_rs.payment_method.length());
-            destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
-            movement.sent_to.push_back(std::move(destination));
-          }
-
-          movement.received_on.reserve(movement_rs.received_on.size());
-          for (const auto& dest_rs : movement_rs.received_on) {
-            BarkMovementDestination destination;
-            destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
-            destination.payment_method = std::string(dest_rs.payment_method.data(), dest_rs.payment_method.length());
-            destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
-            movement.received_on.push_back(std::move(destination));
-          }
-
-          movement.input_vtxos.reserve(movement_rs.input_vtxos.size());
-          for (const auto& vtxo_id : movement_rs.input_vtxos) {
-            movement.input_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
-          }
-
-          movement.output_vtxos.reserve(movement_rs.output_vtxos.size());
-          for (const auto& vtxo_id : movement_rs.output_vtxos) {
-            movement.output_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
-          }
-
-          movement.exited_vtxos.reserve(movement_rs.exited_vtxos.size());
-          for (const auto& vtxo_id : movement_rs.exited_vtxos) {
-            movement.exited_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
-          }
-
-          movements.push_back(std::move(movement));
+          movements.push_back(convertRustMovement(movement_rs));
         }
 
         return movements;
@@ -991,6 +1071,8 @@ public:
 
 private:
   // Tag for logging/debugging within Nitro
+  std::mutex subscriptions_mutex_;
+  std::vector<std::weak_ptr<HybridBarkNotificationSubscriptionSpec>> subscriptions_;
   static constexpr auto TAG = "NitroArk";
 };
 

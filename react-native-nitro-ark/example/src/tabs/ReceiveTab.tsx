@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, Text } from 'react-native';
 import * as NitroArk from 'react-native-nitro-ark';
 
@@ -24,13 +24,141 @@ export const ReceiveTab = ({
   const [invoiceAmount, setInvoiceAmount] = useState('1000');
   const [paymentHash, setPaymentHash] = useState('');
   const [claimToken, setClaimToken] = useState('');
+  const [lastArkAddress, setLastArkAddress] = useState<string>('');
   const [lastInvoice, setLastInvoice] = useState<{
     invoice: string;
     paymentHash: string;
   } | null>(null);
+  const [arkSubscriptionStatus, setArkSubscriptionStatus] =
+    useState('Inactive');
+  const [arkSubscriptionLog, setArkSubscriptionLog] = useState<string>('');
+  const [lightningSubscriptionStatus, setLightningSubscriptionStatus] =
+    useState('Inactive');
+  const [lightningSubscriptionLog, setLightningSubscriptionLog] =
+    useState<string>('');
+
+  const arkSubscriptionRef = useRef<ReturnType<
+    typeof NitroArk.subscribeArkoorAddressMovements
+  > | null>(null);
+  const lightningSubscriptionRef = useRef<ReturnType<
+    typeof NitroArk.subscribeLightningPaymentMovements
+  > | null>(null);
 
   const canUseWallet = !!mnemonic;
   const walletOpsDisabled = isLoading || !canUseWallet;
+
+  const appendSubscriptionLog = (
+    updateLog: React.Dispatch<React.SetStateAction<string>>,
+    line: string
+  ) => {
+    updateLog((prev) => (prev ? `${line}\n${prev}` : line));
+  };
+
+  const formatSubscriptionEvent = (
+    event: Parameters<typeof NitroArk.subscribeNotifications>[0] extends (
+      arg: infer T
+    ) => void
+      ? T
+      : never
+  ) => {
+    const movement = event.movement;
+    const summary = movement
+      ? `status=${movement.status}, id=${movement.id}, subsystem=${movement.subsystem.kind}, amount=${movement.effective_balance_sat}`
+      : 'no movement payload';
+    return `${new Date().toLocaleTimeString()} ${event.kind} ${summary}`;
+  };
+
+  const stopArkSubscription = () => {
+    arkSubscriptionRef.current?.stop();
+    arkSubscriptionRef.current = null;
+    setArkSubscriptionStatus('Inactive');
+  };
+
+  const stopLightningSubscription = () => {
+    lightningSubscriptionRef.current?.stop();
+    lightningSubscriptionRef.current = null;
+    setLightningSubscriptionStatus('Inactive');
+  };
+
+  const startArkSubscription = (address: string) => {
+    if (!address) {
+      setError((prev) => ({
+        ...prev,
+        arkSubscription: 'Generate or enter an Ark address first',
+      }));
+      return;
+    }
+
+    try {
+      stopArkSubscription();
+      setError((prev) => ({ ...prev, arkSubscription: '' }));
+      setArkSubscriptionLog('');
+      setArkSubscriptionStatus('Listening for address movements...');
+      arkSubscriptionRef.current = NitroArk.subscribeArkoorAddressMovements(
+        address,
+        (event) => {
+          const line = formatSubscriptionEvent(event);
+          appendSubscriptionLog(setArkSubscriptionLog, line);
+          setArkSubscriptionStatus(
+            `Last event: ${event.kind}${event.movement ? ` (${event.movement.status})` : ''}`
+          );
+          setResults((prev) => ({
+            ...prev,
+            arkSubscription: line,
+          }));
+        }
+      );
+    } catch (err: any) {
+      setArkSubscriptionStatus('Failed to start');
+      setError((prev) => ({
+        ...prev,
+        arkSubscription: err?.message || 'Failed to start Ark subscription',
+      }));
+    }
+  };
+
+  const startLightningSubscription = (nextPaymentHash: string) => {
+    if (!nextPaymentHash) {
+      setError((prev) => ({
+        ...prev,
+        lightningSubscription: 'Create an invoice or provide a payment hash first',
+      }));
+      return;
+    }
+
+    try {
+      stopLightningSubscription();
+      setError((prev) => ({ ...prev, lightningSubscription: '' }));
+      setLightningSubscriptionLog('');
+      setLightningSubscriptionStatus('Listening for invoice movements...');
+      lightningSubscriptionRef.current =
+        NitroArk.subscribeLightningPaymentMovements(nextPaymentHash, (event) => {
+          const line = formatSubscriptionEvent(event);
+          appendSubscriptionLog(setLightningSubscriptionLog, line);
+          setLightningSubscriptionStatus(
+            `Last event: ${event.kind}${event.movement ? ` (${event.movement.status})` : ''}`
+          );
+          setResults((prev) => ({
+            ...prev,
+            lightningSubscription: line,
+          }));
+        });
+    } catch (err: any) {
+      setLightningSubscriptionStatus('Failed to start');
+      setError((prev) => ({
+        ...prev,
+        lightningSubscription:
+          err?.message || 'Failed to start Lightning subscription',
+      }));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopArkSubscription();
+      stopLightningSubscription();
+    };
+  }, []);
 
   // --- Create Invoice ---
   const handleCreateInvoice = () => {
@@ -49,9 +177,10 @@ export const ReceiveTab = ({
           paymentHash: invoice.payment_hash,
         });
         setPaymentHash(invoice.payment_hash);
+        startLightningSubscription(invoice.payment_hash);
         setResults((prev) => ({
           ...prev,
-          invoice: `Invoice created!\n\nPayment Request:\n${invoice.payment_request}\n\nPayment Hash:\n${invoice.payment_hash}`,
+          invoice: `Invoice created and subscription armed.\n\nPayment Request:\n${invoice.payment_request}\n\nPayment Hash:\n${invoice.payment_hash}`,
         }));
       }
     );
@@ -135,11 +264,34 @@ export const ReceiveTab = ({
 
   // --- Address Generation ---
   const handleNewAddress = () => {
-    runOperation('newAddress', () => NitroArk.newAddress(), 'address');
+    runOperation(
+      'newAddress',
+      () => NitroArk.newAddress(),
+      'address',
+      (address) => {
+        setLastArkAddress(address.address);
+        startArkSubscription(address.address);
+        setResults((prev) => ({
+          ...prev,
+          address: `Address created and subscription armed.\n\nArk Address:\n${address.address}\n\nArk ID:\n${address.ark_id}\n\nUser Pubkey:\n${address.user_pubkey}`,
+        }));
+      }
+    );
   };
 
   const handlePeekAddress = () => {
-    runOperation('peekAddress', () => NitroArk.peekAddress(0), 'address');
+    runOperation(
+      'peekAddress',
+      () => NitroArk.peekAddress(0),
+      'address',
+      (address) => {
+        setLastArkAddress(address.address);
+        setResults((prev) => ({
+          ...prev,
+          address: `Preview address ready.\n\nArk Address:\n${address.address}\n\nArk ID:\n${address.ark_id}\n\nUser Pubkey:\n${address.user_pubkey}`,
+        }));
+      }
+    );
   };
 
   const handleGetOnchainAddress = () => {
@@ -171,6 +323,31 @@ export const ReceiveTab = ({
           />
         </ButtonGrid>
         <ResultBox result={results.address} error={error.address} />
+        <View style={styles.subscriptionBox}>
+          <Text style={styles.subscriptionLabel}>Tracked Ark Address</Text>
+          <Text style={styles.subscriptionValue} selectable>
+            {lastArkAddress || 'No address selected yet'}
+          </Text>
+          <Text style={styles.subscriptionStatus}>{arkSubscriptionStatus}</Text>
+          <ButtonGrid>
+            <CustomButton
+              title="Start Address Subscription"
+              onPress={() => startArkSubscription(lastArkAddress)}
+              disabled={walletOpsDisabled || !lastArkAddress}
+              color={COLORS.success}
+            />
+            <CustomButton
+              title="Stop Address Subscription"
+              onPress={stopArkSubscription}
+              disabled={!arkSubscriptionRef.current}
+              color={COLORS.warning}
+            />
+          </ButtonGrid>
+          <ResultBox
+            result={arkSubscriptionLog}
+            error={error.arkSubscription}
+          />
+        </View>
       </Section>
 
       {/* Create Invoice */}
@@ -205,6 +382,33 @@ export const ReceiveTab = ({
         )}
 
         <ResultBox result={results.invoice} error={error.invoice} />
+        <View style={styles.subscriptionBox}>
+          <Text style={styles.subscriptionLabel}>Tracked Invoice Hash</Text>
+          <Text style={styles.subscriptionValue} selectable>
+            {paymentHash || 'No invoice selected yet'}
+          </Text>
+          <Text style={styles.subscriptionStatus}>
+            {lightningSubscriptionStatus}
+          </Text>
+          <ButtonGrid>
+            <CustomButton
+              title="Start Invoice Subscription"
+              onPress={() => startLightningSubscription(paymentHash)}
+              disabled={walletOpsDisabled || !paymentHash}
+              color={COLORS.success}
+            />
+            <CustomButton
+              title="Stop Invoice Subscription"
+              onPress={stopLightningSubscription}
+              disabled={!lightningSubscriptionRef.current}
+              color={COLORS.warning}
+            />
+          </ButtonGrid>
+          <ResultBox
+            result={lightningSubscriptionLog}
+            error={error.lightningSubscription}
+          />
+        </View>
       </Section>
 
       {/* Check Receive Status */}
@@ -297,6 +501,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.primary,
     fontFamily: 'monospace',
+  },
+  subscriptionBox: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 8,
+  },
+  subscriptionLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  subscriptionValue: {
+    fontSize: 11,
+    color: COLORS.text,
+    fontFamily: 'monospace',
+    marginBottom: 8,
+  },
+  subscriptionStatus: {
+    fontSize: 12,
+    color: COLORS.success,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   bottomPadding: {
     height: 40,
