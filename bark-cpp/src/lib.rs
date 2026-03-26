@@ -664,7 +664,10 @@ pub async fn check_lightning_payment(
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            let payment = ctx.wallet.check_lightning_payment(payment_hash, wait).await?;
+            let payment = ctx
+                .wallet
+                .check_lightning_payment(payment_hash, wait)
+                .await?;
             Ok(payment.and_then(|send| send.preimage))
         })
         .await
