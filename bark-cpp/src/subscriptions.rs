@@ -12,7 +12,7 @@ use bark::movement::{Movement, PaymentMethod};
 use bark::subsystem::Subsystem;
 use bark::{NotificationStream, WalletNotification};
 use futures::StreamExt;
-use logger::log::warn;
+use logger::log::{debug, info, warn};
 use tokio::task::JoinHandle;
 
 use crate::GLOBAL_WALLET_MANAGER;
@@ -27,6 +27,20 @@ enum NotificationFilter {
     LightningPayment(PaymentHash),
 }
 
+impl NotificationFilter {
+    fn describe(&self) -> String {
+        match self {
+            NotificationFilter::All => "all notifications".to_string(),
+            NotificationFilter::ArkoorAddress(address) => {
+                format!("ark address {}", address)
+            }
+            NotificationFilter::LightningPayment(payment_hash) => {
+                format!("lightning payment {}", payment_hash)
+            }
+        }
+    }
+}
+
 pub struct NotificationSubscription {
     rx: Receiver<ffi::NotificationEvent>,
     task: Option<JoinHandle<()>>,
@@ -38,23 +52,47 @@ impl NotificationSubscription {
         let (tx, rx) = mpsc::channel();
         let active = Arc::new(AtomicBool::new(true));
         let active_flag = Arc::clone(&active);
+        let filter_description = filter.describe();
+
+        info!("Starting Bark subscription for {}", filter_description);
 
         let task = TOKIO_RUNTIME.spawn(async move {
             let mut stream = stream;
             while let Some(notification) = stream.next().await {
+                debug!(
+                    "Received Bark notification for {}: {}",
+                    filter_description,
+                    notification_summary(&notification)
+                );
                 match notification_to_event(notification, &filter) {
                     Ok(Some(event)) => {
+                        info!(
+                            "Subscription {} emitting event kind={} movement_id={}",
+                            filter_description,
+                            event.kind,
+                            event.movement.id
+                        );
                         if tx.send(event).is_err() {
+                            warn!(
+                                "Subscription receiver dropped for {}; stopping task",
+                                filter_description
+                            );
                             break;
                         }
                     }
-                    Ok(None) => {}
+                    Ok(None) => {
+                        debug!(
+                            "Notification filtered out for {}",
+                            filter_description
+                        );
+                    }
                     Err(error) => {
                         warn!("Failed to convert Bark notification: {error:#}");
                     }
                 }
             }
 
+            info!("Bark subscription task ended for {}", filter_description);
             active_flag.store(false, Ordering::SeqCst);
         });
 
@@ -66,6 +104,7 @@ impl NotificationSubscription {
     }
 
     pub fn stop(mut self: Pin<&mut Self>) -> anyhow::Result<()> {
+        info!("Stopping Bark subscription handle");
         if let Some(task) = self.task.take() {
             task.abort();
         }
@@ -82,6 +121,7 @@ impl NotificationSubscription {
         timeout_ms: u32,
     ) -> anyhow::Result<ffi::NotificationPollResult> {
         if !self.is_active() {
+            debug!("wait_next called on inactive Bark subscription");
             return Ok(empty_poll_result(false));
         }
 
@@ -96,6 +136,7 @@ impl NotificationSubscription {
             }),
             Err(mpsc::RecvTimeoutError::Timeout) => Ok(empty_poll_result(self.is_active())),
             Err(mpsc::RecvTimeoutError::Disconnected) => {
+                info!("Bark subscription channel disconnected");
                 self.active.store(false, Ordering::SeqCst);
                 Ok(empty_poll_result(false))
             }
@@ -153,24 +194,56 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
     match filter {
         NotificationFilter::All => true,
         NotificationFilter::ArkoorAddress(address) => {
+            debug!(
+                "Evaluating arkoor filter target={} movement_id={} subsystem={} received_on={}",
+                address,
+                movement.id.0,
+                movement.subsystem.kind,
+                format_destinations(movement)
+            );
             if !movement.subsystem.is_subsystem(Subsystem::ARKOOR) {
+                debug!(
+                    "Arkoor filter rejected movement_id={} because subsystem was {}",
+                    movement.id.0,
+                    movement.subsystem.kind
+                );
                 return false;
             }
 
-            movement
+            let matched = movement
                 .received_on
                 .iter()
                 .any(|destination| match destination.destination {
                     PaymentMethod::Ark(ref candidate) if candidate == address => true,
                     _ => false,
-                })
+                });
+
+            debug!(
+                "Arkoor filter result target={} movement_id={} matched={}",
+                address,
+                movement.id.0,
+                matched
+            );
+            matched
         }
         NotificationFilter::LightningPayment(payment_hash) => {
+            debug!(
+                "Evaluating lightning filter target={} movement_id={} subsystem={} metadata={:?}",
+                payment_hash,
+                movement.id.0,
+                movement.subsystem.kind,
+                movement.metadata
+            );
             if !movement
                 .subsystem
                 .is_subsystem(Subsystem::LIGHTNING_RECEIVE)
                 && !movement.subsystem.is_subsystem(Subsystem::LIGHTNING_SEND)
             {
+                debug!(
+                    "Lightning filter rejected movement_id={} because subsystem was {}",
+                    movement.id.0,
+                    movement.subsystem.kind
+                );
                 return false;
             }
 
@@ -181,6 +254,10 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
                 .and_then(|value| value.parse().ok())
                 == Some(*payment_hash)
             {
+                debug!(
+                    "Lightning filter matched movement_id={} using metadata payment_hash",
+                    movement.id.0
+                );
                 return true;
             }
 
@@ -189,6 +266,10 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
                     PaymentMethod::Invoice(ref invoice)
                         if invoice.payment_hash() == *payment_hash =>
                     {
+                        debug!(
+                            "Lightning filter matched movement_id={} using invoice destination",
+                            movement.id.0
+                        );
                         return true;
                     }
                     _ => {}
@@ -210,6 +291,12 @@ fn notification_to_event(
                 return Ok(None);
             }
 
+            info!(
+                "Matched MovementCreated for filter={} movement_id={} status={}",
+                filter.describe(),
+                movement.id.0,
+                movement.status
+            );
             Ok(Some(ffi::NotificationEvent {
                 kind: "movementCreated".to_string(),
                 has_movement: true,
@@ -221,21 +308,82 @@ fn notification_to_event(
                 return Ok(None);
             }
 
+            info!(
+                "Matched MovementUpdated for filter={} movement_id={} status={}",
+                filter.describe(),
+                movement.id.0,
+                movement.status
+            );
             Ok(Some(ffi::NotificationEvent {
                 kind: "movementUpdated".to_string(),
                 has_movement: true,
                 movement: utils::movement_to_bark_movement(&movement)?,
             }))
         }
-        WalletNotification::ChannelLagging => Ok(Some(ffi::NotificationEvent {
-            kind: "channelLagging".to_string(),
-            has_movement: false,
-            movement: empty_bark_movement(),
-        })),
+        WalletNotification::ChannelLagging => {
+            info!("Received ChannelLagging notification for {}", filter.describe());
+            Ok(Some(ffi::NotificationEvent {
+                kind: "channelLagging".to_string(),
+                has_movement: false,
+                movement: empty_bark_movement(),
+            }))
+        }
+    }
+}
+
+fn format_destinations(movement: &Movement) -> String {
+    movement
+        .received_on
+        .iter()
+        .map(|destination| match &destination.destination {
+            PaymentMethod::Ark(address) => {
+                format!("ark:{}:{}sat", address, destination.amount)
+            }
+            PaymentMethod::Bitcoin(address) => {
+                format!("bitcoin:{:?}:{}sat", address, destination.amount)
+            }
+            PaymentMethod::Invoice(invoice) => {
+                format!("invoice:{}:{}sat", invoice.payment_hash(), destination.amount)
+            }
+            PaymentMethod::Offer(offer) => {
+                format!("offer:{}:{}sat", offer.id(), destination.amount)
+            }
+            PaymentMethod::LightningAddress(address) => {
+                format!("lnaddr:{}:{}sat", address, destination.amount)
+            }
+            PaymentMethod::OutputScript(script) => {
+                format!("script:{}:{}sat", script, destination.amount)
+            }
+            PaymentMethod::Custom(value) => {
+                format!("custom:{}:{}sat", value, destination.amount)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn notification_summary(notification: &WalletNotification) -> String {
+    match notification {
+        WalletNotification::MovementCreated { movement } => format!(
+            "MovementCreated id={} status={} subsystem={} metadata={:?}",
+            movement.id.0,
+            movement.status,
+            movement.subsystem.kind,
+            movement.metadata
+        ),
+        WalletNotification::MovementUpdated { movement } => format!(
+            "MovementUpdated id={} status={} subsystem={} metadata={:?}",
+            movement.id.0,
+            movement.status,
+            movement.subsystem.kind,
+            movement.metadata
+        ),
+        WalletNotification::ChannelLagging => "ChannelLagging".to_string(),
     }
 }
 
 pub async fn subscribe_notifications() -> anyhow::Result<Box<NotificationSubscription>> {
+    info!("Creating subscription handle for all notifications");
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
         Ok(Box::new(NotificationSubscription::spawn(
@@ -251,6 +399,8 @@ pub async fn subscribe_arkoor_address_movements(
     let address = Address::from_str(address)
         .with_context(|| format!("Invalid Arkoor address format: '{address}'"))?;
 
+    info!("Creating subscription handle for arkoor address {}", address);
+
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
         Ok(Box::new(NotificationSubscription::spawn(
@@ -265,6 +415,11 @@ pub async fn subscribe_lightning_payment_movements(
 ) -> anyhow::Result<Box<NotificationSubscription>> {
     let payment_hash = PaymentHash::from_str(payment_hash)
         .map_err(|_| anyhow!("Invalid payment hash format: '{payment_hash}'"))?;
+
+    info!(
+        "Creating subscription handle for lightning payment {}",
+        payment_hash
+    );
 
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
