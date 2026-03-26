@@ -32,8 +32,8 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("getArkInfo", &HybridNitroArkSpec::getArkInfo);
       prototype.registerHybridMethod("offchainBalance", &HybridNitroArkSpec::offchainBalance);
       prototype.registerHybridMethod("deriveStoreNextKeypair", &HybridNitroArkSpec::deriveStoreNextKeypair);
-      prototype.registerHybridMethod("peakKeyPair", &HybridNitroArkSpec::peakKeyPair);
-      prototype.registerHybridMethod("peakAddress", &HybridNitroArkSpec::peakAddress);
+      prototype.registerHybridMethod("peekKeyPair", &HybridNitroArkSpec::peekKeyPair);
+      prototype.registerHybridMethod("peekAddress", &HybridNitroArkSpec::peekAddress);
       prototype.registerHybridMethod("newAddress", &HybridNitroArkSpec::newAddress);
       prototype.registerHybridMethod("signMessage", &HybridNitroArkSpec::signMessage);
       prototype.registerHybridMethod("signMesssageWithMnemonic", &HybridNitroArkSpec::signMesssageWithMnemonic);

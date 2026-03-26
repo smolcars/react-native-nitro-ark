@@ -324,10 +324,10 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLi
   }
 }
 
-JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_peakKeyPair(JNIEnv* env, jobject /*thiz*/,
+JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_peekKeyPair(JNIEnv* env, jobject /*thiz*/,
                                                                                      jint jIndex) {
   try {
-    bark_cxx::KeyPairResult keypair = bark_cxx::peak_keypair(static_cast<uint32_t>(jIndex));
+    bark_cxx::KeyPairResult keypair = bark_cxx::peek_keypair(static_cast<uint32_t>(jIndex));
     return MakeKeyPairResult(env, keypair);
   } catch (const std::exception& e) {
     HandleException(env, e);

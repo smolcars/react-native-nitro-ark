@@ -196,43 +196,10 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         _ => bail!("A network must be specified. Use either --signet, --regtest or --bitcoin"),
     };
 
-    let fallback_fee_rate = match opts.config.fallback_fee_rate {
-        Some(rate) => FeeRate::from_sat_per_vb(rate).map(|rate: FeeRate| rate),
-        None => None,
-    };
-
-    let mut config = Config {
-        server_address: opts
-            .config
-            .ark
-            .clone()
-            .context("Ark server address missing, use --ark")?,
-        esplora_address: match net {
-            Network::Bitcoin | Network::Signet => opts.config.esplora.clone().and_then(|v| {
-                if v.is_empty() {
-                    None
-                } else {
-                    https_default_scheme(v).ok()
-                }
-            }),
-            _ => None,
-        },
-        bitcoind_address: None,
-        bitcoind_cookiefile: None,
-        bitcoind_user: match net {
-            Network::Regtest => opts.config.bitcoind_user.clone(),
-            _ => None,
-        },
-        bitcoind_pass: match net {
-            Network::Regtest => opts.config.bitcoind_pass.clone(),
-            _ => None,
-        },
-        vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
-        fallback_fee_rate,
-        htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
-        vtxo_exit_margin: opts.config.vtxo_exit_margin,
-        round_tx_required_confirmations: opts.config.round_tx_required_confirmations,
-    };
+    let mut config = Config::network_default(net);
+    config.htlc_recv_claim_delta = opts.config.htlc_recv_claim_delta;
+    config.vtxo_exit_margin = opts.config.vtxo_exit_margin;
+    config.round_tx_required_confirmations = opts.config.round_tx_required_confirmations;
     opts.config
         .clone()
         .merge_into(&mut config)

@@ -295,8 +295,8 @@ export const WalletTab = ({
     );
   };
 
-  const handlePeakKeyPair = () => {
-    runOperation('peakKeyPair', () => NitroArk.peakKeyPair(0), 'info');
+  const handlePeekKeyPair = () => {
+    runOperation('peekKeyPair', () => NitroArk.peekKeyPair(0), 'info');
   };
 
   const handleDeriveKeypairFromMnemonic = () => {
@@ -668,7 +668,7 @@ export const WalletTab = ({
           />
           <CustomButton
             title="Peak Keypair"
-            onPress={handlePeakKeyPair}
+            onPress={handlePeekKeyPair}
             disabled={walletOpsDisabled}
             small
           />

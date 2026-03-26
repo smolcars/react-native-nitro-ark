@@ -300,11 +300,11 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) override {
+  std::shared_ptr<Promise<KeyPairResult>> peekKeyPair(double index) override {
     return Promise<KeyPairResult>::async([index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
-        bark_cxx::KeyPairResult keypair_rs = bark_cxx::peak_keypair(index_val);
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::peek_keypair(index_val);
         KeyPairResult keypair;
         keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
         keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
@@ -331,10 +331,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<NewAddressResult>> peakAddress(double index) override {
+  std::shared_ptr<Promise<NewAddressResult>> peekAddress(double index) override {
     return Promise<NewAddressResult>::async([index]() {
       try {
-        bark_cxx::NewAddressResult address_rs = bark_cxx::peak_address(static_cast<uint32_t>(index));
+        bark_cxx::NewAddressResult address_rs = bark_cxx::peek_address(static_cast<uint32_t>(index));
         NewAddressResult address;
         address.user_pubkey = std::string(address_rs.user_pubkey.data(), address_rs.user_pubkey.length());
         address.ark_id = std::string(address_rs.ark_id.data(), address_rs.ark_id.length());

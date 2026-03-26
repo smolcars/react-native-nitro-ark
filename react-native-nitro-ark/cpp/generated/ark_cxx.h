@@ -1116,11 +1116,11 @@ void close_wallet();
 
 ::bark_cxx::KeyPairResult derive_store_next_keypair();
 
-::bark_cxx::KeyPairResult peak_keypair(::std::uint32_t index);
+::bark_cxx::KeyPairResult peek_keypair(::std::uint32_t index);
 
 ::bark_cxx::NewAddressResult new_address();
 
-::bark_cxx::NewAddressResult peak_address(::std::uint32_t index);
+::bark_cxx::NewAddressResult peek_address(::std::uint32_t index);
 
 ::rust::String sign_message(::rust::Str message, ::std::uint32_t index);
 

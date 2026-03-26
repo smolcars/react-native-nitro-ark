@@ -138,8 +138,8 @@ export const ReceiveTab = ({
     runOperation('newAddress', () => NitroArk.newAddress(), 'address');
   };
 
-  const handlePeakAddress = () => {
-    runOperation('peakAddress', () => NitroArk.peakAddress(0), 'address');
+  const handlePeekAddress = () => {
+    runOperation('peekAddress', () => NitroArk.peekAddress(0), 'address');
   };
 
   const handleGetOnchainAddress = () => {
@@ -159,7 +159,7 @@ export const ReceiveTab = ({
           />
           <CustomButton
             title="Peak Address"
-            onPress={handlePeakAddress}
+            onPress={handlePeekAddress}
             disabled={walletOpsDisabled}
           />
         </ButtonGrid>

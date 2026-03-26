@@ -216,12 +216,12 @@ export function deriveStoreNextKeypair(): Promise<KeyPairResult> {
 }
 
 /**
- * Gets the wallet's VTXO public key (hex string).
+ * Peeks the wallet's VTXO public key (hex string).
  * @param index Index of the VTXO pubkey to retrieve.
  * @returns A promise resolving to the KeyPairResult object.
  */
-export function peakKeyPair(index: number): Promise<KeyPairResult> {
-  return NitroArkHybridObject.peakKeyPair(index);
+export function peekKeyPair(index: number): Promise<KeyPairResult> {
+  return NitroArkHybridObject.peekKeyPair(index);
 }
 
 /**
@@ -229,8 +229,8 @@ export function peakKeyPair(index: number): Promise<KeyPairResult> {
  * @param index Index of the address to preview.
  * @returns A promise resolving to the NewAddressResult object.
  */
-export function peakAddress(index: number): Promise<NewAddressResult> {
-  return NitroArkHybridObject.peakAddress(index);
+export function peekAddress(index: number): Promise<NewAddressResult> {
+  return NitroArkHybridObject.peekAddress(index);
 }
 
 /**
