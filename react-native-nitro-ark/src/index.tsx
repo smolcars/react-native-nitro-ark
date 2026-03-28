@@ -14,7 +14,7 @@ import type {
   KeyPairResult,
   MailboxAuthorizationResult,
   LightningReceive,
-  BarkNotificationEvent,
+  BarkNotificationEvent as NitroBarkNotificationEvent,
   BarkNotificationSubscription,
   BarkMovement as NitroBarkMovement,
   BarkMovementDestination as NitroBarkMovementDestination,
@@ -48,6 +48,19 @@ export type BarkMovement = NitroBarkMovement & {
   status: MovementStatus;
   sent_to: BarkMovementDestination[];
   received_on: BarkMovementDestination[];
+};
+
+export type BarkNotificationKind =
+  | 'movementCreated'
+  | 'movementUpdated'
+  | 'channelLagging';
+
+export type BarkNotificationEvent = Omit<
+  NitroBarkNotificationEvent,
+  'kind' | 'movement'
+> & {
+  kind: BarkNotificationKind;
+  movement?: BarkMovement;
 };
 
 // Create the hybrid object instance
@@ -339,7 +352,9 @@ export function mailboxAuthorization(
 export function subscribeNotifications(
   onEvent: (event: BarkNotificationEvent) => void
 ): BarkNotificationSubscription {
-  return NitroArkHybridObject.subscribeNotifications(onEvent);
+  return NitroArkHybridObject.subscribeNotifications(
+    onEvent as (event: NitroBarkNotificationEvent) => void
+  );
 }
 
 /**
@@ -352,7 +367,10 @@ export function subscribeArkoorAddressMovements(
   address: string,
   onEvent: (event: BarkNotificationEvent) => void
 ): BarkNotificationSubscription {
-  return NitroArkHybridObject.subscribeArkoorAddressMovements(address, onEvent);
+  return NitroArkHybridObject.subscribeArkoorAddressMovements(
+    address,
+    onEvent as (event: NitroBarkNotificationEvent) => void
+  );
 }
 
 /**
@@ -367,7 +385,7 @@ export function subscribeLightningPaymentMovements(
 ): BarkNotificationSubscription {
   return NitroArkHybridObject.subscribeLightningPaymentMovements(
     paymentHash,
-    onEvent
+    onEvent as (event: NitroBarkNotificationEvent) => void
   );
 }
 
