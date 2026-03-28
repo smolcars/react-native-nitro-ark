@@ -14,6 +14,8 @@ import type {
   KeyPairResult,
   MailboxAuthorizationResult,
   LightningReceive,
+  BarkNotificationEvent as NitroBarkNotificationEvent,
+  BarkNotificationSubscription,
   BarkMovement as NitroBarkMovement,
   BarkMovementDestination as NitroBarkMovementDestination,
   BoardResult,
@@ -46,6 +48,19 @@ export type BarkMovement = NitroBarkMovement & {
   status: MovementStatus;
   sent_to: BarkMovementDestination[];
   received_on: BarkMovementDestination[];
+};
+
+export type BarkNotificationKind =
+  | 'movementCreated'
+  | 'movementUpdated'
+  | 'channelLagging';
+
+export type BarkNotificationEvent = Omit<
+  NitroBarkNotificationEvent,
+  'kind' | 'movement'
+> & {
+  kind: BarkNotificationKind;
+  movement?: BarkMovement;
 };
 
 // Create the hybrid object instance
@@ -216,12 +231,12 @@ export function deriveStoreNextKeypair(): Promise<KeyPairResult> {
 }
 
 /**
- * Gets the wallet's VTXO public key (hex string).
+ * Peeks the wallet's VTXO public key (hex string).
  * @param index Index of the VTXO pubkey to retrieve.
  * @returns A promise resolving to the KeyPairResult object.
  */
-export function peakKeyPair(index: number): Promise<KeyPairResult> {
-  return NitroArkHybridObject.peakKeyPair(index);
+export function peekKeyPair(index: number): Promise<KeyPairResult> {
+  return NitroArkHybridObject.peekKeyPair(index);
 }
 
 /**
@@ -229,8 +244,8 @@ export function peakKeyPair(index: number): Promise<KeyPairResult> {
  * @param index Index of the address to preview.
  * @returns A promise resolving to the NewAddressResult object.
  */
-export function peakAddress(index: number): Promise<NewAddressResult> {
-  return NitroArkHybridObject.peakAddress(index);
+export function peekAddress(index: number): Promise<NewAddressResult> {
+  return NitroArkHybridObject.peekAddress(index);
 }
 
 /**
@@ -327,6 +342,51 @@ export function mailboxAuthorization(
   return NitroArkHybridObject.mailboxAuthorization(
     authorizationExpiry
   ) as Promise<MailboxAuthorizationResult>;
+}
+
+/**
+ * Subscribes to all Bark wallet notifications.
+ * @param onEvent Callback invoked whenever a notification is emitted.
+ * @returns A subscription handle that can be stopped.
+ */
+export function subscribeNotifications(
+  onEvent: (event: BarkNotificationEvent) => void
+): BarkNotificationSubscription {
+  return NitroArkHybridObject.subscribeNotifications(
+    onEvent as (event: NitroBarkNotificationEvent) => void
+  );
+}
+
+/**
+ * Subscribes to notifications related to a specific Arkoor address.
+ * @param address Arkoor address to filter by.
+ * @param onEvent Callback invoked whenever a matching notification is emitted.
+ * @returns A subscription handle that can be stopped.
+ */
+export function subscribeArkoorAddressMovements(
+  address: string,
+  onEvent: (event: BarkNotificationEvent) => void
+): BarkNotificationSubscription {
+  return NitroArkHybridObject.subscribeArkoorAddressMovements(
+    address,
+    onEvent as (event: NitroBarkNotificationEvent) => void
+  );
+}
+
+/**
+ * Subscribes to notifications related to a specific Lightning payment hash.
+ * @param paymentHash Lightning payment hash to filter by.
+ * @param onEvent Callback invoked whenever a matching notification is emitted.
+ * @returns A subscription handle that can be stopped.
+ */
+export function subscribeLightningPaymentMovements(
+  paymentHash: string,
+  onEvent: (event: BarkNotificationEvent) => void
+): BarkNotificationSubscription {
+  return NitroArkHybridObject.subscribeLightningPaymentMovements(
+    paymentHash,
+    onEvent as (event: NitroBarkNotificationEvent) => void
+  );
 }
 
 /**

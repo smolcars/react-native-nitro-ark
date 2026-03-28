@@ -1,4 +1,5 @@
 use crate::cxx::ffi::{ArkoorPaymentResult, BarkMovement, BarkVtxo, OnchainPaymentResult};
+pub use crate::subscriptions::NotificationSubscription;
 use crate::{TOKIO_RUNTIME, utils};
 use anyhow::{Context, Ok, bail};
 use bark::ark::bitcoin::hex::DisplayHex;
@@ -161,6 +162,18 @@ pub(crate) mod ffi {
         pub encoded: String,
     }
 
+    pub struct NotificationEvent {
+        pub kind: String,
+        pub has_movement: bool,
+        pub movement: BarkMovement,
+    }
+
+    pub struct NotificationPollResult {
+        pub has_event: bool,
+        pub is_active: bool,
+        pub event: NotificationEvent,
+    }
+
     pub struct BarkMovementDestination {
         pub destination: String,
         pub payment_method: String,
@@ -196,6 +209,8 @@ pub(crate) mod ffi {
     }
 
     extern "Rust" {
+        type NotificationSubscription;
+
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
         fn is_wallet_loaded() -> bool;
@@ -203,9 +218,9 @@ pub(crate) mod ffi {
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
-        fn peak_keypair(index: u32) -> Result<KeyPairResult>;
+        fn peek_keypair(index: u32) -> Result<KeyPairResult>;
         fn new_address() -> Result<NewAddressResult>;
-        fn peak_address(index: u32) -> Result<NewAddressResult>;
+        fn peek_address(index: u32) -> Result<NewAddressResult>;
         fn sign_message(message: &str, index: u32) -> Result<String>;
         fn sign_messsage_with_mnemonic(
             message: &str,
@@ -265,6 +280,19 @@ pub(crate) mod ffi {
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
         fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
+        fn subscribe_notifications() -> Result<Box<NotificationSubscription>>;
+        fn subscribe_arkoor_address_movements(
+            address: &str,
+        ) -> Result<Box<NotificationSubscription>>;
+        fn subscribe_lightning_payment_movements(
+            payment_hash: &str,
+        ) -> Result<Box<NotificationSubscription>>;
+        fn stop(self: Pin<&mut NotificationSubscription>) -> Result<()>;
+        fn is_active(self: &NotificationSubscription) -> bool;
+        fn wait_next(
+            self: Pin<&mut NotificationSubscription>,
+            timeout_ms: u32,
+        ) -> Result<NotificationPollResult>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -299,6 +327,22 @@ pub(crate) fn is_wallet_loaded() -> bool {
 
 pub(crate) fn close_wallet() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
+}
+
+pub(crate) fn subscribe_notifications() -> anyhow::Result<Box<NotificationSubscription>> {
+    crate::TOKIO_RUNTIME.block_on(crate::subscribe_notifications())
+}
+
+pub(crate) fn subscribe_arkoor_address_movements(
+    address: &str,
+) -> anyhow::Result<Box<NotificationSubscription>> {
+    crate::TOKIO_RUNTIME.block_on(crate::subscribe_arkoor_address_movements(address))
+}
+
+pub(crate) fn subscribe_lightning_payment_movements(
+    payment_hash: &str,
+) -> anyhow::Result<Box<NotificationSubscription>> {
+    crate::TOKIO_RUNTIME.block_on(crate::subscribe_lightning_payment_movements(payment_hash))
 }
 
 pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
@@ -340,8 +384,8 @@ pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> 
     })
 }
 
-pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
-    let keypair = crate::TOKIO_RUNTIME.block_on(crate::peak_keypair(index))?;
+pub(crate) fn peek_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::peek_keypair(index))?;
     Ok(ffi::KeyPairResult {
         public_key: keypair.public_key().to_string(),
         secret_key: keypair.secret_key().display_secret().to_string(),
@@ -357,8 +401,8 @@ pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
     })
 }
 
-pub(crate) fn peak_address(index: u32) -> anyhow::Result<ffi::NewAddressResult> {
-    let address = crate::TOKIO_RUNTIME.block_on(crate::peak_address(index))?;
+pub(crate) fn peek_address(index: u32) -> anyhow::Result<ffi::NewAddressResult> {
+    let address = crate::TOKIO_RUNTIME.block_on(crate::peek_address(index))?;
     Ok(ffi::NewAddressResult {
         user_pubkey: address.policy().user_pubkey().to_string(),
         ark_id: address.ark_id().to_string(),

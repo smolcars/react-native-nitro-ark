@@ -32,8 +32,8 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("getArkInfo", &HybridNitroArkSpec::getArkInfo);
       prototype.registerHybridMethod("offchainBalance", &HybridNitroArkSpec::offchainBalance);
       prototype.registerHybridMethod("deriveStoreNextKeypair", &HybridNitroArkSpec::deriveStoreNextKeypair);
-      prototype.registerHybridMethod("peakKeyPair", &HybridNitroArkSpec::peakKeyPair);
-      prototype.registerHybridMethod("peakAddress", &HybridNitroArkSpec::peakAddress);
+      prototype.registerHybridMethod("peekKeyPair", &HybridNitroArkSpec::peekKeyPair);
+      prototype.registerHybridMethod("peekAddress", &HybridNitroArkSpec::peekAddress);
       prototype.registerHybridMethod("newAddress", &HybridNitroArkSpec::newAddress);
       prototype.registerHybridMethod("signMessage", &HybridNitroArkSpec::signMessage);
       prototype.registerHybridMethod("signMesssageWithMnemonic", &HybridNitroArkSpec::signMesssageWithMnemonic);
@@ -41,6 +41,9 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("verifyMessage", &HybridNitroArkSpec::verifyMessage);
       prototype.registerHybridMethod("mailboxKeypair", &HybridNitroArkSpec::mailboxKeypair);
       prototype.registerHybridMethod("mailboxAuthorization", &HybridNitroArkSpec::mailboxAuthorization);
+      prototype.registerHybridMethod("subscribeNotifications", &HybridNitroArkSpec::subscribeNotifications);
+      prototype.registerHybridMethod("subscribeArkoorAddressMovements", &HybridNitroArkSpec::subscribeArkoorAddressMovements);
+      prototype.registerHybridMethod("subscribeLightningPaymentMovements", &HybridNitroArkSpec::subscribeLightningPaymentMovements);
       prototype.registerHybridMethod("history", &HybridNitroArkSpec::history);
       prototype.registerHybridMethod("vtxos", &HybridNitroArkSpec::vtxos);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);

@@ -30,7 +30,9 @@ use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
+mod mailbox;
 mod onchain;
+mod subscriptions;
 mod utils;
 
 use bip39::Mnemonic;
@@ -42,6 +44,7 @@ use std::sync::Once;
 use utils::DB_FILE;
 use utils::try_create_wallet;
 
+pub use subscriptions::*;
 pub use utils::*;
 
 use std::str::FromStr;
@@ -63,8 +66,35 @@ static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
 
 // Wallet context that holds all wallet-related components
 pub struct WalletContext {
-    pub wallet: Wallet,
+    pub wallet: Arc<Wallet>,
     pub onchain_wallet: OnchainWallet,
+    pub mailbox_sync_task: Option<tokio::task::JoinHandle<()>>,
+}
+
+impl WalletContext {
+    fn new(wallet: Wallet, onchain_wallet: OnchainWallet) -> Self {
+        let wallet = Arc::new(wallet);
+        let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(Arc::clone(&wallet)));
+
+        Self {
+            wallet,
+            onchain_wallet,
+            mailbox_sync_task,
+        }
+    }
+
+    fn stop_background_tasks(&mut self) {
+        if let Some(task) = self.mailbox_sync_task.take() {
+            info!("Stopping background Bark mailbox processor");
+            task.abort();
+        }
+    }
+}
+
+impl Drop for WalletContext {
+    fn drop(&mut self) {
+        self.stop_background_tasks();
+    }
 }
 
 // Wallet manager that manages the wallet context lifecycle
@@ -110,10 +140,7 @@ impl WalletManager {
         info!("Attempting to open wallet...");
         let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic, config).await?;
 
-        self.context = Some(WalletContext {
-            wallet,
-            onchain_wallet,
-        });
+        self.context = Some(WalletContext::new(wallet, onchain_wallet));
 
         Ok(())
     }
@@ -122,7 +149,9 @@ impl WalletManager {
         if self.context.is_none() {
             bail!("No wallet is currently loaded.");
         }
-        self.context = None;
+        if let Some(mut context) = self.context.take() {
+            context.stop_background_tasks();
+        }
         info!("Wallet closed successfully.");
         Ok(())
     }
@@ -283,14 +312,14 @@ pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
         .await
 }
 
-pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
+pub async fn peek_keypair(index: u32) -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .peak_keypair(index)
+                .peek_keypair(index)
                 .await
-                .context("Failed to peak keypair")
+                .context("Failed to peek keypair")
         })
         .await
 }
@@ -307,14 +336,14 @@ pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
         .await
 }
 
-pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
+pub async fn peek_address(index: u32) -> anyhow::Result<bark::ark::Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .peak_address(index)
+                .peek_address(index)
                 .await
-                .context("Failed to peak address")
+                .context("Failed to peek address")
         })
         .await
 }
@@ -340,9 +369,9 @@ pub async fn sign_message(
         .with_context_async(|ctx| async {
             let wallet = &ctx.wallet;
             let keypair = wallet
-                .peak_keypair(index)
+                .peek_keypair(index)
                 .await
-                .context("Failed to peak keypair")?;
+                .context("Failed to peek keypair")?;
             let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
             let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
             let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..])?;
@@ -664,7 +693,11 @@ pub async fn check_lightning_payment(
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet.check_lightning_payment(payment_hash, wait).await
+            let payment = ctx
+                .wallet
+                .check_lightning_payment(payment_hash, wait)
+                .await?;
+            Ok(payment.and_then(|send| send.preimage))
         })
         .await
 }
@@ -760,20 +793,12 @@ pub async fn sync_pending_rounds() -> anyhow::Result<()> {
 
 pub async fn mailbox_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .mailbox_keypair()
-            .context("Failed to get mailbox keypair")
-    })
+    manager.with_context(|ctx| Ok(ctx.wallet.mailbox_keypair()))
 }
 
 pub async fn mailbox_authorization(
     authorization_expiry: chrono::DateTime<chrono::Local>,
 ) -> anyhow::Result<MailboxAuthorization> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .mailbox_authorization(authorization_expiry)
-            .context("Failed to get mailbox authorization")
-    })
+    manager.with_context(|ctx| Ok(ctx.wallet.mailbox_authorization(authorization_expiry)))
 }

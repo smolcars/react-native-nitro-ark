@@ -142,19 +142,6 @@ export default function App() {
     runOperation,
   };
 
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'wallet':
-        return <WalletTab {...tabProps} />;
-      case 'send':
-        return <SendTab {...tabProps} />;
-      case 'receive':
-        return <ReceiveTab {...tabProps} />;
-      default:
-        return <WalletTab {...tabProps} />;
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -187,7 +174,32 @@ export default function App() {
       </View>
 
       {/* Tab Content */}
-      <View style={styles.content}>{renderTab()}</View>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.tabPanel,
+            activeTab !== 'wallet' && styles.tabPanelHidden,
+          ]}
+        >
+          <WalletTab {...tabProps} />
+        </View>
+        <View
+          style={[
+            styles.tabPanel,
+            activeTab !== 'send' && styles.tabPanelHidden,
+          ]}
+        >
+          <SendTab {...tabProps} />
+        </View>
+        <View
+          style={[
+            styles.tabPanel,
+            activeTab !== 'receive' && styles.tabPanelHidden,
+          ]}
+        >
+          <ReceiveTab {...tabProps} />
+        </View>
+      </View>
 
       {/* Bottom Tabs */}
       <View style={styles.tabBar}>
@@ -282,6 +294,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  tabPanel: {
+    flex: 1,
+  },
+  tabPanelHidden: {
+    display: 'none',
   },
   tabBar: {
     flexDirection: 'row',

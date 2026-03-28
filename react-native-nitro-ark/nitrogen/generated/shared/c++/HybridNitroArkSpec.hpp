@@ -25,6 +25,10 @@ namespace margelo::nitro::nitroark { struct KeyPairResult; }
 namespace margelo::nitro::nitroark { struct NewAddressResult; }
 // Forward declaration of `MailboxAuthorizationResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct MailboxAuthorizationResult; }
+// Forward declaration of `HybridBarkNotificationSubscriptionSpec` to properly resolve imports.
+namespace margelo::nitro::nitroark { class HybridBarkNotificationSubscriptionSpec; }
+// Forward declaration of `BarkNotificationEvent` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkNotificationEvent; }
 // Forward declaration of `BarkMovement` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkMovement; }
 // Forward declaration of `BarkVtxo` to properly resolve imports.
@@ -54,6 +58,10 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "KeyPairResult.hpp"
 #include "NewAddressResult.hpp"
 #include "MailboxAuthorizationResult.hpp"
+#include <memory>
+#include "HybridBarkNotificationSubscriptionSpec.hpp"
+#include "BarkNotificationEvent.hpp"
+#include <functional>
 #include "BarkMovement.hpp"
 #include <vector>
 #include "BarkVtxo.hpp"
@@ -118,8 +126,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;
-      virtual std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) = 0;
-      virtual std::shared_ptr<Promise<NewAddressResult>> peakAddress(double index) = 0;
+      virtual std::shared_ptr<Promise<KeyPairResult>> peekKeyPair(double index) = 0;
+      virtual std::shared_ptr<Promise<NewAddressResult>> peekAddress(double index) = 0;
       virtual std::shared_ptr<Promise<NewAddressResult>> newAddress() = 0;
       virtual std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) = 0;
       virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;
@@ -127,6 +135,9 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> mailboxKeypair() = 0;
       virtual std::shared_ptr<Promise<MailboxAuthorizationResult>> mailboxAuthorization(double authorizationExpiry) = 0;
+      virtual std::shared_ptr<HybridBarkNotificationSubscriptionSpec> subscribeNotifications(const std::function<void(const BarkNotificationEvent& /* event */)>& onEvent) = 0;
+      virtual std::shared_ptr<HybridBarkNotificationSubscriptionSpec> subscribeArkoorAddressMovements(const std::string& address, const std::function<void(const BarkNotificationEvent& /* event */)>& onEvent) = 0;
+      virtual std::shared_ptr<HybridBarkNotificationSubscriptionSpec> subscribeLightningPaymentMovements(const std::string& paymentHash, const std::function<void(const BarkNotificationEvent& /* event */)>& onEvent) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> history() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;

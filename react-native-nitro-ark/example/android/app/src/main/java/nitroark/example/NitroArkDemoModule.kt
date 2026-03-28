@@ -115,12 +115,12 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun peakKeyPair(index: Int, promise: Promise) {
+  fun peekKeyPair(index: Int, promise: Promise) {
     try {
-      val result = NitroArkNative.peakKeyPair(index)
+      val result = NitroArkNative.peekKeyPair(index)
       promise.resolve(keyPairToMap(result))
     } catch (e: Exception) {
-      promise.reject("ERR_PEAK_KEYPAIR_JNI", e)
+      promise.reject("ERR_PEEK_KEYPAIR_JNI", e)
     }
   }
 
