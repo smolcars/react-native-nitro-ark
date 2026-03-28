@@ -19,9 +19,7 @@ pub fn spawn_mailbox_sync_task(wallet: Arc<Wallet>) -> JoinHandle<()> {
                     warn!("Bark mailbox stream dropped; restarting soon");
                 }
                 Err(error) => {
-                    warn!(
-                        "Background Bark mailbox processor exited with error: {error:#}"
-                    );
+                    warn!("Background Bark mailbox processor exited with error: {error:#}");
                 }
             }
 

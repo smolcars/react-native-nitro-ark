@@ -68,9 +68,7 @@ impl NotificationSubscription {
                     Ok(Some(event)) => {
                         info!(
                             "Subscription {} emitting event kind={} movement_id={}",
-                            filter_description,
-                            event.kind,
-                            event.movement.id
+                            filter_description, event.kind, event.movement.id
                         );
                         if tx.send(event).is_err() {
                             warn!(
@@ -81,10 +79,7 @@ impl NotificationSubscription {
                         }
                     }
                     Ok(None) => {
-                        debug!(
-                            "Notification filtered out for {}",
-                            filter_description
-                        );
+                        debug!("Notification filtered out for {}", filter_description);
                     }
                     Err(error) => {
                         warn!("Failed to convert Bark notification: {error:#}");
@@ -204,35 +199,30 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
             if !movement.subsystem.is_subsystem(Subsystem::ARKOOR) {
                 debug!(
                     "Arkoor filter rejected movement_id={} because subsystem was {}",
-                    movement.id.0,
-                    movement.subsystem.kind
+                    movement.id.0, movement.subsystem.kind
                 );
                 return false;
             }
 
-            let matched = movement
-                .received_on
-                .iter()
-                .any(|destination| match destination.destination {
-                    PaymentMethod::Ark(ref candidate) if candidate == address => true,
-                    _ => false,
-                });
+            let matched =
+                movement
+                    .received_on
+                    .iter()
+                    .any(|destination| match destination.destination {
+                        PaymentMethod::Ark(ref candidate) if candidate == address => true,
+                        _ => false,
+                    });
 
             debug!(
                 "Arkoor filter result target={} movement_id={} matched={}",
-                address,
-                movement.id.0,
-                matched
+                address, movement.id.0, matched
             );
             matched
         }
         NotificationFilter::LightningPayment(payment_hash) => {
             debug!(
                 "Evaluating lightning filter target={} movement_id={} subsystem={} metadata={:?}",
-                payment_hash,
-                movement.id.0,
-                movement.subsystem.kind,
-                movement.metadata
+                payment_hash, movement.id.0, movement.subsystem.kind, movement.metadata
             );
             if !movement
                 .subsystem
@@ -241,8 +231,7 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
             {
                 debug!(
                     "Lightning filter rejected movement_id={} because subsystem was {}",
-                    movement.id.0,
-                    movement.subsystem.kind
+                    movement.id.0, movement.subsystem.kind
                 );
                 return false;
             }
@@ -321,7 +310,10 @@ fn notification_to_event(
             }))
         }
         WalletNotification::ChannelLagging => {
-            info!("Received ChannelLagging notification for {}", filter.describe());
+            info!(
+                "Received ChannelLagging notification for {}",
+                filter.describe()
+            );
             Ok(Some(ffi::NotificationEvent {
                 kind: "channelLagging".to_string(),
                 has_movement: false,
@@ -343,7 +335,11 @@ fn format_destinations(movement: &Movement) -> String {
                 format!("bitcoin:{:?}:{}sat", address, destination.amount)
             }
             PaymentMethod::Invoice(invoice) => {
-                format!("invoice:{}:{}sat", invoice.payment_hash(), destination.amount)
+                format!(
+                    "invoice:{}:{}sat",
+                    invoice.payment_hash(),
+                    destination.amount
+                )
             }
             PaymentMethod::Offer(offer) => {
                 format!("offer:{}:{}sat", offer.id(), destination.amount)
@@ -366,17 +362,11 @@ fn notification_summary(notification: &WalletNotification) -> String {
     match notification {
         WalletNotification::MovementCreated { movement } => format!(
             "MovementCreated id={} status={} subsystem={} metadata={:?}",
-            movement.id.0,
-            movement.status,
-            movement.subsystem.kind,
-            movement.metadata
+            movement.id.0, movement.status, movement.subsystem.kind, movement.metadata
         ),
         WalletNotification::MovementUpdated { movement } => format!(
             "MovementUpdated id={} status={} subsystem={} metadata={:?}",
-            movement.id.0,
-            movement.status,
-            movement.subsystem.kind,
-            movement.metadata
+            movement.id.0, movement.status, movement.subsystem.kind, movement.metadata
         ),
         WalletNotification::ChannelLagging => "ChannelLagging".to_string(),
     }
@@ -399,7 +389,10 @@ pub async fn subscribe_arkoor_address_movements(
     let address = Address::from_str(address)
         .with_context(|| format!("Invalid Arkoor address format: '{address}'"))?;
 
-    info!("Creating subscription handle for arkoor address {}", address);
+    info!(
+        "Creating subscription handle for arkoor address {}",
+        address
+    );
 
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
