@@ -7,7 +7,6 @@ use bark::ark::bitcoin::{Address, address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, FeeRate, network};
 use bip39::Mnemonic;
-use hex::ToHex;
 use logger::log::{self, info};
 
 use std::path::Path;
@@ -806,7 +805,7 @@ pub(crate) fn offboard_specific(
     let offboard_specific_result =
         crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, addr))?;
 
-    Ok(offboard_specific_result.encode_hex())
+    Ok(offboard_specific_result.to_string())
 }
 
 pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> {
@@ -832,7 +831,7 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 
     let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
-    Ok(offboard_all_result.encode_hex())
+    Ok(offboard_all_result.to_string())
 }
 
 pub(crate) fn try_claim_lightning_receive(

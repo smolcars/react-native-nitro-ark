@@ -1,6 +1,6 @@
 # Noah Wallet Justfile
 
-set positional-arguments
+set positional-arguments := true
 
 # Default recipe to display available commands
 default:
@@ -17,6 +17,9 @@ start:
 # Android builds (regtest)
 android:
     cd react-native-nitro-ark && yarn example android
+
+android-logs:
+    adb logcat --pid "$(adb shell pidof -s nitroark.example)"
 
 # iOS builds (regtest)
 ios:
@@ -71,13 +74,13 @@ create-bark-wallet:
     ./scripts/ark-dev.sh create-bark-wallet
 
 generate blocks="101":
-    ./scripts/ark-dev.sh generate {{blocks}}
+    ./scripts/ark-dev.sh generate {{ blocks }}
 
 fund-aspd amount:
-    ./scripts/ark-dev.sh fund-aspd {{amount}}
+    ./scripts/ark-dev.sh fund-aspd {{ amount }}
 
 send-to address amount:
-    ./scripts/ark-dev.sh send-to {{address}} {{amount}}
+    ./scripts/ark-dev.sh send-to {{ address }} {{ amount }}
 
 # Lightning commands
 setup-lightning:

@@ -208,10 +208,7 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
                 movement
                     .received_on
                     .iter()
-                    .any(|destination| match destination.destination {
-                        PaymentMethod::Ark(ref candidate) if candidate == address => true,
-                        _ => false,
-                    });
+                    .any(|destination| matches!(destination.destination, PaymentMethod::Ark(ref candidate) if candidate == address));
 
             debug!(
                 "Arkoor filter result target={} movement_id={} matched={}",
