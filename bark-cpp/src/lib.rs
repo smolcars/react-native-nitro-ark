@@ -29,6 +29,7 @@ use bdk_wallet::bitcoin::{Txid, bip32};
 use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 mod cxx;
 mod mailbox;
 mod onchain;
@@ -69,25 +70,32 @@ pub struct WalletContext {
     pub wallet: Arc<Wallet>,
     pub onchain_wallet: OnchainWallet,
     pub mailbox_sync_task: Option<tokio::task::JoinHandle<()>>,
+    pub mailbox_sync_shutdown: Option<CancellationToken>,
 }
 
 impl WalletContext {
     fn new(wallet: Wallet, onchain_wallet: OnchainWallet) -> Self {
         let wallet = Arc::new(wallet);
-        let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(Arc::clone(&wallet)));
+        let mailbox_sync_shutdown = CancellationToken::new();
+        let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(
+            Arc::clone(&wallet),
+            mailbox_sync_shutdown.clone(),
+        ));
 
         Self {
             wallet,
             onchain_wallet,
             mailbox_sync_task,
+            mailbox_sync_shutdown: Some(mailbox_sync_shutdown),
         }
     }
 
     fn stop_background_tasks(&mut self) {
-        if let Some(task) = self.mailbox_sync_task.take() {
+        if let Some(shutdown) = self.mailbox_sync_shutdown.take() {
             info!("Stopping background Bark mailbox processor");
-            task.abort();
+            shutdown.cancel();
         }
+        self.mailbox_sync_task.take();
     }
 }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.1.1", features = [
+bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", ref = "ac4a9736347a7a1d675e515833bfcd4c0409da55", features = [
   "native",
   "tls-webpki-roots",
   "onchain-bdk",
@@ -16,6 +16,7 @@ bdk_wallet = { version = "2.1.0" }
 bdk_bitcoind_rpc = { version = "0.22.0" }
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs", "time"] }
+tokio-util = { version = "0.7.14", default-features = false }
 bip39 = { version = "2.2.0", default-features = false }
 anyhow = "1.0.100"
 futures = "0.3.31"

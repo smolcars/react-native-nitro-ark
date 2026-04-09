@@ -121,7 +121,8 @@ export const ReceiveTab = ({
     if (!nextPaymentHash) {
       setError((prev) => ({
         ...prev,
-        lightningSubscription: 'Create an invoice or provide a payment hash first',
+        lightningSubscription:
+          'Create an invoice or provide a payment hash first',
       }));
       return;
     }
@@ -132,17 +133,20 @@ export const ReceiveTab = ({
       setLightningSubscriptionLog('');
       setLightningSubscriptionStatus('Listening for invoice movements...');
       lightningSubscriptionRef.current =
-        NitroArk.subscribeLightningPaymentMovements(nextPaymentHash, (event) => {
-          const line = formatSubscriptionEvent(event);
-          appendSubscriptionLog(setLightningSubscriptionLog, line);
-          setLightningSubscriptionStatus(
-            `Last event: ${event.kind}${event.movement ? ` (${event.movement.status})` : ''}`
-          );
-          setResults((prev) => ({
-            ...prev,
-            lightningSubscription: line,
-          }));
-        });
+        NitroArk.subscribeLightningPaymentMovements(
+          nextPaymentHash,
+          (event) => {
+            const line = formatSubscriptionEvent(event);
+            appendSubscriptionLog(setLightningSubscriptionLog, line);
+            setLightningSubscriptionStatus(
+              `Last event: ${event.kind}${event.movement ? ` (${event.movement.status})` : ''}`
+            );
+            setResults((prev) => ({
+              ...prev,
+              lightningSubscription: line,
+            }));
+          }
+        );
     } catch (err: any) {
       setLightningSubscriptionStatus('Failed to start');
       setError((prev) => ({
