@@ -17,88 +17,111 @@ class BarkNotificationSubscription final : public HybridBarkNotificationSubscrip
 public:
   BarkNotificationSubscription(rust::Box<bark_cxx::NotificationSubscription> subscription,
                                std::function<void(const BarkNotificationEvent&)>&& onEvent)
-      : HybridObject(TAG), subscription_(std::move(subscription)), onEvent_(std::move(onEvent)),
-        worker_([this]() { pumpEvents(); }) {}
+      : HybridObject(TAG), state_(std::make_shared<State>(std::move(subscription), std::move(onEvent))) {
+    state_->worker = std::thread([state = state_]() { pumpEvents(state); });
+  }
 
   ~BarkNotificationSubscription() override {
-    stopInternal(false);
+    stopInternal();
   }
 
   void stop() override {
-    stopInternal(true);
+    stopInternal();
   }
 
   bool isActive() override {
-    if (!isActive_.load()) {
+    if (!state_ || !state_->isActive.load()) {
       return false;
     }
 
-    std::lock_guard<std::mutex> lock(subscriptionMutex_);
-    return subscription_->is_active();
+    std::lock_guard<std::mutex> lock(state_->subscriptionMutex);
+    return state_->subscription->is_active();
   }
 
 private:
-  void stopInternal(bool rethrowErrors) {
-    const bool wasActive = isActive_.exchange(false);
+  struct State {
+    State(rust::Box<bark_cxx::NotificationSubscription> nextSubscription,
+          std::function<void(const BarkNotificationEvent&)>&& nextOnEvent)
+        : subscription(std::move(nextSubscription)), onEvent(std::move(nextOnEvent)) {}
 
-    if (wasActive) {
+    rust::Box<bark_cxx::NotificationSubscription> subscription;
+    std::function<void(const BarkNotificationEvent&)> onEvent;
+    std::thread worker;
+    std::atomic<bool> isActive{true};
+    std::atomic<bool> cleanupScheduled{false};
+    std::mutex subscriptionMutex;
+  };
+
+  void stopInternal() {
+    if (!state_) {
+      return;
+    }
+
+    state_->isActive.store(false);
+    scheduleCleanup(state_);
+  }
+
+  static void scheduleCleanup(const std::shared_ptr<State>& state) {
+    if (state->cleanupScheduled.exchange(true)) {
+      return;
+    }
+
+    std::thread([state]() {
       try {
-        std::lock_guard<std::mutex> lock(subscriptionMutex_);
-        subscription_->stop();
-      } catch (const std::exception& error) {
-        if (rethrowErrors) {
-          throw std::runtime_error(error.what());
+        std::lock_guard<std::mutex> lock(state->subscriptionMutex);
+        if (state->subscription->is_active()) {
+          state->subscription->stop();
         }
+      } catch (...) {
       }
-    }
 
-    joinWorker();
+      joinWorker(state);
+    }).detach();
   }
 
-  void joinWorker() {
-    if (!worker_.joinable()) {
+  static void joinWorker(const std::shared_ptr<State>& state) {
+    if (!state->worker.joinable()) {
       return;
     }
 
-    if (worker_.get_id() == std::this_thread::get_id()) {
-      worker_.detach();
+    if (state->worker.get_id() == std::this_thread::get_id()) {
+      state->worker.detach();
       return;
     }
 
-    worker_.join();
+    state->worker.join();
   }
 
-  void pumpEvents() {
+  static void pumpEvents(const std::shared_ptr<State>& state) {
     try {
-      while (isActive_.load()) {
+      while (state->isActive.load()) {
         bark_cxx::NotificationPollResult result;
         {
-          std::lock_guard<std::mutex> lock(subscriptionMutex_);
-          result = subscription_->wait_next(250);
+          std::lock_guard<std::mutex> lock(state->subscriptionMutex);
+          result = state->subscription->wait_next(250);
         }
 
-        if (!isActive_.load()) {
+        if (!state->isActive.load()) {
           break;
         }
 
         if (result.has_event) {
-          onEvent_(convertEvent(result.event));
+          state->onEvent(convertEvent(result.event));
         }
 
         if (!result.is_active) {
-          isActive_.store(false);
+          state->isActive.store(false);
           break;
         }
       }
     } catch (...) {
-      isActive_.store(false);
+      state->isActive.store(false);
     }
   }
 
   static BarkMovementDestination convertDestination(const bark_cxx::BarkMovementDestination& destinationRs) {
     BarkMovementDestination destination;
-    destination.destination =
-        std::string(destinationRs.destination.data(), destinationRs.destination.length());
+    destination.destination = std::string(destinationRs.destination.data(), destinationRs.destination.length());
     destination.payment_method =
         std::string(destinationRs.payment_method.data(), destinationRs.payment_method.length());
     destination.amount_sat = static_cast<double>(destinationRs.amount_sat);
@@ -122,10 +145,8 @@ private:
       movement.completed_at = std::string(movementRs.completed_at.data(), movementRs.completed_at.length());
     }
 
-    movement.subsystem.name =
-        std::string(movementRs.subsystem_name.data(), movementRs.subsystem_name.length());
-    movement.subsystem.kind =
-        std::string(movementRs.subsystem_kind.data(), movementRs.subsystem_kind.length());
+    movement.subsystem.name = std::string(movementRs.subsystem_name.data(), movementRs.subsystem_name.length());
+    movement.subsystem.kind = std::string(movementRs.subsystem_kind.data(), movementRs.subsystem_kind.length());
 
     movement.sent_to.reserve(movementRs.sent_to.size());
     for (const auto& destinationRs : movementRs.sent_to) {
@@ -169,11 +190,7 @@ private:
   }
 
 private:
-  rust::Box<bark_cxx::NotificationSubscription> subscription_;
-  std::function<void(const BarkNotificationEvent&)> onEvent_;
-  std::thread worker_;
-  std::atomic<bool> isActive_{true};
-  std::mutex subscriptionMutex_;
+  std::shared_ptr<State> state_;
 };
 
 } // namespace margelo::nitro::nitroark
