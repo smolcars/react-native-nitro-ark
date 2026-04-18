@@ -1,4 +1,5 @@
 use anyhow::Context;
+use bdk_wallet::bitcoin::FeeRate;
 
 use crate::GLOBAL_WALLET_MANAGER;
 
@@ -30,6 +31,25 @@ pub async fn sync_exit() -> anyhow::Result<()> {
                 .await
                 .context("Failed to sync exit")?;
             Ok(())
+        })
+        .await
+}
+
+pub async fn progress_exits(
+    fee_rate: Option<FeeRate>,
+) -> anyhow::Result<Vec<bark::exit::ExitProgressStatus>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let result = ctx
+                .wallet
+                .exit
+                .write()
+                .await
+                .progress_exits(ctx.wallet.as_ref(), &mut ctx.onchain_wallet, fee_rate)
+                .await
+                .context("Failed to progress exits")?;
+            Ok(result.unwrap_or_default())
         })
         .await
 }

@@ -973,6 +973,7 @@ namespace bark_cxx {
   struct LightningSend;
   struct ArkoorPaymentResult;
   struct OnchainPaymentResult;
+  struct ExitProgressStatusResult;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
@@ -1074,6 +1075,17 @@ struct OnchainPaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
+struct ExitProgressStatusResult final {
+  ::rust::String vtxo_id;
+  ::rust::String state;
+  ::rust::String error;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
@@ -1385,6 +1397,8 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::LightningSend pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
 ::bark_cxx::LightningSend pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
+
+::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
 
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 

@@ -331,6 +331,39 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>>
+  progressExits(std::optional<double> feeRateSatPerKvb) override {
+    return Promise<std::vector<ExitProgressStatusResult>>::async([feeRateSatPerKvb]() {
+      try {
+        uint64_t feeRateVal;
+        rust::Vec<bark_cxx::ExitProgressStatusResult> rust_results;
+        if (feeRateSatPerKvb.has_value()) {
+          feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
+          rust_results = bark_cxx::progress_exits(&feeRateVal);
+        } else {
+          rust_results = bark_cxx::progress_exits(nullptr);
+        }
+
+        std::vector<ExitProgressStatusResult> results;
+        results.reserve(rust_results.size());
+        for (const auto& rust_result : rust_results) {
+          ExitProgressStatusResult result;
+          result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
+          result.state = std::string(rust_result.state.data(), rust_result.state.length());
+          if (rust_result.error.length() == 0) {
+            result.error = std::nullopt;
+          } else {
+            result.error = std::string(rust_result.error.data(), rust_result.error.length());
+          }
+          results.push_back(std::move(result));
+        }
+        return results;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

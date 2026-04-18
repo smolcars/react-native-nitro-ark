@@ -29,6 +29,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("sync", &HybridNitroArkSpec::sync);
       prototype.registerHybridMethod("startExitForEntireWallet", &HybridNitroArkSpec::startExitForEntireWallet);
       prototype.registerHybridMethod("syncExit", &HybridNitroArkSpec::syncExit);
+      prototype.registerHybridMethod("progressExits", &HybridNitroArkSpec::progressExits);
       prototype.registerHybridMethod("syncExits", &HybridNitroArkSpec::syncExits);
       prototype.registerHybridMethod("syncPendingRounds", &HybridNitroArkSpec::syncPendingRounds);
       prototype.registerHybridMethod("getArkInfo", &HybridNitroArkSpec::getArkInfo);

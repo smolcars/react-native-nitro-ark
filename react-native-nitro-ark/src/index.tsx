@@ -205,6 +205,17 @@ export function syncExit(): Promise<void> {
 }
 
 /**
+ * Progresses tracked exits by one step.
+ * @param feeRateSatPerKvb Optional fee rate override in sat/kvB.
+ * @returns A promise resolving to simplified exit progress entries.
+ */
+export function progressExits(
+  feeRateSatPerKvb?: number
+): Promise<ExitProgressStatusResult[]> {
+  return NitroArkHybridObject.progressExits(feeRateSatPerKvb);
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */

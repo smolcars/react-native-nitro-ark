@@ -7,6 +7,7 @@ use bark::ark::bitcoin::{Address, address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, FeeRate, network};
 use bip39::Mnemonic;
+use bitcoin_ext::FeeRateExt;
 use logger::log::{self, info};
 
 use std::path::Path;
@@ -62,6 +63,12 @@ pub(crate) mod ffi {
         txid: String,
         amount_sat: u64,
         destination_address: String,
+    }
+
+    pub struct ExitProgressStatusResult {
+        vtxo_id: String,
+        state: String,
+        error: String,
     }
 
     pub struct CxxArkInfo {
@@ -266,6 +273,9 @@ pub(crate) mod ffi {
             amount_sat: u64,
             comment: &str,
         ) -> Result<LightningSend>;
+        unsafe fn progress_exits(
+            fee_rate_sat_per_kvb: *const u64,
+        ) -> Result<Vec<ExitProgressStatusResult>>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -743,6 +753,29 @@ pub(crate) fn pay_lightning_address(
             .preimage
             .map_or(String::new(), |p| p.to_lower_hex_string()),
     })
+}
+
+pub(crate) fn progress_exits(
+    fee_rate_sat_per_kvb: *const u64,
+) -> anyhow::Result<Vec<ffi::ExitProgressStatusResult>> {
+    let fee_rate = unsafe {
+        fee_rate_sat_per_kvb
+            .as_ref()
+            .copied()
+            .map(FeeRate::from_sat_per_kvb_ceil)
+    };
+    let statuses = TOKIO_RUNTIME.block_on(crate::progress_exits(fee_rate))?;
+
+    statuses
+        .into_iter()
+        .map(|status| {
+            Ok(ffi::ExitProgressStatusResult {
+                vtxo_id: status.vtxo_id.to_string(),
+                state: format!("{:?}", status.state),
+                error: status.error.map_or(String::new(), |error| error.to_string()),
+            })
+        })
+        .collect()
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

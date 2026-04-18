@@ -75,6 +75,12 @@ export interface ArkoorPaymentResult {
   vtxos: BarkVtxo[];
 }
 
+export interface ExitProgressStatusResult {
+  vtxo_id: string;
+  state: string;
+  error?: string;
+}
+
 export interface LightningSendResult {
   invoice: string;
   payment_hash: string;
@@ -194,6 +200,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   sync(): Promise<void>;
   startExitForEntireWallet(): Promise<void>;
   syncExit(): Promise<void>;
+  progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
   syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 
