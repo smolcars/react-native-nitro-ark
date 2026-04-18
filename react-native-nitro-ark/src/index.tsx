@@ -233,9 +233,9 @@ export function syncExit(): Promise<void> {
 export function progressExits(
   feeRateSatPerKvb?: number
 ): Promise<ExitProgressStatusResult[]> {
-  return NitroArkHybridObject.progressExits(
-    feeRateSatPerKvb
-  ) as Promise<ExitProgressStatusResult[]>;
+  return NitroArkHybridObject.progressExits(feeRateSatPerKvb) as Promise<
+    ExitProgressStatusResult[]
+  >;
 }
 
 /**

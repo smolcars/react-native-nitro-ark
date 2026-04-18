@@ -31,7 +31,7 @@ export interface InputState {
   paymentHash: string;
 }
 
-export type TabName = 'wallet' | 'send' | 'receive';
+export type TabName = 'wallet' | 'send' | 'receive' | 'exit';
 
 export interface TabProps {
   mnemonic: string | undefined;

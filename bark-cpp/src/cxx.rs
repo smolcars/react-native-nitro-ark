@@ -790,7 +790,9 @@ pub(crate) fn progress_exits(
             Ok(ffi::ExitProgressStatusResult {
                 vtxo_id: status.vtxo_id.to_string(),
                 state: utils::exit_state_name(&status.state).to_string(),
-                error: status.error.map_or(String::new(), |error| error.to_string()),
+                error: status
+                    .error
+                    .map_or(String::new(), |error| error.to_string()),
             })
         })
         .collect()
@@ -826,7 +828,9 @@ pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
 }
 
 pub(crate) fn pending_exit_total() -> anyhow::Result<u64> {
-    Ok(TOKIO_RUNTIME.block_on(crate::pending_exit_total())?.to_sat())
+    Ok(TOKIO_RUNTIME
+        .block_on(crate::pending_exit_total())?
+        .to_sat())
 }
 
 pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
