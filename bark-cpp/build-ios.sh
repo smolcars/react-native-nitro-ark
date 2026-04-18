@@ -42,7 +42,7 @@ HEADERS_DIR_CXX="$TARGET_DIR/cxx_headers"
 rm -rf "$HEADERS_DIR_CXX"
 mkdir -p "$HEADERS_DIR_CXX"
 
-HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" | head -n 1)
+HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" -print0 | xargs -0 ls -t | head -n 1)
 if [ -z "$HOST_HEADER_SRC_PATH" ]; then
     echo "Error: Could not find host-generated cxx.rs.h header."
     exit 1
@@ -50,7 +50,7 @@ fi
 echo "Copying host API header from: $HOST_HEADER_SRC_PATH"
 cp "$HOST_HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
 
-HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" | head -n 1)
+HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" -print0 | xargs -0 ls -t | head -n 1)
 if [ -z "$HOST_CXX_HEADER_PATH" ]; then
     echo "Error: Could not find host-generated cxx.h header."
     exit 1

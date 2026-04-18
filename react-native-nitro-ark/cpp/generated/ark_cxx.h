@@ -1396,6 +1396,10 @@ void validate_arkoor_address(::rust::Str address);
 
 void try_claim_all_lightning_receives(bool wait);
 
+void start_exit_for_entire_wallet();
+
+void sync_exit();
+
 void sync_exits();
 
 void sync_pending_rounds();

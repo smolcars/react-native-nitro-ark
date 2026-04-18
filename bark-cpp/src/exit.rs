@@ -18,15 +18,22 @@ pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
         .await
 }
 
-pub async fn sync_exits() -> anyhow::Result<()> {
+pub async fn sync_exit() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .sync_exits(&mut ctx.onchain_wallet)
+                .exit
+                .write()
                 .await
-                .context("Failed to sync exits")?;
+                .sync(ctx.wallet.as_ref(), &mut ctx.onchain_wallet)
+                .await
+                .context("Failed to sync exit")?;
             Ok(())
         })
         .await
+}
+
+pub async fn sync_exits() -> anyhow::Result<()> {
+    sync_exit().await
 }

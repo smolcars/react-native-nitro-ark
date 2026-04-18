@@ -321,6 +321,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> syncExit() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::sync_exit();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

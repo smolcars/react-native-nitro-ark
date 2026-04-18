@@ -197,6 +197,14 @@ export function startExitForEntireWallet(): Promise<void> {
 }
 
 /**
+ * Synchronizes the exit coordinator state.
+ * @returns A promise that resolves on success.
+ */
+export function syncExit(): Promise<void> {
+  return NitroArkHybridObject.syncExit();
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */
