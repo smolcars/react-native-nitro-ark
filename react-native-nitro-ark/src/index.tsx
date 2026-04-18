@@ -271,6 +271,25 @@ export function allClaimableAtHeight(): Promise<number | undefined> {
 }
 
 /**
+ * Builds a base64 PSBT that drains the selected claimable exits to an onchain address.
+ * @param vtxoIds Exit VTXO IDs to claim.
+ * @param destinationAddress Destination onchain address.
+ * @param feeRateSatPerKvb Optional fee rate override in sat/kvB.
+ * @returns A promise resolving to a base64-encoded PSBT.
+ */
+export function drainExits(
+  vtxoIds: string[],
+  destinationAddress: string,
+  feeRateSatPerKvb?: number
+): Promise<string> {
+  return NitroArkHybridObject.drainExits(
+    vtxoIds,
+    destinationAddress,
+    feeRateSatPerKvb
+  );
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */

@@ -433,6 +433,33 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::string>> drainExits(const std::vector<std::string>& vtxoIds,
+                                                   const std::string& destinationAddress,
+                                                   std::optional<double> feeRateSatPerKvb) override {
+    return Promise<std::string>::async([vtxoIds, destinationAddress, feeRateSatPerKvb]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+
+        uint64_t feeRateVal;
+        rust::String result;
+        if (feeRateSatPerKvb.has_value()) {
+          feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
+          result = bark_cxx::drain_exits(std::move(rust_vtxo_ids), destinationAddress, &feeRateVal);
+        } else {
+          result = bark_cxx::drain_exits(std::move(rust_vtxo_ids), destinationAddress, nullptr);
+        }
+
+        return std::string(result.data(), result.length());
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

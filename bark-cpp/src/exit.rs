@@ -1,5 +1,6 @@
 use anyhow::Context;
-use bdk_wallet::bitcoin::FeeRate;
+use bdk_wallet::bitcoin::{Address, FeeRate, Psbt};
+use std::str::FromStr;
 
 use crate::GLOBAL_WALLET_MANAGER;
 
@@ -82,6 +83,33 @@ pub async fn all_claimable_at_height() -> anyhow::Result<Option<u32>> {
     manager
         .with_context_async(|ctx| async {
             Ok(ctx.wallet.exit.read().await.all_claimable_at_height().await)
+        })
+        .await
+}
+
+pub async fn drain_exits(
+    vtxo_ids: Vec<String>,
+    address: Address,
+    fee_rate: Option<FeeRate>,
+) -> anyhow::Result<Psbt> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            let exit = ctx.wallet.exit.read().await;
+            let inputs = vtxo_ids
+                .iter()
+                .map(|id| {
+                    let vtxo_id = bark::ark::VtxoId::from_str(id)?;
+                    exit.get_exit_vtxo(vtxo_id)
+                        .cloned()
+                        .with_context(|| format!("Exit VTXO not found: {}", id))
+                })
+                .collect::<anyhow::Result<Vec<_>>>()?;
+
+            exit.drain_exits(&inputs, ctx.wallet.as_ref(), address, fee_rate)
+                .await
+                .context("Failed to drain exits")
+                .map_err(Into::into)
         })
         .await
 }

@@ -289,6 +289,11 @@ pub(crate) mod ffi {
         fn has_pending_exits() -> Result<bool>;
         fn pending_exit_total() -> Result<u64>;
         fn all_claimable_at_height() -> Result<*const u32>;
+        unsafe fn drain_exits(
+            vtxo_ids: Vec<String>,
+            destination_address: &str,
+            fee_rate_sat_per_kvb: *const u64,
+        ) -> Result<String>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -830,6 +835,40 @@ pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
         Some(height) => Ok(Box::into_raw(Box::new(height))),
         None => Ok(std::ptr::null()),
     }
+}
+
+pub(crate) fn drain_exits(
+    vtxo_ids: Vec<String>,
+    destination_address: &str,
+    fee_rate_sat_per_kvb: *const u64,
+) -> anyhow::Result<String> {
+    let fee_rate = unsafe {
+        fee_rate_sat_per_kvb
+            .as_ref()
+            .copied()
+            .map(FeeRate::from_sat_per_kvb_ceil)
+    };
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    let destination_address_opt =
+        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+            format!(
+                "Invalid destination address format: '{}'",
+                destination_address
+            )
+        })?;
+    let addr = destination_address_opt
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "Address '{}' is not valid for configured network {:?}",
+                destination_address, ark_info.network
+            )
+        })?;
+
+    let psbt = TOKIO_RUNTIME.block_on(crate::drain_exits(vtxo_ids, addr, fee_rate))?;
+    Ok(psbt.to_string())
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

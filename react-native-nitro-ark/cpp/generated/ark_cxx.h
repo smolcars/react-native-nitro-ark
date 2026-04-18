@@ -1423,6 +1423,8 @@ bool has_pending_exits();
 
 ::std::uint32_t const *all_claimable_at_height();
 
+::rust::String drain_exits(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address, ::std::uint64_t const *fee_rate_sat_per_kvb);
+
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
