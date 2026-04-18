@@ -1417,6 +1417,8 @@ void validate_arkoor_address(::rust::Str address);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
 
+bool has_pending_exits();
+
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);

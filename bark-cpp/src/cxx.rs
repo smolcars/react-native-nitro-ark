@@ -286,6 +286,8 @@ pub(crate) mod ffi {
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<Vec<ExitProgressStatusResult>>;
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
+        fn has_pending_exits() -> Result<bool>;
+        fn pending_exit_total() -> Result<u64>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -811,6 +813,14 @@ pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
             is_initialized: exit.is_initialized(),
         })
         .collect())
+}
+
+pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
+    TOKIO_RUNTIME.block_on(crate::has_pending_exits())
+}
+
+pub(crate) fn pending_exit_total() -> anyhow::Result<u64> {
+    Ok(TOKIO_RUNTIME.block_on(crate::pending_exit_total())?.to_sat())
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

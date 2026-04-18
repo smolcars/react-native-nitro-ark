@@ -397,6 +397,26 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<bool>> hasPendingExits() override {
+    return Promise<bool>::async([]() {
+      try {
+        return bark_cxx::has_pending_exits();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<double>> pendingExitTotal() override {
+    return Promise<double>::async([]() {
+      try {
+        return static_cast<double>(bark_cxx::pending_exit_total());
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

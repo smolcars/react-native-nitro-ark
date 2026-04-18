@@ -63,6 +63,20 @@ pub async fn get_exit_vtxos() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
         .await
 }
 
+pub async fn has_pending_exits() -> anyhow::Result<bool> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { Ok(ctx.wallet.exit.read().await.has_pending_exits()) })
+        .await
+}
+
+pub async fn pending_exit_total() -> anyhow::Result<bark::ark::bitcoin::Amount> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { Ok(ctx.wallet.exit.read().await.pending_total()) })
+        .await
+}
+
 pub async fn sync_exits() -> anyhow::Result<()> {
     sync_exit().await
 }

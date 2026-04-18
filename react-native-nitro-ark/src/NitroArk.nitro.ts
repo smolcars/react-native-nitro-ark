@@ -211,6 +211,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   syncExit(): Promise<void>;
   progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;
+  hasPendingExits(): Promise<boolean>;
+  pendingExitTotal(): Promise<number>;
   syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 

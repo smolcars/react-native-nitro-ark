@@ -247,6 +247,22 @@ export function getExitVtxos(): Promise<ExitVtxoResult[]> {
 }
 
 /**
+ * Checks whether the wallet has exits that are still pending.
+ * @returns A promise resolving to true when any tracked exit is not yet claimable.
+ */
+export function hasPendingExits(): Promise<boolean> {
+  return NitroArkHybridObject.hasPendingExits();
+}
+
+/**
+ * Returns the total amount, in sats, still waiting on pending exit confirmations.
+ * @returns A promise resolving to the pending exit total in satoshis.
+ */
+export function pendingExitTotal(): Promise<number> {
+  return NitroArkHybridObject.pendingExitTotal();
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */
