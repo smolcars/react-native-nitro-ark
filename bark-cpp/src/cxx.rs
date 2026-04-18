@@ -288,6 +288,7 @@ pub(crate) mod ffi {
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
         fn has_pending_exits() -> Result<bool>;
         fn pending_exit_total() -> Result<u64>;
+        fn all_claimable_at_height() -> Result<*const u32>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -821,6 +822,14 @@ pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
 
 pub(crate) fn pending_exit_total() -> anyhow::Result<u64> {
     Ok(TOKIO_RUNTIME.block_on(crate::pending_exit_total())?.to_sat())
+}
+
+pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
+    let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

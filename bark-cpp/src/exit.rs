@@ -77,6 +77,15 @@ pub async fn pending_exit_total() -> anyhow::Result<bark::ark::bitcoin::Amount> 
         .await
 }
 
+pub async fn all_claimable_at_height() -> anyhow::Result<Option<u32>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx.wallet.exit.read().await.all_claimable_at_height().await)
+        })
+        .await
+}
+
 pub async fn sync_exits() -> anyhow::Result<()> {
     sync_exit().await
 }

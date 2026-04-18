@@ -1421,6 +1421,8 @@ bool has_pending_exits();
 
 ::std::uint64_t pending_exit_total();
 
+::std::uint32_t const *all_claimable_at_height();
+
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);

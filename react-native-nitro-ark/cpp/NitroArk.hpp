@@ -417,6 +417,22 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<double>>> allClaimableAtHeight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::all_claimable_at_height();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr;
+        return std::optional<double>(value);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

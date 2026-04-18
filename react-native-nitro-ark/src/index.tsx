@@ -263,6 +263,14 @@ export function pendingExitTotal(): Promise<number> {
 }
 
 /**
+ * Returns the earliest block height at which all tracked exits are claimable.
+ * @returns A promise resolving to the claimable height, or undefined if not known yet.
+ */
+export function allClaimableAtHeight(): Promise<number | undefined> {
+  return NitroArkHybridObject.allClaimableAtHeight();
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */
