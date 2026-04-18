@@ -55,7 +55,6 @@ interface BarkVtxo {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: string;
 }
 
 export interface BoardResult {
@@ -154,7 +153,7 @@ export interface BarkMovementDestination {
 
 export interface BarkMovement {
   id: number;
-  status: string; // 'pending' | 'successful' | 'failed' | 'cancelled'
+  status: string; // 'pending' | 'successful' | 'failed' | 'canceled'
   subsystem: BarkMovementSubsystem;
   metadata_json: string;
   intended_balance_sat: number;

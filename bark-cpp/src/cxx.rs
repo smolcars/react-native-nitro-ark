@@ -24,7 +24,6 @@ pub(crate) mod ffi {
         exit_delta: u16,
         anchor_point: String,
         point: String,
-        state: String,
     }
 
     pub struct BoardResult {
@@ -769,9 +768,17 @@ pub(crate) fn progress_exits(
     statuses
         .into_iter()
         .map(|status| {
+            let state = match status.state {
+                bark::exit::ExitState::Start(..) => "Start",
+                bark::exit::ExitState::Processing(..) => "Processing",
+                bark::exit::ExitState::AwaitingDelta(..) => "AwaitingDelta",
+                bark::exit::ExitState::Claimable(..) => "Claimable",
+                bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
+                bark::exit::ExitState::Claimed(..) => "Claimed",
+            };
             Ok(ffi::ExitProgressStatusResult {
                 vtxo_id: status.vtxo_id.to_string(),
-                state: format!("{:?}", status.state),
+                state: state.to_string(),
                 error: status.error.map_or(String::new(), |error| error.to_string()),
             })
         })

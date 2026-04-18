@@ -6,6 +6,7 @@ import type {
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  ExitProgressStatusResult as NitroExitProgressStatusResult,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -28,10 +29,24 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: 'Spendable' | 'Spent' | 'Locked';
 };
 
-export type MovementStatus = 'pending' | 'successful' | 'failed' | 'cancelled';
+export type MovementStatus = 'pending' | 'successful' | 'failed' | 'canceled';
+
+export type ExitProgressState =
+  | 'Start'
+  | 'Processing'
+  | 'AwaitingDelta'
+  | 'Claimable'
+  | 'ClaimInProgress'
+  | 'Claimed';
+
+export type ExitProgressStatusResult = Omit<
+  NitroExitProgressStatusResult,
+  'state'
+> & {
+  state: ExitProgressState;
+};
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
   payment_method:
@@ -212,7 +227,9 @@ export function syncExit(): Promise<void> {
 export function progressExits(
   feeRateSatPerKvb?: number
 ): Promise<ExitProgressStatusResult[]> {
-  return NitroArkHybridObject.progressExits(feeRateSatPerKvb);
+  return NitroArkHybridObject.progressExits(
+    feeRateSatPerKvb
+  ) as Promise<ExitProgressStatusResult[]>;
 }
 
 /**

@@ -27,7 +27,6 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
     vtxo.exit_delta = static_cast<double>(vtxo_rs.exit_delta);
     vtxo.anchor_point = std::string(vtxo_rs.anchor_point.data(), vtxo_rs.anchor_point.length());
     vtxo.point = std::string(vtxo_rs.point.data(), vtxo_rs.point.length());
-    vtxo.state = std::string(vtxo_rs.state.data(), vtxo_rs.state.length());
     vtxos.push_back(std::move(vtxo));
   }
 
