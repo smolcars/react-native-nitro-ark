@@ -19,3 +19,12 @@ Important notes:
 
 - The Ark APIs generally return complex types and for cxx to handle them we have to manually do type conversion into simpler types.
 - Always try to match the struct type with a corresponding simple type by converting to a string or a number, etc. Sometimes it is not possible, in such a case just the ask the user what to do.
+
+To add a new API:
+
+- Add the API inside bark-cpp, expose it via FFI.
+- Run the `build-android.sh` or `build-ios.sh` bash script depending on what OS you're working on, this will generate the binaries and also update the header files.
+- Define the corresponding typescript definitions inside `react-native-nitro-ark/src/NitroArk.nitro.ts` and expose inside `react-native-nitro-ark/src/index.tsx`.
+- Run `yarn nitrogen` inside `react-native-nitro-ark` directory to generate the nitro c++ glue code.
+- Update the `react-native-nitro-ark/cpp/NitroArk.hpp` to call the Rust code from C++ based on the C++ input types and the types outputted by cxx header.
+- You can refer to existing exposed methods to use as an example.

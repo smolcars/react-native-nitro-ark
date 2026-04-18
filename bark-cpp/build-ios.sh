@@ -42,21 +42,31 @@ HEADERS_DIR_CXX="$TARGET_DIR/cxx_headers"
 rm -rf "$HEADERS_DIR_CXX"
 mkdir -p "$HEADERS_DIR_CXX"
 
-HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" | head -n 1)
+# cxx always exposes a stable top-level header path for the most recent host build.
+# Prefer that over Cargo's hashed build directories, which can leave stale headers around.
+HOST_HEADER_SRC_PATH="target/cxxbridge/bark-cpp/src/cxx.rs.h"
 if [ -z "$HOST_HEADER_SRC_PATH" ]; then
     echo "Error: Could not find host-generated cxx.rs.h header."
     exit 1
 fi
+if [ ! -f "$HOST_HEADER_SRC_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.rs.h header at $HOST_HEADER_SRC_PATH"
+    exit 1
+fi
 echo "Copying host API header from: $HOST_HEADER_SRC_PATH"
-cp "$HOST_HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
+cp -f "$HOST_HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
 
-HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" | head -n 1)
+HOST_CXX_HEADER_PATH="target/cxxbridge/rust/cxx.h"
 if [ -z "$HOST_CXX_HEADER_PATH" ]; then
     echo "Error: Could not find host-generated cxx.h header."
     exit 1
 fi
+if [ ! -f "$HOST_CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.h header at $HOST_CXX_HEADER_PATH"
+    exit 1
+fi
 echo "Copying host cxx header from: $HOST_CXX_HEADER_PATH"
-cp "$HOST_CXX_HEADER_PATH" "$HEADERS_DIR_CXX/cxx.h"
+cp -f "$HOST_CXX_HEADER_PATH" "$HEADERS_DIR_CXX/cxx.h"
 
 # --- Install Rust targets ---
 echo "Ensuring required Rust targets are installed..."

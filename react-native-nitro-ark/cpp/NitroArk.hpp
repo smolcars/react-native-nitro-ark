@@ -27,7 +27,6 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
     vtxo.exit_delta = static_cast<double>(vtxo_rs.exit_delta);
     vtxo.anchor_point = std::string(vtxo_rs.anchor_point.data(), vtxo_rs.anchor_point.length());
     vtxo.point = std::string(vtxo_rs.point.data(), vtxo_rs.point.length());
-    vtxo.state = std::string(vtxo_rs.state.data(), vtxo_rs.state.length());
     vtxos.push_back(std::move(vtxo));
   }
 
@@ -305,6 +304,156 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::sync();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> startExitForEntireWallet() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::start_exit_for_entire_wallet();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> syncExit() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::sync_exit();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>>
+  progressExits(std::optional<double> feeRateSatPerKvb) override {
+    return Promise<std::vector<ExitProgressStatusResult>>::async([feeRateSatPerKvb]() {
+      try {
+        uint64_t feeRateVal;
+        rust::Vec<bark_cxx::ExitProgressStatusResult> rust_results;
+        if (feeRateSatPerKvb.has_value()) {
+          feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
+          rust_results = bark_cxx::progress_exits(&feeRateVal);
+        } else {
+          rust_results = bark_cxx::progress_exits(nullptr);
+        }
+
+        std::vector<ExitProgressStatusResult> results;
+        results.reserve(rust_results.size());
+        for (const auto& rust_result : rust_results) {
+          ExitProgressStatusResult result;
+          result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
+          result.state = std::string(rust_result.state.data(), rust_result.state.length());
+          if (rust_result.error.length() == 0) {
+            result.error = std::nullopt;
+          } else {
+            result.error = std::string(rust_result.error.data(), rust_result.error.length());
+          }
+          results.push_back(std::move(result));
+        }
+        return results;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() override {
+    return Promise<std::vector<ExitVtxoResult>>::async([]() {
+      try {
+        rust::Vec<bark_cxx::ExitVtxoResult> rust_results = bark_cxx::get_exit_vtxos();
+
+        std::vector<ExitVtxoResult> results;
+        results.reserve(rust_results.size());
+        for (const auto& rust_result : rust_results) {
+          ExitVtxoResult result;
+          result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
+          result.amount_sat = static_cast<double>(rust_result.amount_sat);
+          result.state = std::string(rust_result.state.data(), rust_result.state.length());
+
+          result.history.reserve(rust_result.history.size());
+          for (const auto& state : rust_result.history) {
+            result.history.emplace_back(std::string(state.data(), state.length()));
+          }
+
+          result.txids.reserve(rust_result.txids.size());
+          for (const auto& txid : rust_result.txids) {
+            result.txids.emplace_back(std::string(txid.data(), txid.length()));
+          }
+
+          result.is_claimable = rust_result.is_claimable;
+          result.is_initialized = rust_result.is_initialized;
+          results.push_back(std::move(result));
+        }
+        return results;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<bool>> hasPendingExits() override {
+    return Promise<bool>::async([]() {
+      try {
+        return bark_cxx::has_pending_exits();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<double>> pendingExitTotal() override {
+    return Promise<double>::async([]() {
+      try {
+        return static_cast<double>(bark_cxx::pending_exit_total());
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::optional<double>>> allClaimableAtHeight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::all_claimable_at_height();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr;
+        return std::optional<double>(value);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::string>> drainExits(const std::vector<std::string>& vtxoIds,
+                                                   const std::string& destinationAddress,
+                                                   std::optional<double> feeRateSatPerKvb) override {
+    return Promise<std::string>::async([vtxoIds, destinationAddress, feeRateSatPerKvb]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+
+        uint64_t feeRateVal;
+        rust::String result;
+        if (feeRateSatPerKvb.has_value()) {
+          feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
+          result = bark_cxx::drain_exits(std::move(rust_vtxo_ids), destinationAddress, &feeRateVal);
+        } else {
+          result = bark_cxx::drain_exits(std::move(rust_vtxo_ids), destinationAddress, nullptr);
+        }
+
+        return std::string(result.data(), result.length());
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

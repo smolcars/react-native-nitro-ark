@@ -6,6 +6,8 @@ import type {
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  ExitProgressStatusResult as NitroExitProgressStatusResult,
+  ExitVtxoResult as NitroExitVtxoResult,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -28,10 +30,29 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: 'Spendable' | 'Spent' | 'Locked';
 };
 
-export type MovementStatus = 'pending' | 'successful' | 'failed' | 'cancelled';
+export type MovementStatus = 'pending' | 'successful' | 'failed' | 'canceled';
+
+export type ExitProgressState =
+  | 'Start'
+  | 'Processing'
+  | 'AwaitingDelta'
+  | 'Claimable'
+  | 'ClaimInProgress'
+  | 'Claimed';
+
+export type ExitProgressStatusResult = Omit<
+  NitroExitProgressStatusResult,
+  'state'
+> & {
+  state: ExitProgressState;
+};
+
+export type ExitVtxoResult = Omit<NitroExitVtxoResult, 'state' | 'history'> & {
+  state: ExitProgressState;
+  history: ExitProgressState[];
+};
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
   payment_method:
@@ -186,6 +207,86 @@ export function maintenanceRefresh(): Promise<void> {
  */
 export function sync(): Promise<void> {
   return NitroArkHybridObject.sync();
+}
+
+/**
+ * Starts unilateral exits for all eligible wallet VTXOs.
+ * @returns A promise that resolves on success.
+ */
+export function startExitForEntireWallet(): Promise<void> {
+  return NitroArkHybridObject.startExitForEntireWallet();
+}
+
+/**
+ * Synchronizes the exit coordinator state.
+ * @returns A promise that resolves on success.
+ */
+export function syncExit(): Promise<void> {
+  return NitroArkHybridObject.syncExit();
+}
+
+/**
+ * Progresses tracked exits by one step.
+ * @param feeRateSatPerKvb Optional fee rate override in sat/kvB.
+ * @returns A promise resolving to simplified exit progress entries.
+ */
+export function progressExits(
+  feeRateSatPerKvb?: number
+): Promise<ExitProgressStatusResult[]> {
+  return NitroArkHybridObject.progressExits(feeRateSatPerKvb) as Promise<
+    ExitProgressStatusResult[]
+  >;
+}
+
+/**
+ * Lists all unilateral exits currently tracked by the wallet.
+ * @returns A promise resolving to simplified exit entries.
+ */
+export function getExitVtxos(): Promise<ExitVtxoResult[]> {
+  return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
+}
+
+/**
+ * Checks whether the wallet has exits that are still pending.
+ * @returns A promise resolving to true when any tracked exit is not yet claimable.
+ */
+export function hasPendingExits(): Promise<boolean> {
+  return NitroArkHybridObject.hasPendingExits();
+}
+
+/**
+ * Returns the total amount, in sats, still waiting on pending exit confirmations.
+ * @returns A promise resolving to the pending exit total in satoshis.
+ */
+export function pendingExitTotal(): Promise<number> {
+  return NitroArkHybridObject.pendingExitTotal();
+}
+
+/**
+ * Returns the earliest block height at which all tracked exits are claimable.
+ * @returns A promise resolving to the claimable height, or undefined if not known yet.
+ */
+export function allClaimableAtHeight(): Promise<number | undefined> {
+  return NitroArkHybridObject.allClaimableAtHeight();
+}
+
+/**
+ * Builds a base64 PSBT that drains the selected claimable exits to an onchain address.
+ * @param vtxoIds Exit VTXO IDs to claim.
+ * @param destinationAddress Destination onchain address.
+ * @param feeRateSatPerKvb Optional fee rate override in sat/kvB.
+ * @returns A promise resolving to a base64-encoded PSBT.
+ */
+export function drainExits(
+  vtxoIds: string[],
+  destinationAddress: string,
+  feeRateSatPerKvb?: number
+): Promise<string> {
+  return NitroArkHybridObject.drainExits(
+    vtxoIds,
+    destinationAddress,
+    feeRateSatPerKvb
+  );
 }
 
 /**

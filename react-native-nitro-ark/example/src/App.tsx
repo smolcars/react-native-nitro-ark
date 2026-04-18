@@ -19,6 +19,7 @@ import type {
 import { WalletTab } from './tabs/WalletTab';
 import { SendTab } from './tabs/SendTab';
 import { ReceiveTab } from './tabs/ReceiveTab';
+import { ExitTab } from './tabs/ExitTab';
 import { LoadingOverlay } from './components';
 import { COLORS, ARK_DATA_PATH, MNEMONIC_STORAGE_KEY } from './constants';
 import type { TabName } from './types';
@@ -199,6 +200,14 @@ export default function App() {
         >
           <ReceiveTab {...tabProps} />
         </View>
+        <View
+          style={[
+            styles.tabPanel,
+            activeTab !== 'exit' && styles.tabPanelHidden,
+          ]}
+        >
+          <ExitTab {...tabProps} />
+        </View>
       </View>
 
       {/* Bottom Tabs */}
@@ -220,6 +229,12 @@ export default function App() {
           icon="📥"
           isActive={activeTab === 'receive'}
           onPress={() => setActiveTab('receive')}
+        />
+        <TabButton
+          title="Exit"
+          icon="🚪"
+          isActive={activeTab === 'exit'}
+          onPress={() => setActiveTab('exit')}
         />
       </View>
 

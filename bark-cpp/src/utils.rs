@@ -13,7 +13,6 @@ use bark::{
     onchain::OnchainWallet,
     persist::sqlite::SqliteClient,
     round::RoundStatus,
-    vtxo::VtxoState,
 };
 
 use bitcoin_ext::FeeRateExt;
@@ -236,13 +235,6 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
 }
 
 pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::BarkVtxo {
-    let state_name = match &wallet_vtxo.state {
-        VtxoState::Spendable => "Spendable",
-        VtxoState::Spent => "Spent",
-        VtxoState::Locked { movement_id: _ } => "Locked",
-    }
-    .to_string();
-
     crate::cxx::ffi::BarkVtxo {
         amount: wallet_vtxo.vtxo.amount().to_sat(),
         expiry_height: wallet_vtxo.vtxo.expiry_height(),
@@ -258,7 +250,6 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
             wallet_vtxo.vtxo.point().txid,
             wallet_vtxo.vtxo.point().vout
         ),
-        state: state_name,
     }
 }
 
@@ -270,7 +261,17 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
         exit_delta: vtxo.exit_delta(),
         anchor_point: format!("{}:{}", vtxo.chain_anchor().txid, vtxo.chain_anchor().vout),
         point: format!("{}:{}", vtxo.point().txid, vtxo.point().vout),
-        state: "unknown".to_string(),
+    }
+}
+
+pub fn exit_state_name(state: &bark::exit::ExitState) -> &'static str {
+    match state {
+        bark::exit::ExitState::Start(..) => "Start",
+        bark::exit::ExitState::Processing(..) => "Processing",
+        bark::exit::ExitState::AwaitingDelta(..) => "AwaitingDelta",
+        bark::exit::ExitState::Claimable(..) => "Claimable",
+        bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
+        bark::exit::ExitState::Claimed(..) => "Claimed",
     }
 }
 
@@ -345,7 +346,13 @@ pub fn movement_to_bark_movement(
 
     Ok(crate::cxx::ffi::BarkMovement {
         id: movement.id.0,
-        status: movement.status.as_str().to_string(),
+        status: match movement.status {
+            bark::movement::MovementStatus::Pending => "pending",
+            bark::movement::MovementStatus::Successful => "successful",
+            bark::movement::MovementStatus::Failed => "failed",
+            bark::movement::MovementStatus::Canceled => "canceled",
+        }
+        .to_string(),
         subsystem_name: movement.subsystem.name.clone(),
         subsystem_kind: movement.subsystem.kind.clone(),
         metadata_json,

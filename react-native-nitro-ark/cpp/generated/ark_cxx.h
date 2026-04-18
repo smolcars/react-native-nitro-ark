@@ -973,6 +973,8 @@ namespace bark_cxx {
   struct LightningSend;
   struct ArkoorPaymentResult;
   struct OnchainPaymentResult;
+  struct ExitProgressStatusResult;
+  struct ExitVtxoResult;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
@@ -1001,7 +1003,6 @@ struct BarkVtxo final {
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
   ::rust::String point;
-  ::rust::String state;
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1074,6 +1075,32 @@ struct OnchainPaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
+struct ExitProgressStatusResult final {
+  ::rust::String vtxo_id;
+  ::rust::String state;
+  ::rust::String error;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitVtxoResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitVtxoResult
+struct ExitVtxoResult final {
+  ::rust::String vtxo_id;
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  ::rust::String state;
+  ::rust::Vec<::rust::String> history;
+  ::rust::Vec<::rust::String> txids;
+  bool is_claimable CXX_DEFAULT_VALUE(false);
+  bool is_initialized CXX_DEFAULT_VALUE(false);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitVtxoResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
@@ -1386,6 +1413,18 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::LightningSend pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
+::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
+
+::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
+
+bool has_pending_exits();
+
+::std::uint64_t pending_exit_total();
+
+::std::uint32_t const *all_claimable_at_height();
+
+::rust::String drain_exits(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address, ::std::uint64_t const *fee_rate_sat_per_kvb);
+
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
@@ -1395,6 +1434,10 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::LightningReceive try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
 
 void try_claim_all_lightning_receives(bool wait);
+
+void start_exit_for_entire_wallet();
+
+void sync_exit();
 
 void sync_exits();
 

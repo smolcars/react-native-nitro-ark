@@ -15,6 +15,10 @@
 
 // Forward declaration of `BarkCreateOpts` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
+// Forward declaration of `ExitProgressStatusResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ExitProgressStatusResult; }
+// Forward declaration of `ExitVtxoResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ExitVtxoResult; }
 // Forward declaration of `BarkArkInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `OffchainBalanceResult` to properly resolve imports.
@@ -53,6 +57,10 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <string>
 #include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
+#include "ExitProgressStatusResult.hpp"
+#include <vector>
+#include <optional>
+#include "ExitVtxoResult.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
 #include "KeyPairResult.hpp"
@@ -63,9 +71,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BarkNotificationEvent.hpp"
 #include <functional>
 #include "BarkMovement.hpp"
-#include <vector>
 #include "BarkVtxo.hpp"
-#include <optional>
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
 #include "BarkSendManyOutput.hpp"
@@ -121,6 +127,14 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> maintenanceWithOnchainDelegated() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
+      virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
+      virtual std::shared_ptr<Promise<void>> syncExit() = 0;
+      virtual std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>> progressExits(std::optional<double> feeRateSatPerKvb) = 0;
+      virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() = 0;
+      virtual std::shared_ptr<Promise<bool>> hasPendingExits() = 0;
+      virtual std::shared_ptr<Promise<double>> pendingExitTotal() = 0;
+      virtual std::shared_ptr<Promise<std::optional<double>>> allClaimableAtHeight() = 0;
+      virtual std::shared_ptr<Promise<std::string>> drainExits(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress, std::optional<double> feeRateSatPerKvb) = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;
       virtual std::shared_ptr<Promise<void>> syncPendingRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;

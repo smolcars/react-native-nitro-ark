@@ -55,7 +55,6 @@ interface BarkVtxo {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: string;
 }
 
 export interface BoardResult {
@@ -73,6 +72,22 @@ export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
   vtxos: BarkVtxo[];
+}
+
+export interface ExitProgressStatusResult {
+  vtxo_id: string;
+  state: string;
+  error?: string;
+}
+
+export interface ExitVtxoResult {
+  vtxo_id: string;
+  amount_sat: number;
+  state: string;
+  history: string[];
+  txids: string[];
+  is_claimable: boolean;
+  is_initialized: boolean;
 }
 
 export interface LightningSendResult {
@@ -148,7 +163,7 @@ export interface BarkMovementDestination {
 
 export interface BarkMovement {
   id: number;
-  status: string; // 'pending' | 'successful' | 'failed' | 'cancelled'
+  status: string; // 'pending' | 'successful' | 'failed' | 'canceled'
   subsystem: BarkMovementSubsystem;
   metadata_json: string;
   intended_balance_sat: number;
@@ -192,6 +207,18 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceWithOnchainDelegated(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
+  startExitForEntireWallet(): Promise<void>;
+  syncExit(): Promise<void>;
+  progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
+  getExitVtxos(): Promise<ExitVtxoResult[]>;
+  hasPendingExits(): Promise<boolean>;
+  pendingExitTotal(): Promise<number>;
+  allClaimableAtHeight(): Promise<number | undefined>;
+  drainExits(
+    vtxoIds: string[],
+    destinationAddress: string,
+    feeRateSatPerKvb?: number
+  ): Promise<string>;
   syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 

@@ -7,6 +7,7 @@ use bark::ark::bitcoin::{Address, address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, FeeRate, network};
 use bip39::Mnemonic;
+use bitcoin_ext::FeeRateExt;
 use logger::log::{self, info};
 
 use std::path::Path;
@@ -23,7 +24,6 @@ pub(crate) mod ffi {
         exit_delta: u16,
         anchor_point: String,
         point: String,
-        state: String,
     }
 
     pub struct BoardResult {
@@ -62,6 +62,22 @@ pub(crate) mod ffi {
         txid: String,
         amount_sat: u64,
         destination_address: String,
+    }
+
+    pub struct ExitProgressStatusResult {
+        vtxo_id: String,
+        state: String,
+        error: String,
+    }
+
+    pub struct ExitVtxoResult {
+        vtxo_id: String,
+        amount_sat: u64,
+        state: String,
+        history: Vec<String>,
+        txids: Vec<String>,
+        is_claimable: bool,
+        is_initialized: bool,
     }
 
     pub struct CxxArkInfo {
@@ -266,6 +282,18 @@ pub(crate) mod ffi {
             amount_sat: u64,
             comment: &str,
         ) -> Result<LightningSend>;
+        unsafe fn progress_exits(
+            fee_rate_sat_per_kvb: *const u64,
+        ) -> Result<Vec<ExitProgressStatusResult>>;
+        fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
+        fn has_pending_exits() -> Result<bool>;
+        fn pending_exit_total() -> Result<u64>;
+        fn all_claimable_at_height() -> Result<*const u32>;
+        unsafe fn drain_exits(
+            vtxo_ids: Vec<String>,
+            destination_address: &str,
+            fee_rate_sat_per_kvb: *const u64,
+        ) -> Result<String>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -275,6 +303,8 @@ pub(crate) mod ffi {
             token: *const String,
         ) -> Result<LightningReceive>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
+        fn start_exit_for_entire_wallet() -> Result<()>;
+        fn sync_exit() -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
@@ -743,6 +773,108 @@ pub(crate) fn pay_lightning_address(
     })
 }
 
+pub(crate) fn progress_exits(
+    fee_rate_sat_per_kvb: *const u64,
+) -> anyhow::Result<Vec<ffi::ExitProgressStatusResult>> {
+    let fee_rate = unsafe {
+        fee_rate_sat_per_kvb
+            .as_ref()
+            .copied()
+            .map(FeeRate::from_sat_per_kvb_ceil)
+    };
+    let statuses = TOKIO_RUNTIME.block_on(crate::progress_exits(fee_rate))?;
+
+    statuses
+        .into_iter()
+        .map(|status| {
+            Ok(ffi::ExitProgressStatusResult {
+                vtxo_id: status.vtxo_id.to_string(),
+                state: utils::exit_state_name(&status.state).to_string(),
+                error: status
+                    .error
+                    .map_or(String::new(), |error| error.to_string()),
+            })
+        })
+        .collect()
+}
+
+pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
+    let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
+
+    Ok(exits
+        .into_iter()
+        .map(|exit| ffi::ExitVtxoResult {
+            vtxo_id: exit.id().to_string(),
+            amount_sat: exit.amount().to_sat(),
+            state: utils::exit_state_name(exit.state()).to_string(),
+            history: exit
+                .history()
+                .iter()
+                .map(utils::exit_state_name)
+                .map(str::to_string)
+                .collect(),
+            txids: exit
+                .txids()
+                .map(|txids| txids.iter().map(ToString::to_string).collect())
+                .unwrap_or_default(),
+            is_claimable: exit.is_claimable(),
+            is_initialized: exit.is_initialized(),
+        })
+        .collect())
+}
+
+pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
+    TOKIO_RUNTIME.block_on(crate::has_pending_exits())
+}
+
+pub(crate) fn pending_exit_total() -> anyhow::Result<u64> {
+    Ok(TOKIO_RUNTIME
+        .block_on(crate::pending_exit_total())?
+        .to_sat())
+}
+
+pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
+    let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
+}
+
+pub(crate) fn drain_exits(
+    vtxo_ids: Vec<String>,
+    destination_address: &str,
+    fee_rate_sat_per_kvb: *const u64,
+) -> anyhow::Result<String> {
+    let fee_rate = unsafe {
+        fee_rate_sat_per_kvb
+            .as_ref()
+            .copied()
+            .map(FeeRate::from_sat_per_kvb_ceil)
+    };
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    let destination_address_opt =
+        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+            format!(
+                "Invalid destination address format: '{}'",
+                destination_address
+            )
+        })?;
+    let addr = destination_address_opt
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "Address '{}' is not valid for configured network {:?}",
+                destination_address, ark_info.network
+            )
+        })?;
+
+    let psbt = TOKIO_RUNTIME.block_on(crate::drain_exits(vtxo_ids, addr, fee_rate))?;
+    Ok(psbt.to_string())
+}
+
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let address_unchecked = bitcoin::Address::from_str(destination)
@@ -871,6 +1003,14 @@ pub(crate) fn check_lightning_payment(payment_hash: String, wait: bool) -> anyho
     let result =
         crate::TOKIO_RUNTIME.block_on(crate::check_lightning_payment(payment_hash, wait))?;
     Ok(result.map_or(String::new(), |p| p.to_lower_hex_string()))
+}
+
+pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
+}
+
+pub(crate) fn sync_exit() -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::sync_exit())
 }
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {
