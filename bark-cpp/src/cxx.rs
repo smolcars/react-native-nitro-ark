@@ -70,6 +70,16 @@ pub(crate) mod ffi {
         error: String,
     }
 
+    pub struct ExitVtxoResult {
+        vtxo_id: String,
+        amount_sat: u64,
+        state: String,
+        history: Vec<String>,
+        txids: Vec<String>,
+        is_claimable: bool,
+        is_initialized: bool,
+    }
+
     pub struct CxxArkInfo {
         network: String,
         server_pubkey: String,
@@ -275,6 +285,7 @@ pub(crate) mod ffi {
         unsafe fn progress_exits(
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<Vec<ExitProgressStatusResult>>;
+        fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -768,21 +779,38 @@ pub(crate) fn progress_exits(
     statuses
         .into_iter()
         .map(|status| {
-            let state = match status.state {
-                bark::exit::ExitState::Start(..) => "Start",
-                bark::exit::ExitState::Processing(..) => "Processing",
-                bark::exit::ExitState::AwaitingDelta(..) => "AwaitingDelta",
-                bark::exit::ExitState::Claimable(..) => "Claimable",
-                bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
-                bark::exit::ExitState::Claimed(..) => "Claimed",
-            };
             Ok(ffi::ExitProgressStatusResult {
                 vtxo_id: status.vtxo_id.to_string(),
-                state: state.to_string(),
+                state: utils::exit_state_name(&status.state).to_string(),
                 error: status.error.map_or(String::new(), |error| error.to_string()),
             })
         })
         .collect()
+}
+
+pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
+    let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
+
+    Ok(exits
+        .into_iter()
+        .map(|exit| ffi::ExitVtxoResult {
+            vtxo_id: exit.id().to_string(),
+            amount_sat: exit.amount().to_sat(),
+            state: utils::exit_state_name(exit.state()).to_string(),
+            history: exit
+                .history()
+                .iter()
+                .map(utils::exit_state_name)
+                .map(str::to_string)
+                .collect(),
+            txids: exit
+                .txids()
+                .map(|txids| txids.iter().map(ToString::to_string).collect())
+                .unwrap_or_default(),
+            is_claimable: exit.is_claimable(),
+            is_initialized: exit.is_initialized(),
+        })
+        .collect())
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

@@ -80,6 +80,16 @@ export interface ExitProgressStatusResult {
   error?: string;
 }
 
+export interface ExitVtxoResult {
+  vtxo_id: string;
+  amount_sat: number;
+  state: string;
+  history: string[];
+  txids: string[];
+  is_claimable: boolean;
+  is_initialized: boolean;
+}
+
 export interface LightningSendResult {
   invoice: string;
   payment_hash: string;
@@ -200,6 +210,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   startExitForEntireWallet(): Promise<void>;
   syncExit(): Promise<void>;
   progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
+  getExitVtxos(): Promise<ExitVtxoResult[]>;
   syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 

@@ -54,6 +54,15 @@ pub async fn progress_exits(
         .await
 }
 
+pub async fn get_exit_vtxos() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx.wallet.exit.read().await.get_exit_vtxos().clone())
+        })
+        .await
+}
+
 pub async fn sync_exits() -> anyhow::Result<()> {
     sync_exit().await
 }

@@ -363,6 +363,40 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() override {
+    return Promise<std::vector<ExitVtxoResult>>::async([]() {
+      try {
+        rust::Vec<bark_cxx::ExitVtxoResult> rust_results = bark_cxx::get_exit_vtxos();
+
+        std::vector<ExitVtxoResult> results;
+        results.reserve(rust_results.size());
+        for (const auto& rust_result : rust_results) {
+          ExitVtxoResult result;
+          result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
+          result.amount_sat = static_cast<double>(rust_result.amount_sat);
+          result.state = std::string(rust_result.state.data(), rust_result.state.length());
+
+          result.history.reserve(rust_result.history.size());
+          for (const auto& state : rust_result.history) {
+            result.history.emplace_back(std::string(state.data(), state.length()));
+          }
+
+          result.txids.reserve(rust_result.txids.size());
+          for (const auto& txid : rust_result.txids) {
+            result.txids.emplace_back(std::string(txid.data(), txid.length()));
+          }
+
+          result.is_claimable = rust_result.is_claimable;
+          result.is_initialized = rust_result.is_initialized;
+          results.push_back(std::move(result));
+        }
+        return results;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

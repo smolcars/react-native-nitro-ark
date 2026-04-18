@@ -264,6 +264,17 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     }
 }
 
+pub fn exit_state_name(state: &bark::exit::ExitState) -> &'static str {
+    match state {
+        bark::exit::ExitState::Start(..) => "Start",
+        bark::exit::ExitState::Processing(..) => "Processing",
+        bark::exit::ExitState::AwaitingDelta(..) => "AwaitingDelta",
+        bark::exit::ExitState::Claimable(..) => "Claimable",
+        bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
+        bark::exit::ExitState::Claimed(..) => "Claimed",
+    }
+}
+
 fn payment_method_to_ffi(pm: &PaymentMethod) -> (String, String) {
     match pm {
         PaymentMethod::Ark(addr) => ("ark".to_string(), addr.to_string()),

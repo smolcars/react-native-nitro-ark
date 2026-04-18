@@ -7,6 +7,7 @@ import type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
+  ExitVtxoResult as NitroExitVtxoResult,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -46,6 +47,11 @@ export type ExitProgressStatusResult = Omit<
   'state'
 > & {
   state: ExitProgressState;
+};
+
+export type ExitVtxoResult = Omit<NitroExitVtxoResult, 'state' | 'history'> & {
+  state: ExitProgressState;
+  history: ExitProgressState[];
 };
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
@@ -230,6 +236,14 @@ export function progressExits(
   return NitroArkHybridObject.progressExits(
     feeRateSatPerKvb
   ) as Promise<ExitProgressStatusResult[]>;
+}
+
+/**
+ * Lists all unilateral exits currently tracked by the wallet.
+ * @returns A promise resolving to simplified exit entries.
+ */
+export function getExitVtxos(): Promise<ExitVtxoResult[]> {
+  return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
 }
 
 /**
