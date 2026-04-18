@@ -51,8 +51,10 @@ echo "Building host target to refresh FFI headers..."
 cargo build $CARGO_FLAG --lib
 HOST_BUILD_DIR="target/$BUILD_TYPE/build"
 
-HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" | head -n 1)
-if [ -z "$HOST_HEADER_SRC_PATH" ]; then
+# cxx maintains stable top-level header paths for the latest host build.
+# Use those instead of scanning hashed Cargo build directories, which can select stale headers.
+HOST_HEADER_SRC_PATH="target/cxxbridge/bark-cpp/src/cxx.rs.h"
+if [ ! -f "$HOST_HEADER_SRC_PATH" ]; then
     echo "Error: Could not find host-generated cxx.rs.h header."
     exit 1
 fi
@@ -60,8 +62,8 @@ echo "Copying host API header from: $HOST_HEADER_SRC_PATH"
 mkdir -p "$DEST_HEADER_DIR"
 cp -f "$HOST_HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
 
-HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" | head -n 1)
-if [ -z "$HOST_CXX_HEADER_PATH" ]; then
+HOST_CXX_HEADER_PATH="target/cxxbridge/rust/cxx.h"
+if [ ! -f "$HOST_CXX_HEADER_PATH" ]; then
     echo "Error: Could not find host-generated cxx.h header."
     exit 1
 fi
