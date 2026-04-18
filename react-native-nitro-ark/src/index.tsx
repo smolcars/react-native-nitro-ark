@@ -189,6 +189,14 @@ export function sync(): Promise<void> {
 }
 
 /**
+ * Starts unilateral exits for all eligible wallet VTXOs.
+ * @returns A promise that resolves on success.
+ */
+export function startExitForEntireWallet(): Promise<void> {
+  return NitroArkHybridObject.startExitForEntireWallet();
+}
+
+/**
  * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */

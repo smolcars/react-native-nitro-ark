@@ -311,6 +311,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> startExitForEntireWallet() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::start_exit_for_entire_wallet();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExits() override {
     return Promise<void>::async([]() {
       try {

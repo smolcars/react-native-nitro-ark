@@ -192,6 +192,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceWithOnchainDelegated(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
+  startExitForEntireWallet(): Promise<void>;
   syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 

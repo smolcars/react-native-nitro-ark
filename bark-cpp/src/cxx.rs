@@ -275,6 +275,7 @@ pub(crate) mod ffi {
             token: *const String,
         ) -> Result<LightningReceive>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
+        fn start_exit_for_entire_wallet() -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
@@ -871,6 +872,10 @@ pub(crate) fn check_lightning_payment(payment_hash: String, wait: bool) -> anyho
     let result =
         crate::TOKIO_RUNTIME.block_on(crate::check_lightning_payment(payment_hash, wait))?;
     Ok(result.map_or(String::new(), |p| p.to_lower_hex_string()))
+}
+
+pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
 }
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {

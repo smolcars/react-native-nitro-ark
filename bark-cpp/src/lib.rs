@@ -31,6 +31,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 mod cxx;
+mod exit;
 mod mailbox;
 mod onchain;
 mod subscriptions;
@@ -45,6 +46,7 @@ use std::sync::Once;
 use utils::DB_FILE;
 use utils::try_create_wallet;
 
+pub use exit::*;
 pub use subscriptions::*;
 pub use utils::*;
 
@@ -770,19 +772,6 @@ pub async fn offboard_all(address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })
-        .await
-}
-
-pub async fn sync_exits() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .sync_exits(&mut ctx.onchain_wallet)
-                .await
-                .context("Failed to sync exits")?;
-            Ok(())
-        })
         .await
 }
 
