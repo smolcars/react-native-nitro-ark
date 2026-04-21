@@ -55,6 +55,7 @@ interface BarkVtxo {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
+  state: string;
 }
 
 export interface BoardResult {
