@@ -6,6 +6,7 @@ import type { HybridObject } from 'react-native-nitro-modules';
 
 export interface BarkConfigOpts {
   ark?: string;
+  server_access_token?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;
@@ -315,7 +316,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   sendOnchain(destination: string, amountSat: number): Promise<string>;
 
   // --- Lightning Invoicing ---
-  bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
+  bolt11Invoice(
+    amountMsat: number,
+    description?: string
+  ): Promise<Bolt11Invoice>;
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;

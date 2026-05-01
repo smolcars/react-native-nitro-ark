@@ -125,6 +125,7 @@ private:
     bark_cxx::ConfigOpts config_opts;
     if (config.has_value()) {
       config_opts.ark = config->ark.value_or("");
+      config_opts.server_access_token = config->server_access_token.value_or("");
       config_opts.esplora = config->esplora.value_or("");
       config_opts.bitcoind = config->bitcoind.value_or("");
       config_opts.bitcoind_cookie = config->bitcoind_cookie.value_or("");
@@ -999,10 +1000,17 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) override {
-    return Promise<Bolt11Invoice>::async([amountMsat]() {
+  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat,
+                                                        const std::optional<std::string>& description) override {
+    return Promise<Bolt11Invoice>::async([amountMsat, description]() {
       try {
-        bark_cxx::Bolt11Invoice invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
+        bark_cxx::Bolt11Invoice invoice_rs;
+        if (description.has_value()) {
+          rust::String description_rs(description.value());
+          invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat), &description_rs);
+        } else {
+          invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat), nullptr);
+        }
         return Bolt11Invoice(std::string(invoice_rs.bolt11_invoice.data(), invoice_rs.bolt11_invoice.length()),
                              std::string(invoice_rs.payment_secret.data(), invoice_rs.payment_secret.length()),
                              std::string(invoice_rs.payment_hash.data(), invoice_rs.payment_hash.length()));

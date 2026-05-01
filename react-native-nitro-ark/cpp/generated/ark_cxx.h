@@ -1127,6 +1127,7 @@ struct CxxArkInfo final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
   ::rust::String ark;
+  ::rust::String server_access_token;
   ::rust::String esplora;
   ::rust::String bitcoind;
   ::rust::String bitcoind_cookie;
@@ -1374,7 +1375,7 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::std::uint32_t const *get_next_required_refresh_blockheight();
 
-::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat);
+::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat, ::rust::String const *description);
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 

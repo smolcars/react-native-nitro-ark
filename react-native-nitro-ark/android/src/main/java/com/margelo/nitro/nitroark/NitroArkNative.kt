@@ -9,6 +9,7 @@ import android.util.Log
 object NitroArkNative {
   data class AndroidBarkConfig(
       val ark: String? = null,
+      val serverAccessToken: String? = null,
       val esplora: String? = null,
       val bitcoind: String? = null,
       val bitcoindCookie: String? = null,
@@ -47,6 +48,7 @@ object NitroArkNative {
         bitcoin,
         birthdayHeight,
         config?.ark,
+        config?.serverAccessToken,
         config?.esplora,
         config?.bitcoind,
         config?.bitcoindCookie,
@@ -71,6 +73,7 @@ object NitroArkNative {
       bitcoin: Boolean,
       birthdayHeight: Int?,
       ark: String?,
+      serverAccessToken: String?,
       esplora: String?,
       bitcoind: String?,
       bitcoindCookie: String?,
@@ -94,7 +97,10 @@ object NitroArkNative {
   external fun offboardAll(destinationAddress: String): RoundStatusResult
   external fun peekKeyPair(index: Int): KeyPairResultAndroid
   external fun verifyMessage(message: String, signature: String, publicKey: String): Boolean
-  external fun bolt11Invoice(amountMsat: Long): Bolt11InvoiceResult
+  fun bolt11Invoice(amountMsat: Long, description: String? = null): Bolt11InvoiceResult =
+      bolt11InvoiceNative(amountMsat, description)
+
+  private external fun bolt11InvoiceNative(amountMsat: Long, description: String?): Bolt11InvoiceResult
   external fun signMessage(message: String, index: Int): String
   external fun sync()
 }
