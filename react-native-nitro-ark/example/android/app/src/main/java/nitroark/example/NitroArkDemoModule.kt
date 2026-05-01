@@ -28,6 +28,7 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
       val parsedConfig = nestedConfig?.let { map ->
         NitroArkNative.AndroidBarkConfig(
             ark = map.getStringOrNull("ark"),
+            serverAccessToken = map.getStringOrNull("server_access_token"),
             esplora = map.getStringOrNull("esplora"),
             bitcoind = map.getStringOrNull("bitcoind"),
             bitcoindCookie = map.getStringOrNull("bitcoind_cookie"),
