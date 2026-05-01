@@ -24,6 +24,7 @@ pub(crate) mod ffi {
         exit_delta: u16,
         anchor_point: String,
         point: String,
+        state: String,
     }
 
     pub struct BoardResult {

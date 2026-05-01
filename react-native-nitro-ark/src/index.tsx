@@ -23,6 +23,8 @@ import type {
   BoardResult,
 } from './NitroArk.nitro';
 
+export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'unknown';
+
 export type BarkVtxo = {
   amount: number; // u64
   expiry_height: number; // u32
@@ -30,6 +32,7 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
+  state: VtxoState;
 };
 
 export type MovementStatus = 'pending' | 'successful' | 'failed' | 'canceled';

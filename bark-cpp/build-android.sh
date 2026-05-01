@@ -17,6 +17,11 @@ if [ -z "$ANDROID_HOME" ]; then
     exit 1
 fi
 
+# Normalize Windows-style SDK paths when running from MSYS2/Git Bash.
+if command -v cygpath >/dev/null 2>&1; then
+    ANDROID_HOME="$(cygpath -u "$ANDROID_HOME")"
+fi
+
 # Set NDK paths
 NDK_VERSION="26.1.10909125"
 NDK_PATH="$ANDROID_HOME/ndk/$NDK_VERSION"
@@ -86,10 +91,23 @@ mkdir -p "$OUTPUT_DIR/x86_64"
 echo "Building for Android..."
 
 # Determine host platform prefix
-HOST_TAG="linux-x86_64"
-if [[ "$(uname)" == "Darwin" ]]; then
-    HOST_TAG="darwin-x86_64"
-fi
+case "$(uname -s)" in
+    Darwin*)
+        HOST_TAG="darwin-x86_64"
+        HOST_EXE_SUFFIX=""
+        HOST_CLANG_SUFFIX=""
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        HOST_TAG="windows-x86_64"
+        HOST_EXE_SUFFIX=".exe"
+        HOST_CLANG_SUFFIX=".cmd"
+        ;;
+    *)
+        HOST_TAG="linux-x86_64"
+        HOST_EXE_SUFFIX=""
+        HOST_CLANG_SUFFIX=""
+        ;;
+esac
 
 TOOLCHAIN_PATH="$NDK_PATH/toolchains/llvm/prebuilt/$HOST_TAG"
 
@@ -100,23 +118,23 @@ fi
 
 # Set up common environment variables for the toolchain
 export PATH="$TOOLCHAIN_PATH/bin:$PATH"
-export RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib"
-export AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export AS="$TOOLCHAIN_PATH/bin/llvm-as"
-export NM="$TOOLCHAIN_PATH/bin/llvm-nm"
-export STRIP="$TOOLCHAIN_PATH/bin/llvm-strip"
+export RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib$HOST_EXE_SUFFIX"
+export AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export AS="$TOOLCHAIN_PATH/bin/llvm-as$HOST_EXE_SUFFIX"
+export NM="$TOOLCHAIN_PATH/bin/llvm-nm$HOST_EXE_SUFFIX"
+export STRIP="$TOOLCHAIN_PATH/bin/llvm-strip$HOST_EXE_SUFFIX"
 
 # --- Build for ARM64 (aarch64-linux-android) ---
 echo "Building for arm64-v8a..."
 TARGET_ARCH_ARM64="aarch64-linux-android"
 TARGET_DIR_ARM64="target/$TARGET_ARCH_ARM64/$BUILD_TYPE"
 
-export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export TARGET_CC="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang"
-export TARGET_CXX="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang++"
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang"
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib"
+export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export TARGET_CC="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export TARGET_CXX="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang++$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN_PATH/bin/aarch64-linux-android$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib$HOST_EXE_SUFFIX"
 export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_ARM64/$BUILD_TYPE/build/openssl-sys-*/out/include"
 export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_ARM64/$BUILD_TYPE/build/openssl-sys-*/out/lib"
 
@@ -135,12 +153,12 @@ echo "Building for armeabi-v7a..."
 TARGET_ARCH_ARMV7="armv7-linux-androideabi"
 TARGET_DIR_ARMV7="target/$TARGET_ARCH_ARMV7/$BUILD_TYPE"
 
-export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export TARGET_CC="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang"
-export TARGET_CXX="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang++"
-export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang"
-export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib"
+export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export TARGET_CC="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export TARGET_CXX="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang++$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib$HOST_EXE_SUFFIX"
 export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_ARMV7/$BUILD_TYPE/build/openssl-sys-*/out/include"
 export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_ARMV7/$BUILD_TYPE/build/openssl-sys-*/out/lib"
 
@@ -159,12 +177,12 @@ echo "Building for x86_64..."
 TARGET_ARCH_X86_64="x86_64-linux-android"
 TARGET_DIR_X86_64="target/$TARGET_ARCH_X86_64/$BUILD_TYPE"
 
-export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export TARGET_CC="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang"
-export TARGET_CXX="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang++"
-export CARGO_TARGET_X86_64_LINUX_ANDROID_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
-export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang"
-export CARGO_TARGET_X86_64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib"
+export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export TARGET_CC="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export TARGET_CXX="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang++$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_X86_64_LINUX_ANDROID_AR="$TOOLCHAIN_PATH/bin/llvm-ar$HOST_EXE_SUFFIX"
+export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$TOOLCHAIN_PATH/bin/x86_64-linux-android$API_LEVEL-clang$HOST_CLANG_SUFFIX"
+export CARGO_TARGET_X86_64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib$HOST_EXE_SUFFIX"
 export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_X86_64/$BUILD_TYPE/build/openssl-sys-*/out/include"
 export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_X86_64/$BUILD_TYPE/build/openssl-sys-*/out/lib"
 

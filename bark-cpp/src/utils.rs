@@ -13,6 +13,7 @@ use bark::{
     onchain::OnchainWallet,
     persist::sqlite::SqliteClient,
     round::RoundStatus,
+    vtxo::VtxoState,
 };
 
 use bitcoin_ext::FeeRateExt;
@@ -259,6 +260,7 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
             wallet_vtxo.vtxo.point().txid,
             wallet_vtxo.vtxo.point().vout
         ),
+        state: vtxo_state_name(&wallet_vtxo.state).to_string(),
     }
 }
 
@@ -270,6 +272,15 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
         exit_delta: vtxo.exit_delta(),
         anchor_point: format!("{}:{}", vtxo.chain_anchor().txid, vtxo.chain_anchor().vout),
         point: format!("{}:{}", vtxo.point().txid, vtxo.point().vout),
+        state: "unknown".to_string(),
+    }
+}
+
+pub fn vtxo_state_name(state: &VtxoState) -> &'static str {
+    match state {
+        VtxoState::Spendable => "Spendable",
+        VtxoState::Spent => "Spent",
+        VtxoState::Locked { movement_id: _ } => "Locked",
     }
 }
 
