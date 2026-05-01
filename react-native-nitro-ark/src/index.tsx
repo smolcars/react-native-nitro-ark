@@ -617,10 +617,14 @@ export function onchainSendMany(
 /**
  * Creates a Bolt 11 invoice.
  * @param amountMsat The amount in millisatoshis for the invoice.
+ * @param description Optional invoice description/memo.
  * @returns A promise resolving to Bolt11Invoice object.
  */
-export function bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice> {
-  return NitroArkHybridObject.bolt11Invoice(amountMsat);
+export function bolt11Invoice(
+  amountMsat: number,
+  description?: string
+): Promise<Bolt11Invoice> {
+  return NitroArkHybridObject.bolt11Invoice(amountMsat, description);
 }
 
 /**

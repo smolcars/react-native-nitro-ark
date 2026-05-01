@@ -255,7 +255,10 @@ pub(crate) mod ffi {
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
-        fn bolt11_invoice(amount_msat: u64) -> Result<Bolt11Invoice>;
+        unsafe fn bolt11_invoice(
+            amount_msat: u64,
+            description: *const String,
+        ) -> Result<Bolt11Invoice>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
         fn check_lightning_payment(payment_hash: String, wait: bool) -> Result<String>;
         fn sync_pending_boards() -> Result<()>;
@@ -550,8 +553,13 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
     }
 }
 
-pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<ffi::Bolt11Invoice> {
-    let invoice = crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))?;
+pub(crate) fn bolt11_invoice(
+    amount_msat: u64,
+    description: *const String,
+) -> anyhow::Result<ffi::Bolt11Invoice> {
+    let description_opt = unsafe { description.as_ref().map(|s| s.clone()) };
+    let invoice =
+        crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat, description_opt))?;
     Ok(ffi::Bolt11Invoice {
         bolt11_invoice: invoice.to_string(),
         payment_secret: invoice.payment_secret().to_string(),
