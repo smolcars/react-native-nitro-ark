@@ -97,6 +97,7 @@ pub(crate) mod ffi {
 
     pub struct ConfigOpts {
         ark: String,
+        server_access_token: String,
         esplora: String,
         bitcoind: String,
         bitcoind_cookie: String,

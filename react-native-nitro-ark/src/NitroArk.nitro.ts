@@ -6,6 +6,7 @@ import type { HybridObject } from 'react-native-nitro-modules';
 
 export interface BarkConfigOpts {
   ark?: string;
+  server_access_token?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;

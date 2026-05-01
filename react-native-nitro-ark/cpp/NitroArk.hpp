@@ -124,6 +124,7 @@ private:
     bark_cxx::ConfigOpts config_opts;
     if (config.has_value()) {
       config_opts.ark = config->ark.value_or("");
+      config_opts.server_access_token = config->server_access_token.value_or("");
       config_opts.esplora = config->esplora.value_or("");
       config_opts.bitcoind = config->bitcoind.value_or("");
       config_opts.bitcoind_cookie = config->bitcoind_cookie.value_or("");

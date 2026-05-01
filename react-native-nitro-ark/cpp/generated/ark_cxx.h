@@ -1126,6 +1126,7 @@ struct CxxArkInfo final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
   ::rust::String ark;
+  ::rust::String server_access_token;
   ::rust::String esplora;
   ::rust::String bitcoind;
   ::rust::String bitcoind_cookie;
