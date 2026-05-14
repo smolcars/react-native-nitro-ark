@@ -69,10 +69,13 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("boardAll", &HybridNitroArkSpec::boardAll);
       prototype.registerHybridMethod("validateArkoorAddress", &HybridNitroArkSpec::validateArkoorAddress);
       prototype.registerHybridMethod("sendArkoorPayment", &HybridNitroArkSpec::sendArkoorPayment);
+      prototype.registerHybridMethod("estimateArkoorPaymentFee", &HybridNitroArkSpec::estimateArkoorPaymentFee);
       prototype.registerHybridMethod("payLightningInvoice", &HybridNitroArkSpec::payLightningInvoice);
       prototype.registerHybridMethod("payLightningOffer", &HybridNitroArkSpec::payLightningOffer);
       prototype.registerHybridMethod("payLightningAddress", &HybridNitroArkSpec::payLightningAddress);
+      prototype.registerHybridMethod("estimateLightningSendFee", &HybridNitroArkSpec::estimateLightningSendFee);
       prototype.registerHybridMethod("sendOnchain", &HybridNitroArkSpec::sendOnchain);
+      prototype.registerHybridMethod("estimateSendOnchain", &HybridNitroArkSpec::estimateSendOnchain);
       prototype.registerHybridMethod("bolt11Invoice", &HybridNitroArkSpec::bolt11Invoice);
       prototype.registerHybridMethod("lightningReceiveStatus", &HybridNitroArkSpec::lightningReceiveStatus);
       prototype.registerHybridMethod("checkLightningPayment", &HybridNitroArkSpec::checkLightningPayment);
@@ -80,6 +83,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("tryClaimAllLightningReceives", &HybridNitroArkSpec::tryClaimAllLightningReceives);
       prototype.registerHybridMethod("offboardSpecific", &HybridNitroArkSpec::offboardSpecific);
       prototype.registerHybridMethod("offboardAll", &HybridNitroArkSpec::offboardAll);
+      prototype.registerHybridMethod("estimateOffboardAll", &HybridNitroArkSpec::estimateOffboardAll);
     });
   }
 

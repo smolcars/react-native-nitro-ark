@@ -6,6 +6,7 @@ import type {
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  BarkFeeEstimate,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
   LightningSendResult,
@@ -723,6 +724,17 @@ export function payLightningAddress(
   return NitroArkHybridObject.payLightningAddress(addr, amountSat, comment);
 }
 
+/**
+ * Estimates the fee for a Lightning send.
+ * @param amountSat The amount in satoshis to send.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateLightningSendFee(
+  amountSat: number
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateLightningSendFee(amountSat);
+}
+
 // --- Ark Operations ---
 
 /**
@@ -765,6 +777,17 @@ export function sendArkoorPayment(
 }
 
 /**
+ * Estimates the fee for an Arkoor payment.
+ * @param amountSat The amount in satoshis to send.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateArkoorPaymentFee(
+  amountSat: number
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateArkoorPaymentFee(amountSat);
+}
+
+/**
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
@@ -775,6 +798,19 @@ export function sendOnchain(
   amountSat: number
 ): Promise<string> {
   return NitroArkHybridObject.sendOnchain(destination, amountSat);
+}
+
+/**
+ * Estimates the fee for sending an onchain payment via an Ark round.
+ * @param destination The destination Bitcoin address.
+ * @param amountSat The amount in satoshis to send.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateSendOnchain(
+  destination: string,
+  amountSat: number
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateSendOnchain(destination, amountSat);
 }
 
 // --- Offboarding / Exiting ---
@@ -801,6 +837,17 @@ export function offboardAll(destinationAddress: string): Promise<string> {
   return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
+/**
+ * Estimates the fee for offboarding all Ark funds to an onchain address.
+ * @param destinationAddress The destination Bitcoin address.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateOffboardAll(
+  destinationAddress: string
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateOffboardAll(destinationAddress);
+}
+
 // --- Re-export types and enums ---
 export type {
   NitroArk,
@@ -811,6 +858,7 @@ export type {
   BoardResult,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  BarkFeeEstimate,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,

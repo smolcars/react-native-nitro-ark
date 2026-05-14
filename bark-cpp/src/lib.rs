@@ -63,6 +63,13 @@ const ARK_PURPOSE_INDEX: u32 = 350;
 pub static TOKIO_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
 
+pub struct FeeEstimateResult {
+    pub gross_amount: Amount,
+    pub fee: Amount,
+    pub net_amount: Amount,
+    pub vtxos_spent: Vec<VtxoId>,
+}
+
 // Global wallet manager instance
 static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
     LazyLock::new(|| Mutex::new(WalletManager::new()));
@@ -699,6 +706,36 @@ pub async fn send_arkoor_payment(
         .await
 }
 
+pub async fn estimate_arkoor_payment_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let estimate = ctx.wallet.estimate_arkoor_payment_fee(amount).await?;
+            Ok(FeeEstimateResult {
+                gross_amount: estimate.gross_amount,
+                fee: estimate.fee,
+                net_amount: estimate.net_amount,
+                vtxos_spent: estimate.vtxos_spent,
+            })
+        })
+        .await
+}
+
+pub async fn estimate_lightning_send_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let estimate = ctx.wallet.estimate_lightning_send_fee(amount).await?;
+            Ok(FeeEstimateResult {
+                gross_amount: estimate.gross_amount,
+                fee: estimate.fee,
+                net_amount: estimate.net_amount,
+                vtxos_spent: estimate.vtxos_spent,
+            })
+        })
+        .await
+}
+
 pub async fn check_lightning_payment(
     payment_hash: PaymentHash,
     wait: bool,
@@ -746,6 +783,24 @@ pub async fn send_onchain(addr: Address, amount: Amount) -> anyhow::Result<Txid>
         .await
 }
 
+pub async fn estimate_send_onchain(
+    addr: Address,
+    amount: Amount,
+) -> anyhow::Result<FeeEstimateResult> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let estimate = ctx.wallet.estimate_send_onchain(&addr, amount).await?;
+            Ok(FeeEstimateResult {
+                gross_amount: estimate.gross_amount,
+                fee: estimate.fee,
+                net_amount: estimate.net_amount,
+                vtxos_spent: estimate.vtxos_spent,
+            })
+        })
+        .await
+}
+
 pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
@@ -775,6 +830,21 @@ pub async fn offboard_all(address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })
+        .await
+}
+
+pub async fn estimate_offboard_all(address: Address) -> anyhow::Result<FeeEstimateResult> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let estimate = ctx.wallet.estimate_offboard_all(&address).await?;
+            Ok(FeeEstimateResult {
+                gross_amount: estimate.gross_amount,
+                fee: estimate.fee,
+                net_amount: estimate.net_amount,
+                vtxos_spent: estimate.vtxos_spent,
+            })
+        })
         .await
 }
 
