@@ -101,6 +101,7 @@ jobs:
       - build_ios_binaries_and_example
     permissions:
       contents: write # Required to create a release and upload assets
+      id-token: write # Required for npm trusted publishing
     steps:
       - name: Checkout code at tag
         uses: actions/checkout@v4
@@ -132,9 +133,11 @@ jobs:
       - name: List downloaded artifacts
         run: ls -R release_assets
 
-      - name: Configure npm for publishing
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > react-native-nitro-ark/.npmrc
-        shell: bash
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies for publishing
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
@@ -145,7 +148,6 @@ jobs:
       - name: Publish to npm and Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           TAG_NAME="${{ github.ref_name }}"
           VERSION="${TAG_NAME#v}" # Strip 'v' prefix if present
