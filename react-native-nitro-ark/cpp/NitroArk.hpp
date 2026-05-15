@@ -1000,6 +1000,31 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) override {
+    return Promise<BarkFeeEstimate>::async([amountSat]() {
+      try {
+        bark_cxx::BarkFeeEstimate rust_result =
+            bark_cxx::estimate_lightning_send_fee(static_cast<uint64_t>(amountSat));
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat,
                                                         const std::optional<std::string>& description) override {
     return Promise<Bolt11Invoice>::async([amountMsat, description]() {
@@ -1187,11 +1212,61 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) override {
+    return Promise<BarkFeeEstimate>::async([amountSat]() {
+      try {
+        bark_cxx::BarkFeeEstimate rust_result =
+            bark_cxx::estimate_arkoor_payment_fee(static_cast<uint64_t>(amountSat));
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) override {
     return Promise<std::string>::async([destination, amountSat]() {
       try {
         rust::String result = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat));
         return std::string(result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) override {
+    return Promise<BarkFeeEstimate>::async([destination, amountSat]() {
+      try {
+        bark_cxx::BarkFeeEstimate rust_result =
+            bark_cxx::estimate_send_onchain(destination, static_cast<uint64_t>(amountSat));
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -1221,6 +1296,30 @@ public:
       try {
         rust::String result = bark_cxx::offboard_all(destinationAddress);
         return std::string(result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateOffboardAll(const std::string& destinationAddress) override {
+    return Promise<BarkFeeEstimate>::async([destinationAddress]() {
+      try {
+        bark_cxx::BarkFeeEstimate rust_result = bark_cxx::estimate_offboard_all(destinationAddress);
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

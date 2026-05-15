@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import * as NitroArk from 'react-native-nitro-ark';
-import type { BarkSendManyOutput } from 'react-native-nitro-ark';
+import type {
+  BarkFeeEstimate,
+  BarkSendManyOutput,
+} from 'react-native-nitro-ark';
 
 import {
   CustomButton,
@@ -41,6 +44,59 @@ export const SendTab = ({
 
   const canUseWallet = !!mnemonic;
   const walletOpsDisabled = isLoading || !canUseWallet;
+
+  const parseArkAmount = (errorSection = 'ark') => {
+    const amount = parseInt(arkAmount, 10);
+    if (isNaN(amount) || amount <= 0) {
+      setError((prev) => ({ ...prev, [errorSection]: 'Invalid amount' }));
+      return undefined;
+    }
+    return amount;
+  };
+
+  const formatFeeEstimate = (estimate: BarkFeeEstimate) => {
+    const vtxosSpent =
+      estimate.vtxos_spent.length > 0
+        ? estimate.vtxos_spent.join('\n')
+        : 'None selected';
+
+    return [
+      `Gross amount: ${estimate.gross_amount_sat} sats`,
+      `Fee: ${estimate.fee_sat} sats`,
+      `Net amount: ${estimate.net_amount_sat} sats`,
+      `VTXOs spent:\n${vtxosSpent}`,
+    ].join('\n');
+  };
+
+  const showArkoorFeeEstimate = async (amount: number) => {
+    const estimate = await NitroArk.estimateArkoorPaymentFee(amount);
+    setResults((prev) => ({
+      ...prev,
+      arkFeeEstimate: formatFeeEstimate(estimate),
+    }));
+    setError((prev) => ({ ...prev, arkFeeEstimate: '' }));
+    return estimate;
+  };
+
+  const showLightningSendFeeEstimate = async (amount: number) => {
+    const estimate = await NitroArk.estimateLightningSendFee(amount);
+    setResults((prev) => ({
+      ...prev,
+      lightningFeeEstimate: formatFeeEstimate(estimate),
+    }));
+    setError((prev) => ({ ...prev, lightningFeeEstimate: '' }));
+    return estimate;
+  };
+
+  const showOffboardAllFeeEstimate = async (destinationAddress: string) => {
+    const estimate = await NitroArk.estimateOffboardAll(destinationAddress);
+    setResults((prev) => ({
+      ...prev,
+      offboardFeeEstimate: formatFeeEstimate(estimate),
+    }));
+    setError((prev) => ({ ...prev, offboardFeeEstimate: '' }));
+    return estimate;
+  };
 
   // --- Onchain Operations ---
   const handleSendOnchain = () => {
@@ -117,19 +173,43 @@ export const SendTab = ({
   };
 
   // --- Ark Payments ---
+  const handleEstimateArkoorPaymentFee = () => {
+    if (!arkAmount) {
+      setError((prev) => ({ ...prev, arkFeeEstimate: 'Amount required' }));
+      return;
+    }
+    const amount = parseArkAmount();
+    if (amount === undefined) {
+      setError((prev) => ({ ...prev, arkFeeEstimate: 'Invalid amount' }));
+      return;
+    }
+    runOperation(
+      'estimateArkoorPaymentFee',
+      () => NitroArk.estimateArkoorPaymentFee(amount),
+      'arkFeeEstimate',
+      (estimate: BarkFeeEstimate) =>
+        setResults((prev) => ({
+          ...prev,
+          arkFeeEstimate: formatFeeEstimate(estimate),
+        }))
+    );
+  };
+
   const handleSendArkoorPayment = () => {
     if (!arkDestination || !arkAmount) {
       setError((prev) => ({ ...prev, ark: 'Destination and amount required' }));
       return;
     }
-    const amount = parseInt(arkAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      setError((prev) => ({ ...prev, ark: 'Invalid amount' }));
+    const amount = parseArkAmount();
+    if (amount === undefined) {
       return;
     }
     runOperation(
       'sendArkoorPayment',
-      () => NitroArk.sendArkoorPayment(arkDestination, amount),
+      async () => {
+        await showArkoorFeeEstimate(amount);
+        return NitroArk.sendArkoorPayment(arkDestination, amount);
+      },
       'ark'
     );
   };
@@ -148,6 +228,30 @@ export const SendTab = ({
   };
 
   // --- Lightning Payments ---
+  const handleEstimateLightningSendFee = () => {
+    if (!arkAmount) {
+      setError((prev) => ({
+        ...prev,
+        lightningFeeEstimate: 'Amount required',
+      }));
+      return;
+    }
+    const amount = parseArkAmount('lightningFeeEstimate');
+    if (amount === undefined) {
+      return;
+    }
+    runOperation(
+      'estimateLightningSendFee',
+      () => NitroArk.estimateLightningSendFee(amount),
+      'lightningFeeEstimate',
+      (estimate: BarkFeeEstimate) =>
+        setResults((prev) => ({
+          ...prev,
+          lightningFeeEstimate: formatFeeEstimate(estimate),
+        }))
+    );
+  };
+
   const handlePayLightningInvoice = () => {
     if (!arkDestination) {
       setError((prev) => ({ ...prev, lightning: 'Invoice required' }));
@@ -156,7 +260,12 @@ export const SendTab = ({
     const amount = parseInt(arkAmount, 10) || undefined;
     runOperation(
       'payLightningInvoice',
-      () => NitroArk.payLightningInvoice(arkDestination, amount),
+      async () => {
+        if (amount !== undefined) {
+          await showLightningSendFeeEstimate(amount);
+        }
+        return NitroArk.payLightningInvoice(arkDestination, amount);
+      },
       'lightning'
     );
   };
@@ -169,7 +278,12 @@ export const SendTab = ({
     const amount = parseInt(arkAmount, 10) || undefined;
     runOperation(
       'payLightningOffer',
-      () => NitroArk.payLightningOffer(arkDestination, amount),
+      async () => {
+        if (amount !== undefined) {
+          await showLightningSendFeeEstimate(amount);
+        }
+        return NitroArk.payLightningOffer(arkDestination, amount);
+      },
       'lightning'
     );
   };
@@ -182,14 +296,16 @@ export const SendTab = ({
       }));
       return;
     }
-    const amount = parseInt(arkAmount, 10);
-    if (isNaN(amount) || amount <= 0) {
-      setError((prev) => ({ ...prev, lightning: 'Invalid amount' }));
+    const amount = parseArkAmount('lightning');
+    if (amount === undefined) {
       return;
     }
     runOperation(
       'payLightningAddress',
-      () => NitroArk.payLightningAddress(arkDestination, amount, arkComment),
+      async () => {
+        await showLightningSendFeeEstimate(amount);
+        return NitroArk.payLightningAddress(arkDestination, amount, arkComment);
+      },
       'lightning'
     );
   };
@@ -266,6 +382,26 @@ export const SendTab = ({
   };
 
   // --- Offboarding ---
+  const handleEstimateOffboardAll = () => {
+    if (!offboardDestination) {
+      setError((prev) => ({
+        ...prev,
+        offboardFeeEstimate: 'Destination required',
+      }));
+      return;
+    }
+    runOperation(
+      'estimateOffboardAll',
+      () => NitroArk.estimateOffboardAll(offboardDestination),
+      'offboardFeeEstimate',
+      (estimate: BarkFeeEstimate) =>
+        setResults((prev) => ({
+          ...prev,
+          offboardFeeEstimate: formatFeeEstimate(estimate),
+        }))
+    );
+  };
+
   const handleOffboardSpecific = () => {
     if (!vtxoIdsInput || !offboardDestination) {
       setError((prev) => ({
@@ -299,7 +435,10 @@ export const SendTab = ({
     }
     runOperation(
       'offboardAll',
-      () => NitroArk.offboardAll(offboardDestination),
+      async () => {
+        await showOffboardAllFeeEstimate(offboardDestination);
+        return NitroArk.offboardAll(offboardDestination);
+      },
       'offboard'
     );
   };
@@ -393,6 +532,12 @@ export const SendTab = ({
         />
         <ButtonGrid>
           <CustomButton
+            title="Estimate Fee"
+            onPress={handleEstimateArkoorPaymentFee}
+            disabled={walletOpsDisabled}
+            color={COLORS.secondary}
+          />
+          <CustomButton
             title="Send Arkoor"
             onPress={handleSendArkoorPayment}
             disabled={walletOpsDisabled}
@@ -404,12 +549,22 @@ export const SendTab = ({
             disabled={walletOpsDisabled}
           />
         </ButtonGrid>
+        <ResultBox
+          result={results.arkFeeEstimate}
+          error={error.arkFeeEstimate}
+        />
         <ResultBox result={results.ark} error={error.ark} />
       </Section>
 
       {/* Lightning Payments */}
       <Section title="Lightning Payments">
         <ButtonGrid>
+          <CustomButton
+            title="Estimate Send Fee"
+            onPress={handleEstimateLightningSendFee}
+            disabled={walletOpsDisabled}
+            color={COLORS.primary}
+          />
           <CustomButton
             title="Pay Invoice (Bolt11)"
             onPress={handlePayLightningInvoice}
@@ -431,6 +586,10 @@ export const SendTab = ({
             color={COLORS.secondary}
           />
         </ButtonGrid>
+        <ResultBox
+          result={results.lightningFeeEstimate}
+          error={error.lightningFeeEstimate}
+        />
         <ResultBox result={results.lightning} error={error.lightning} />
       </Section>
 
@@ -492,6 +651,12 @@ export const SendTab = ({
         />
         <ButtonGrid>
           <CustomButton
+            title="Estimate All Fee"
+            onPress={handleEstimateOffboardAll}
+            disabled={walletOpsDisabled}
+            color={COLORS.primary}
+          />
+          <CustomButton
             title="Offboard Specific"
             onPress={handleOffboardSpecific}
             disabled={walletOpsDisabled}
@@ -504,6 +669,10 @@ export const SendTab = ({
             color={COLORS.danger}
           />
         </ButtonGrid>
+        <ResultBox
+          result={results.offboardFeeEstimate}
+          error={error.offboardFeeEstimate}
+        />
         <ResultBox result={results.offboard} error={error.offboard} />
       </Section>
 

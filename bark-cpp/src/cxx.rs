@@ -1,4 +1,6 @@
-use crate::cxx::ffi::{ArkoorPaymentResult, BarkMovement, BarkVtxo, OnchainPaymentResult};
+use crate::cxx::ffi::{
+    ArkoorPaymentResult, BarkFeeEstimate, BarkMovement, BarkVtxo, OnchainPaymentResult,
+};
 pub use crate::subscriptions::NotificationSubscription;
 use crate::{TOKIO_RUNTIME, utils};
 use anyhow::{Context, Ok, bail};
@@ -57,6 +59,13 @@ pub(crate) mod ffi {
         amount_sat: u64,
         destination_pubkey: String,
         vtxos: Vec<BarkVtxo>,
+    }
+
+    pub struct BarkFeeEstimate {
+        gross_amount_sat: u64,
+        fee_sat: u64,
+        net_amount_sat: u64,
+        vtxos_spent: Vec<String>,
     }
 
     pub struct OnchainPaymentResult {
@@ -276,6 +285,8 @@ pub(crate) mod ffi {
         fn board_all() -> Result<BoardResult>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
+        fn estimate_arkoor_payment_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
+        fn estimate_lightning_send_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
@@ -300,8 +311,10 @@ pub(crate) mod ffi {
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<String>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
+        fn estimate_send_onchain(destination: &str, amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
+        fn estimate_offboard_all(destination_address: &str) -> Result<BarkFeeEstimate>;
         unsafe fn try_claim_lightning_receive(
             payment_hash: String,
             wait: bool,
@@ -696,6 +709,38 @@ pub(crate) fn send_arkoor_payment(
     })
 }
 
+pub(crate) fn estimate_arkoor_payment_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_arkoor_payment_fee(amount))?;
+
+    Ok(BarkFeeEstimate {
+        gross_amount_sat: estimate.gross_amount.to_sat(),
+        fee_sat: estimate.fee.to_sat(),
+        net_amount_sat: estimate.net_amount.to_sat(),
+        vtxos_spent: estimate
+            .vtxos_spent
+            .into_iter()
+            .map(|vtxo_id| vtxo_id.to_string())
+            .collect(),
+    })
+}
+
+pub(crate) fn estimate_lightning_send_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_lightning_send_fee(amount))?;
+
+    Ok(BarkFeeEstimate {
+        gross_amount_sat: estimate.gross_amount.to_sat(),
+        fee_sat: estimate.fee.to_sat(),
+        net_amount_sat: estimate.net_amount.to_sat(),
+        vtxos_spent: estimate
+            .vtxos_spent
+            .into_iter()
+            .map(|vtxo_id| vtxo_id.to_string())
+            .collect(),
+    })
+}
+
 pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
@@ -907,6 +952,40 @@ pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result
     Ok(result.to_string())
 }
 
+pub(crate) fn estimate_send_onchain(
+    destination: &str,
+    amount_sat: u64,
+) -> anyhow::Result<BarkFeeEstimate> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    let address_unchecked = bitcoin::Address::from_str(destination)
+        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    let destination_address = address_unchecked
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "address '{}' is not valid for configured network {}",
+                destination, ark_info.network
+            )
+        })?;
+
+    let estimate =
+        crate::TOKIO_RUNTIME.block_on(crate::estimate_send_onchain(destination_address, amount))?;
+
+    Ok(BarkFeeEstimate {
+        gross_amount_sat: estimate.gross_amount.to_sat(),
+        fee_sat: estimate.fee.to_sat(),
+        net_amount_sat: estimate.net_amount.to_sat(),
+        vtxos_spent: estimate
+            .vtxos_spent
+            .into_iter()
+            .map(|vtxo_id| vtxo_id.to_string())
+            .collect(),
+    })
+}
+
 pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
@@ -974,6 +1053,39 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
     let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
     Ok(offboard_all_result.to_string())
+}
+
+pub(crate) fn estimate_offboard_all(destination_address: &str) -> anyhow::Result<BarkFeeEstimate> {
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    let destination_address_opt =
+        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+            format!(
+                "Invalid destination address format: '{}'",
+                destination_address
+            )
+        })?;
+    let addr = destination_address_opt
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "Address '{}' is not valid for configured network {:?}",
+                destination_address, ark_info.network
+            )
+        })?;
+
+    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_offboard_all(addr))?;
+
+    Ok(BarkFeeEstimate {
+        gross_amount_sat: estimate.gross_amount.to_sat(),
+        fee_sat: estimate.fee.to_sat(),
+        net_amount_sat: estimate.net_amount.to_sat(),
+        vtxos_spent: estimate
+            .vtxos_spent
+            .into_iter()
+            .map(|vtxo_id| vtxo_id.to_string())
+            .collect(),
+    })
 }
 
 pub(crate) fn try_claim_lightning_receive(

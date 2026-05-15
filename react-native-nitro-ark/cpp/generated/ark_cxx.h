@@ -972,6 +972,7 @@ namespace bark_cxx {
   struct Bolt11Invoice;
   struct LightningSend;
   struct ArkoorPaymentResult;
+  struct BarkFeeEstimate;
   struct OnchainPaymentResult;
   struct ExitProgressStatusResult;
   struct ExitVtxoResult;
@@ -1065,6 +1066,18 @@ struct ArkoorPaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
+struct BarkFeeEstimate final {
+  ::std::uint64_t gross_amount_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t fee_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t net_amount_sat CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::rust::String> vtxos_spent;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
@@ -1409,6 +1422,10 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
+::bark_cxx::BarkFeeEstimate estimate_arkoor_payment_fee(::std::uint64_t amount_sat);
+
+::bark_cxx::BarkFeeEstimate estimate_lightning_send_fee(::std::uint64_t amount_sat);
+
 ::bark_cxx::LightningSend pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
 ::bark_cxx::LightningSend pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
@@ -1429,9 +1446,13 @@ bool has_pending_exits();
 
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
+::bark_cxx::BarkFeeEstimate estimate_send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
+
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
 
 ::rust::String offboard_all(::rust::Str destination_address);
+
+::bark_cxx::BarkFeeEstimate estimate_offboard_all(::rust::Str destination_address);
 
 ::bark_cxx::LightningReceive try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
 

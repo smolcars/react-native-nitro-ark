@@ -47,6 +47,8 @@ namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 namespace margelo::nitro::nitroark { struct BoardResult; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
+// Forward declaration of `BarkFeeEstimate` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkFeeEstimate; }
 // Forward declaration of `LightningSendResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningSendResult; }
 // Forward declaration of `Bolt11Invoice` to properly resolve imports.
@@ -77,6 +79,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BarkSendManyOutput.hpp"
 #include "BoardResult.hpp"
 #include "ArkoorPaymentResult.hpp"
+#include "BarkFeeEstimate.hpp"
 #include "LightningSendResult.hpp"
 #include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
@@ -169,10 +172,13 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BoardResult>> boardAll() = 0;
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningInvoice(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat, const std::optional<std::string>& description) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
@@ -180,6 +186,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateOffboardAll(const std::string& destinationAddress) = 0;
 
     protected:
       // Hybrid Setup

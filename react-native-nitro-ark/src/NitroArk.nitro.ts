@@ -76,6 +76,13 @@ export interface ArkoorPaymentResult {
   vtxos: BarkVtxo[];
 }
 
+export interface BarkFeeEstimate {
+  gross_amount_sat: number; // u64
+  fee_sat: number; // u64
+  net_amount_sat: number; // u64
+  vtxos_spent: string[];
+}
+
 export interface ExitProgressStatusResult {
   vtxo_id: string;
   state: string;
@@ -300,6 +307,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat: number
   ): Promise<ArkoorPaymentResult>;
+  estimateArkoorPaymentFee(amountSat: number): Promise<BarkFeeEstimate>;
   payLightningInvoice(
     destination: string,
     amountSat?: number
@@ -313,7 +321,12 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     amountSat: number,
     comment: string
   ): Promise<LightningSendResult>;
+  estimateLightningSendFee(amountSat: number): Promise<BarkFeeEstimate>;
   sendOnchain(destination: string, amountSat: number): Promise<string>;
+  estimateSendOnchain(
+    destination: string,
+    amountSat: number
+  ): Promise<BarkFeeEstimate>;
 
   // --- Lightning Invoicing ---
   bolt11Invoice(
@@ -340,4 +353,5 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destinationAddress: string
   ): Promise<string>;
   offboardAll(destinationAddress: string): Promise<string>;
+  estimateOffboardAll(destinationAddress: string): Promise<BarkFeeEstimate>;
 }
