@@ -7,6 +7,11 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Self-hosted runners persist /nix/store; avoid stale Magic Nix Cache hooks/proxies.
+  NIX_CONFIG: |
+    post-build-hook =
+    extra-substituters =
+    substituters = https://cache.nixos.org/
 
 jobs:
   rust_typescript_checks_tests:
