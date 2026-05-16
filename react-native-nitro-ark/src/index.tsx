@@ -235,11 +235,28 @@ export function startExitForEntireWallet(): Promise<void> {
 }
 
 /**
+ * Starts unilateral exits for selected wallet VTXOs.
+ * @param vtxoIds VTXO IDs to exit.
+ * @returns A promise that resolves on success.
+ */
+export function startExitForVtxos(vtxoIds: string[]): Promise<void> {
+  return NitroArkHybridObject.startExitForVtxos(vtxoIds);
+}
+
+/**
  * Synchronizes the exit coordinator state.
  * @returns A promise that resolves on success.
  */
 export function syncExit(): Promise<void> {
   return NitroArkHybridObject.syncExit();
+}
+
+/**
+ * Synchronizes tracked exits without advancing their state.
+ * @returns A promise that resolves on success.
+ */
+export function syncNoProgress(): Promise<void> {
+  return NitroArkHybridObject.syncNoProgress();
 }
 
 /**
@@ -261,6 +278,14 @@ export function progressExits(
  */
 export function getExitVtxos(): Promise<ExitVtxoResult[]> {
   return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
+}
+
+/**
+ * Lists tracked unilateral exits that are claimable.
+ * @returns A promise resolving to claimable exit entries.
+ */
+export function listClaimable(): Promise<ExitVtxoResult[]> {
+  return NitroArkHybridObject.listClaimable() as Promise<ExitVtxoResult[]>;
 }
 
 /**

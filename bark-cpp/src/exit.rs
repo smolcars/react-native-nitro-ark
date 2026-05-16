@@ -1,4 +1,5 @@
-use anyhow::Context;
+use anyhow::{Context, bail};
+use bark::vtxo::{FilterVtxos, VtxoFilter};
 use bdk_wallet::bitcoin::{Address, FeeRate, Psbt};
 use std::str::FromStr;
 
@@ -20,6 +21,62 @@ pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
         .await
 }
 
+pub async fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
+    if vtxo_ids.is_empty() {
+        bail!("No VTXO IDs provided");
+    }
+
+    let vtxo_ids = vtxo_ids
+        .into_iter()
+        .map(|id| {
+            bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            for id in &vtxo_ids {
+                ctx.wallet
+                    .get_vtxo_by_id(*id)
+                    .await
+                    .with_context(|| format!("VTXO not found: {id}"))?;
+            }
+
+            let filter = VtxoFilter::new(ctx.wallet.as_ref()).include_many(vtxo_ids);
+            let spendable = ctx
+                .wallet
+                .spendable_vtxos_with(&filter)
+                .await
+                .context("Error fetching spendable VTXOs")?;
+            let inround = {
+                let mut vtxos = ctx
+                    .wallet
+                    .pending_round_input_vtxos()
+                    .await
+                    .context("Error fetching pending round input VTXOs")?;
+                filter.filter_vtxos(&mut vtxos).await?;
+                vtxos
+            };
+
+            let vtxos = spendable
+                .into_iter()
+                .chain(inround)
+                .map(|wallet_vtxo| wallet_vtxo.vtxo)
+                .collect::<Vec<_>>();
+
+            ctx.wallet
+                .exit
+                .write()
+                .await
+                .start_exit_for_vtxos(&vtxos)
+                .await
+                .context("Failed to start exit for VTXOs")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn sync_exit() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -31,6 +88,22 @@ pub async fn sync_exit() -> anyhow::Result<()> {
                 .sync(ctx.wallet.as_ref(), &mut ctx.onchain_wallet)
                 .await
                 .context("Failed to sync exit")?;
+            Ok(())
+        })
+        .await
+}
+
+pub async fn sync_no_progress() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .exit
+                .write()
+                .await
+                .sync_no_progress(&ctx.onchain_wallet)
+                .await
+                .context("Failed to sync exits without progress")?;
             Ok(())
         })
         .await
@@ -60,6 +133,23 @@ pub async fn get_exit_vtxos() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
     manager
         .with_context_async(|ctx| async {
             Ok(ctx.wallet.exit.read().await.get_exit_vtxos().clone())
+        })
+        .await
+}
+
+pub async fn list_claimable() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx
+                .wallet
+                .exit
+                .read()
+                .await
+                .list_claimable()
+                .into_iter()
+                .cloned()
+                .collect())
         })
         .await
 }

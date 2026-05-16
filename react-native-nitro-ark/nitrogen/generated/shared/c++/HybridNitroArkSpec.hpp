@@ -61,8 +61,8 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <string>
 #include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
-#include "ExitProgressStatusResult.hpp"
 #include <vector>
+#include "ExitProgressStatusResult.hpp"
 #include <optional>
 #include "ExitVtxoResult.hpp"
 #include "ExitStatusResult.hpp"
@@ -134,9 +134,12 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
+      virtual std::shared_ptr<Promise<void>> startExitForVtxos(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<void>> syncExit() = 0;
+      virtual std::shared_ptr<Promise<void>> syncNoProgress() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>> progressExits(std::optional<double> feeRateSatPerKvb) = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() = 0;
+      virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> listClaimable() = 0;
       virtual std::shared_ptr<Promise<std::optional<ExitStatusResult>>> getExitStatus(const std::string& vtxoId, std::optional<bool> includeHistory, std::optional<bool> includeTransactions) = 0;
       virtual std::shared_ptr<Promise<bool>> hasPendingExits() = 0;
       virtual std::shared_ptr<Promise<double>> pendingExitTotal() = 0;

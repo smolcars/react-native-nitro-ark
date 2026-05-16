@@ -1464,6 +1464,8 @@ void validate_arkoor_address(::rust::Str address);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
 
+::rust::Vec<::bark_cxx::ExitVtxoResult> list_claimable();
+
 ::bark_cxx::ExitStatusResult const *get_exit_status(::rust::Str vtxo_id, bool include_history, bool include_transactions);
 
 bool has_pending_exits();
@@ -1490,7 +1492,11 @@ void try_claim_all_lightning_receives(bool wait);
 
 void start_exit_for_entire_wallet();
 
+void start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
+
 void sync_exit();
+
+void sync_no_progress();
 
 void sync_exits();
 
