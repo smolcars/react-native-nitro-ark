@@ -9,6 +9,8 @@ import type {
   BarkFeeEstimate,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
+  ExitStatusResult as NitroExitStatusResult,
+  ExitTransactionPackageResult as NitroExitTransactionPackageResult,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -56,6 +58,17 @@ export type ExitProgressStatusResult = Omit<
 export type ExitVtxoResult = Omit<NitroExitVtxoResult, 'state' | 'history'> & {
   state: ExitProgressState;
   history: ExitProgressState[];
+};
+
+export type ExitTransactionPackageResult = NitroExitTransactionPackageResult;
+
+export type ExitStatusResult = Omit<
+  NitroExitStatusResult,
+  'state' | 'history'
+> & {
+  state: ExitProgressState;
+  history: ExitProgressState[];
+  transactions: ExitTransactionPackageResult[];
 };
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
@@ -248,6 +261,25 @@ export function progressExits(
  */
 export function getExitVtxos(): Promise<ExitVtxoResult[]> {
   return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
+}
+
+/**
+ * Gets the detailed unilateral exit status for a tracked VTXO.
+ * @param vtxoId Exit VTXO ID to inspect.
+ * @param includeHistory Whether to include the state transition history.
+ * @param includeTransactions Whether to include exit transaction packages as hex.
+ * @returns A promise resolving to the exit status, or undefined when the VTXO is not tracked as an exit.
+ */
+export function getExitStatus(
+  vtxoId: string,
+  includeHistory?: boolean,
+  includeTransactions?: boolean
+): Promise<ExitStatusResult | undefined> {
+  return NitroArkHybridObject.getExitStatus(
+    vtxoId,
+    includeHistory,
+    includeTransactions
+  ) as Promise<ExitStatusResult | undefined>;
 }
 
 /**

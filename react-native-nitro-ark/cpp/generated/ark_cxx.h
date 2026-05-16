@@ -976,6 +976,8 @@ namespace bark_cxx {
   struct OnchainPaymentResult;
   struct ExitProgressStatusResult;
   struct ExitVtxoResult;
+  struct ExitTransactionPackageResult;
+  struct ExitStatusResult;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
@@ -1115,6 +1117,32 @@ struct ExitVtxoResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitVtxoResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitTransactionPackageResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitTransactionPackageResult
+struct ExitTransactionPackageResult final {
+  ::rust::String exit_txid;
+  ::rust::String exit_tx_hex;
+  ::rust::String child_txid;
+  ::rust::String child_tx_hex;
+  ::rust::String child_origin;
+  bool has_child CXX_DEFAULT_VALUE(false);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitTransactionPackageResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitStatusResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitStatusResult
+struct ExitStatusResult final {
+  ::rust::String vtxo_id;
+  ::rust::String state;
+  ::rust::Vec<::rust::String> history;
+  ::rust::Vec<::bark_cxx::ExitTransactionPackageResult> transactions;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitStatusResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
@@ -1435,6 +1463,8 @@ void validate_arkoor_address(::rust::Str address);
 ::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
+
+::bark_cxx::ExitStatusResult const *get_exit_status(::rust::Str vtxo_id, bool include_history, bool include_transactions);
 
 bool has_pending_exits();
 

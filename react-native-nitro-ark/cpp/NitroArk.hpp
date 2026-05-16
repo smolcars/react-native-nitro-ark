@@ -399,6 +399,46 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<ExitStatusResult>>>
+  getExitStatus(const std::string& vtxoId, std::optional<bool> includeHistory,
+                std::optional<bool> includeTransactions) override {
+    return Promise<std::optional<ExitStatusResult>>::async([vtxoId, includeHistory, includeTransactions]() {
+      try {
+        const bark_cxx::ExitStatusResult* status_ptr =
+            bark_cxx::get_exit_status(vtxoId, includeHistory.value_or(false), includeTransactions.value_or(false));
+        if (status_ptr == nullptr) {
+          return std::optional<ExitStatusResult>();
+        }
+
+        std::unique_ptr<const bark_cxx::ExitStatusResult> rust_status(status_ptr);
+        ExitStatusResult result;
+        result.vtxo_id = std::string(rust_status->vtxo_id.data(), rust_status->vtxo_id.length());
+        result.state = std::string(rust_status->state.data(), rust_status->state.length());
+
+        result.history.reserve(rust_status->history.size());
+        for (const auto& state : rust_status->history) {
+          result.history.emplace_back(std::string(state.data(), state.length()));
+        }
+
+        result.transactions.reserve(rust_status->transactions.size());
+        for (const auto& rust_tx : rust_status->transactions) {
+          ExitTransactionPackageResult tx;
+          tx.exit_txid = std::string(rust_tx.exit_txid.data(), rust_tx.exit_txid.length());
+          tx.exit_tx_hex = std::string(rust_tx.exit_tx_hex.data(), rust_tx.exit_tx_hex.length());
+          tx.child_txid = std::string(rust_tx.child_txid.data(), rust_tx.child_txid.length());
+          tx.child_tx_hex = std::string(rust_tx.child_tx_hex.data(), rust_tx.child_tx_hex.length());
+          tx.child_origin = std::string(rust_tx.child_origin.data(), rust_tx.child_origin.length());
+          tx.has_child = rust_tx.has_child;
+          result.transactions.push_back(std::move(tx));
+        }
+
+        return std::optional<ExitStatusResult>(result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<bool>> hasPendingExits() override {
     return Promise<bool>::async([]() {
       try {

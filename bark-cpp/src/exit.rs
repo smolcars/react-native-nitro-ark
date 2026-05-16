@@ -64,6 +64,27 @@ pub async fn get_exit_vtxos() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
         .await
 }
 
+pub async fn get_exit_status(
+    vtxo_id: String,
+    include_history: bool,
+    include_transactions: bool,
+) -> anyhow::Result<Option<bark::exit::ExitTransactionStatus>> {
+    let vtxo_id = bark::ark::VtxoId::from_str(&vtxo_id)?;
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            ctx.wallet
+                .exit
+                .read()
+                .await
+                .get_exit_status(vtxo_id, include_history, include_transactions)
+                .await
+                .context("Failed to get exit status")
+                .map_err(Into::into)
+        })
+        .await
+}
+
 pub async fn has_pending_exits() -> anyhow::Result<bool> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
