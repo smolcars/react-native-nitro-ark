@@ -90,6 +90,22 @@ pub(crate) mod ffi {
         is_initialized: bool,
     }
 
+    pub struct ExitTransactionPackageResult {
+        exit_txid: String,
+        exit_tx_hex: String,
+        child_txid: String,
+        child_tx_hex: String,
+        child_origin: String,
+        has_child: bool,
+    }
+
+    pub struct ExitStatusResult {
+        vtxo_id: String,
+        state: String,
+        history: Vec<String>,
+        transactions: Vec<ExitTransactionPackageResult>,
+    }
+
     pub struct CxxArkInfo {
         network: String,
         server_pubkey: String,
@@ -302,6 +318,12 @@ pub(crate) mod ffi {
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<Vec<ExitProgressStatusResult>>;
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
+        fn list_claimable() -> Result<Vec<ExitVtxoResult>>;
+        fn get_exit_status(
+            vtxo_id: &str,
+            include_history: bool,
+            include_transactions: bool,
+        ) -> Result<*const ExitStatusResult>;
         fn has_pending_exits() -> Result<bool>;
         fn pending_exit_total() -> Result<u64>;
         fn all_claimable_at_height() -> Result<*const u32>;
@@ -322,7 +344,9 @@ pub(crate) mod ffi {
         ) -> Result<LightningReceive>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn start_exit_for_entire_wallet() -> Result<()>;
+        fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
         fn sync_exit() -> Result<()>;
+        fn sync_no_progress() -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
@@ -856,26 +880,91 @@ pub(crate) fn progress_exits(
 pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
     let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
 
-    Ok(exits
-        .into_iter()
-        .map(|exit| ffi::ExitVtxoResult {
-            vtxo_id: exit.id().to_string(),
-            amount_sat: exit.amount().to_sat(),
-            state: utils::exit_state_name(exit.state()).to_string(),
-            history: exit
-                .history()
-                .iter()
-                .map(utils::exit_state_name)
-                .map(str::to_string)
-                .collect(),
-            txids: exit
-                .txids()
-                .map(|txids| txids.iter().map(ToString::to_string).collect())
-                .unwrap_or_default(),
-            is_claimable: exit.is_claimable(),
-            is_initialized: exit.is_initialized(),
-        })
-        .collect())
+    Ok(exits.into_iter().map(exit_vtxo_to_ffi).collect())
+}
+
+pub(crate) fn list_claimable() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
+    let exits = TOKIO_RUNTIME.block_on(crate::list_claimable())?;
+
+    Ok(exits.into_iter().map(exit_vtxo_to_ffi).collect())
+}
+
+fn exit_vtxo_to_ffi(exit: bark::exit::ExitVtxo) -> ffi::ExitVtxoResult {
+    ffi::ExitVtxoResult {
+        vtxo_id: exit.id().to_string(),
+        amount_sat: exit.amount().to_sat(),
+        state: utils::exit_state_name(exit.state()).to_string(),
+        history: exit
+            .history()
+            .iter()
+            .map(utils::exit_state_name)
+            .map(str::to_string)
+            .collect(),
+        txids: exit
+            .txids()
+            .map(|txids| txids.iter().map(ToString::to_string).collect())
+            .unwrap_or_default(),
+        is_claimable: exit.is_claimable(),
+        is_initialized: exit.is_initialized(),
+    }
+}
+
+fn exit_transaction_package_to_ffi(
+    package: bark::exit::ExitTransactionPackage,
+) -> ffi::ExitTransactionPackageResult {
+    let (child_txid, child_tx_hex, child_origin, has_child) = match package.child {
+        Some(child) => (
+            child.info.txid.to_string(),
+            bitcoin::consensus::encode::serialize_hex(&child.info.tx),
+            child.origin.to_string(),
+            true,
+        ),
+        None => (String::new(), String::new(), String::new(), false),
+    };
+
+    ffi::ExitTransactionPackageResult {
+        exit_txid: package.exit.txid.to_string(),
+        exit_tx_hex: bitcoin::consensus::encode::serialize_hex(&package.exit.tx),
+        child_txid,
+        child_tx_hex,
+        child_origin,
+        has_child,
+    }
+}
+
+pub(crate) fn get_exit_status(
+    vtxo_id: &str,
+    include_history: bool,
+    include_transactions: bool,
+) -> anyhow::Result<*const ffi::ExitStatusResult> {
+    let status = TOKIO_RUNTIME.block_on(crate::get_exit_status(
+        vtxo_id.to_string(),
+        include_history,
+        include_transactions,
+    ))?;
+
+    match status {
+        Some(status) => {
+            let result = ffi::ExitStatusResult {
+                vtxo_id: status.vtxo_id.to_string(),
+                state: utils::exit_state_name(&status.state).to_string(),
+                history: status
+                    .history
+                    .unwrap_or_default()
+                    .iter()
+                    .map(utils::exit_state_name)
+                    .map(str::to_string)
+                    .collect(),
+                transactions: status
+                    .transactions
+                    .into_iter()
+                    .map(exit_transaction_package_to_ffi)
+                    .collect(),
+            };
+            Ok(Box::into_raw(Box::new(result)))
+        }
+        None => Ok(std::ptr::null()),
+    }
 }
 
 pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
@@ -1129,6 +1218,14 @@ pub(crate) fn check_lightning_payment(payment_hash: String, wait: bool) -> anyho
 
 pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
+}
+
+pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(vtxo_ids))
+}
+
+pub(crate) fn sync_no_progress() -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::sync_no_progress())
 }
 
 pub(crate) fn sync_exit() -> anyhow::Result<()> {

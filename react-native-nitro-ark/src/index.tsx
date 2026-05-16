@@ -9,6 +9,8 @@ import type {
   BarkFeeEstimate,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
+  ExitStatusResult as NitroExitStatusResult,
+  ExitTransactionPackageResult as NitroExitTransactionPackageResult,
   LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -56,6 +58,17 @@ export type ExitProgressStatusResult = Omit<
 export type ExitVtxoResult = Omit<NitroExitVtxoResult, 'state' | 'history'> & {
   state: ExitProgressState;
   history: ExitProgressState[];
+};
+
+export type ExitTransactionPackageResult = NitroExitTransactionPackageResult;
+
+export type ExitStatusResult = Omit<
+  NitroExitStatusResult,
+  'state' | 'history'
+> & {
+  state: ExitProgressState;
+  history: ExitProgressState[];
+  transactions: ExitTransactionPackageResult[];
 };
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
@@ -222,11 +235,28 @@ export function startExitForEntireWallet(): Promise<void> {
 }
 
 /**
+ * Starts unilateral exits for selected wallet VTXOs.
+ * @param vtxoIds VTXO IDs to exit.
+ * @returns A promise that resolves on success.
+ */
+export function startExitForVtxos(vtxoIds: string[]): Promise<void> {
+  return NitroArkHybridObject.startExitForVtxos(vtxoIds);
+}
+
+/**
  * Synchronizes the exit coordinator state.
  * @returns A promise that resolves on success.
  */
 export function syncExit(): Promise<void> {
   return NitroArkHybridObject.syncExit();
+}
+
+/**
+ * Synchronizes tracked exits without advancing their state.
+ * @returns A promise that resolves on success.
+ */
+export function syncNoProgress(): Promise<void> {
+  return NitroArkHybridObject.syncNoProgress();
 }
 
 /**
@@ -248,6 +278,33 @@ export function progressExits(
  */
 export function getExitVtxos(): Promise<ExitVtxoResult[]> {
   return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
+}
+
+/**
+ * Lists tracked unilateral exits that are claimable.
+ * @returns A promise resolving to claimable exit entries.
+ */
+export function listClaimable(): Promise<ExitVtxoResult[]> {
+  return NitroArkHybridObject.listClaimable() as Promise<ExitVtxoResult[]>;
+}
+
+/**
+ * Gets the detailed unilateral exit status for a tracked VTXO.
+ * @param vtxoId Exit VTXO ID to inspect.
+ * @param includeHistory Whether to include the state transition history.
+ * @param includeTransactions Whether to include exit transaction packages as hex.
+ * @returns A promise resolving to the exit status, or undefined when the VTXO is not tracked as an exit.
+ */
+export function getExitStatus(
+  vtxoId: string,
+  includeHistory?: boolean,
+  includeTransactions?: boolean
+): Promise<ExitStatusResult | undefined> {
+  return NitroArkHybridObject.getExitStatus(
+    vtxoId,
+    includeHistory,
+    includeTransactions
+  ) as Promise<ExitStatusResult | undefined>;
 }
 
 /**
