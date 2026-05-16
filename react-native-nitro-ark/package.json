@@ -57,14 +57,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BlixtWallet/react-native-nitro-ark.git"
+    "url": "https://github.com/smolcars/react-native-nitro-ark"
   },
   "author": "Nitesh Balusu <niteshbalusu@icloud.com> (https://github.com/niteshbalusu11)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/BlixtWallet/react-native-nitro-ark/issues"
+    "url": "https://github.com/smolcars/react-native-nitro-ark/issues"
   },
-  "homepage": "https://github.com/BlixtWallet/react-native-nitro-ark#readme",
+  "homepage": "https://github.com/smolcars/react-native-nitro-ark#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
