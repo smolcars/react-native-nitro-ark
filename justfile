@@ -30,8 +30,12 @@ ios-prebuild:
     cd react-native-nitro-ark && yarn example ios:prebuild
 
 # Build iOS XCode
-build-ios-xcode:
+build-ios-mobile:
     cd react-native-nitro-ark && yarn example build:ios:xcode
+
+# Build android
+build-android-mobile:
+    cd react-native-nitro-ark && yarn example build:android
 
 # Clean commands
 clean:

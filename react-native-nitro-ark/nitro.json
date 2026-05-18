@@ -1,16 +1,26 @@
 {
-  "cxxNamespace": ["nitroark"],
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "nitroark"
+  ],
   "ios": {
     "iosModuleName": "NitroArk"
   },
   "android": {
-    "androidNamespace": ["nitroark"],
+    "androidNamespace": [
+      "nitroark"
+    ],
     "androidCxxLibName": "NitroArk"
   },
   "autolinking": {
     "NitroArk": {
-      "cpp": "NitroArk"
+      "all": {
+        "language": "c++",
+        "implementationClassName": "NitroArk"
+      }
     }
   },
-  "ignorePaths": ["node_modules"]
+  "ignorePaths": [
+    "node_modules"
+  ]
 }

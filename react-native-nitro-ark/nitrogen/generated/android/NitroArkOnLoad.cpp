@@ -20,25 +20,30 @@
 namespace margelo::nitro::nitroark {
 
 int initialize(JavaVM* vm) {
+  return facebook::jni::initialize(vm, []() {
+    ::margelo::nitro::nitroark::registerAllNatives();
+  });
+}
+
+
+
+void registerAllNatives() {
   using namespace margelo::nitro;
   using namespace margelo::nitro::nitroark;
-  using namespace facebook;
 
-  return facebook::jni::initialize(vm, [] {
-    // Register native JNI methods
-    
+  // Register native JNI methods
+  
 
-    // Register Nitro Hybrid Objects
-    HybridObjectRegistry::registerHybridObjectConstructor(
-      "NitroArk",
-      []() -> std::shared_ptr<HybridObject> {
-        static_assert(std::is_default_constructible_v<NitroArk>,
-                      "The HybridObject \"NitroArk\" is not default-constructible! "
-                      "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
-        return std::make_shared<NitroArk>();
-      }
-    );
-  });
+  // Register Nitro Hybrid Objects
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroArk",
+    []() -> std::shared_ptr<HybridObject> {
+      static_assert(std::is_default_constructible_v<NitroArk>,
+                    "The HybridObject \"NitroArk\" is not default-constructible! "
+                    "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
+      return std::make_shared<NitroArk>();
+    }
+  );
 }
 
 } // namespace margelo::nitro::nitroark
