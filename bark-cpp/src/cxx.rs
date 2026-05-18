@@ -347,7 +347,6 @@ pub(crate) mod ffi {
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
         fn sync_exit() -> Result<()>;
         fn sync_no_progress() -> Result<()>;
-        fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
         fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
@@ -1230,10 +1229,6 @@ pub(crate) fn sync_no_progress() -> anyhow::Result<()> {
 
 pub(crate) fn sync_exit() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::sync_exit())
-}
-
-pub(crate) fn sync_exits() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::sync_exits())
 }
 
 pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {

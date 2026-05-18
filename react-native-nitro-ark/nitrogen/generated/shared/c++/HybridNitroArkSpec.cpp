@@ -39,7 +39,6 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("pendingExitTotal", &HybridNitroArkSpec::pendingExitTotal);
       prototype.registerHybridMethod("allClaimableAtHeight", &HybridNitroArkSpec::allClaimableAtHeight);
       prototype.registerHybridMethod("drainExits", &HybridNitroArkSpec::drainExits);
-      prototype.registerHybridMethod("syncExits", &HybridNitroArkSpec::syncExits);
       prototype.registerHybridMethod("syncPendingRounds", &HybridNitroArkSpec::syncPendingRounds);
       prototype.registerHybridMethod("getArkInfo", &HybridNitroArkSpec::getArkInfo);
       prototype.registerHybridMethod("offchainBalance", &HybridNitroArkSpec::offchainBalance);

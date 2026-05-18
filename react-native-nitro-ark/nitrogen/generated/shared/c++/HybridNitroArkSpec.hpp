@@ -145,7 +145,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<double>> pendingExitTotal() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> allClaimableAtHeight() = 0;
       virtual std::shared_ptr<Promise<std::string>> drainExits(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress, std::optional<double> feeRateSatPerKvb) = 0;
-      virtual std::shared_ptr<Promise<void>> syncExits() = 0;
       virtual std::shared_ptr<Promise<void>> syncPendingRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;

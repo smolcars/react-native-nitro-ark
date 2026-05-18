@@ -1498,8 +1498,6 @@ void sync_exit();
 
 void sync_no_progress();
 
-void sync_exits();
-
 void sync_pending_rounds();
 
 ::bark_cxx::KeyPairResult mailbox_keypair();

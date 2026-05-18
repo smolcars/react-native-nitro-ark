@@ -34,8 +34,8 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
   return vtxos;
 }
 
-inline std::vector<ExitVtxoResult> convertRustExitVtxosToVector(
-    const rust::Vec<bark_cxx::ExitVtxoResult>& rust_results) {
+inline std::vector<ExitVtxoResult>
+convertRustExitVtxosToVector(const rust::Vec<bark_cxx::ExitVtxoResult>& rust_results) {
   std::vector<ExitVtxoResult> results;
   results.reserve(rust_results.size());
 
@@ -66,7 +66,8 @@ inline std::vector<ExitVtxoResult> convertRustExitVtxosToVector(
 inline BarkMovementDestination convertRustMovementDestination(const bark_cxx::BarkMovementDestination& destination_rs) {
   BarkMovementDestination destination;
   destination.destination = std::string(destination_rs.destination.data(), destination_rs.destination.length());
-  destination.payment_method = std::string(destination_rs.payment_method.data(), destination_rs.payment_method.length());
+  destination.payment_method =
+      std::string(destination_rs.payment_method.data(), destination_rs.payment_method.length());
   destination.amount_sat = static_cast<double>(destination_rs.amount_sat);
   return destination;
 }
@@ -544,16 +545,6 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> syncExits() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::sync_exits();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   std::shared_ptr<Promise<void>> syncPendingRounds() override {
     return Promise<void>::async([]() {
       try {
@@ -769,9 +760,9 @@ public:
   subscribeArkoorAddressMovements(const std::string& address,
                                   const std::function<void(const BarkNotificationEvent&)>& onEvent) override {
     try {
-      auto subscription = std::make_shared<BarkNotificationSubscription>(
-          bark_cxx::subscribe_arkoor_address_movements(address),
-          std::function<void(const BarkNotificationEvent&)>(onEvent));
+      auto subscription =
+          std::make_shared<BarkNotificationSubscription>(bark_cxx::subscribe_arkoor_address_movements(address),
+                                                         std::function<void(const BarkNotificationEvent&)>(onEvent));
       trackSubscription(subscription);
       return subscription;
     } catch (const rust::Error& e) {
@@ -783,9 +774,9 @@ public:
   subscribeLightningPaymentMovements(const std::string& paymentHash,
                                      const std::function<void(const BarkNotificationEvent&)>& onEvent) override {
     try {
-      auto subscription = std::make_shared<BarkNotificationSubscription>(
-          bark_cxx::subscribe_lightning_payment_movements(paymentHash),
-          std::function<void(const BarkNotificationEvent&)>(onEvent));
+      auto subscription =
+          std::make_shared<BarkNotificationSubscription>(bark_cxx::subscribe_lightning_payment_movements(paymentHash),
+                                                         std::function<void(const BarkNotificationEvent&)>(onEvent));
       trackSubscription(subscription);
       return subscription;
     } catch (const rust::Error& e) {
@@ -1085,8 +1076,7 @@ public:
   std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) override {
     return Promise<BarkFeeEstimate>::async([amountSat]() {
       try {
-        bark_cxx::BarkFeeEstimate rust_result =
-            bark_cxx::estimate_lightning_send_fee(static_cast<uint64_t>(amountSat));
+        bark_cxx::BarkFeeEstimate rust_result = bark_cxx::estimate_lightning_send_fee(static_cast<uint64_t>(amountSat));
 
         BarkFeeEstimate result;
         result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
@@ -1297,8 +1287,7 @@ public:
   std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) override {
     return Promise<BarkFeeEstimate>::async([amountSat]() {
       try {
-        bark_cxx::BarkFeeEstimate rust_result =
-            bark_cxx::estimate_arkoor_payment_fee(static_cast<uint64_t>(amountSat));
+        bark_cxx::BarkFeeEstimate rust_result = bark_cxx::estimate_arkoor_payment_fee(static_cast<uint64_t>(amountSat));
 
         BarkFeeEstimate result;
         result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
@@ -1330,7 +1319,8 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) override {
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination,
+                                                                double amountSat) override {
     return Promise<BarkFeeEstimate>::async([destination, amountSat]() {
       try {
         bark_cxx::BarkFeeEstimate rust_result =

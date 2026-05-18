@@ -170,7 +170,6 @@ pub async fn get_exit_status(
                 .get_exit_status(vtxo_id, include_history, include_transactions)
                 .await
                 .context("Failed to get exit status")
-                .map_err(Into::into)
         })
         .await
 }
@@ -220,11 +219,6 @@ pub async fn drain_exits(
             exit.drain_exits(&inputs, ctx.wallet.as_ref(), address, fee_rate)
                 .await
                 .context("Failed to drain exits")
-                .map_err(Into::into)
         })
         .await
-}
-
-pub async fn sync_exits() -> anyhow::Result<()> {
-    sync_exit().await
 }

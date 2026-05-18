@@ -351,14 +351,6 @@ export function drainExits(
 }
 
 /**
- * Synchronizes the Ark-specific exits.
- * @returns A promise that resolves on success.
- */
-export function syncExits(): Promise<void> {
-  return NitroArkHybridObject.syncExits();
-}
-
-/**
  * Synchronizes pending rounds.
  * @returns A promise that resolves on success.
  */

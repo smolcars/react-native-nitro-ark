@@ -232,6 +232,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceWithOnchainDelegated(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
+
+  // --- Exits ---
   startExitForEntireWallet(): Promise<void>;
   startExitForVtxos(vtxoIds: string[]): Promise<void>;
   syncExit(): Promise<void>;
@@ -252,7 +254,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destinationAddress: string,
     feeRateSatPerKvb?: number
   ): Promise<string>;
-  syncExits(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 
   // --- Wallet Info ---
