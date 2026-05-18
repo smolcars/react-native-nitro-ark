@@ -1,5 +1,5 @@
 use bark::onchain::{ChainSync, Utxo};
-use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Txid};
+use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;
 
@@ -73,5 +73,21 @@ pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.onchain_wallet.sync(&ctx.wallet.chain).await })
+        .await
+}
+
+/// Extract a transaction from a PSBT
+pub async fn extract_transaction(psbt: Psbt) -> anyhow::Result<Transaction> {
+    psbt.extract_tx().map_err(|e| anyhow::anyhow!(e))
+}
+
+/// Broadcast a transaction to the blockchain
+pub async fn broadcast_transaction(tx: Transaction) -> anyhow::Result<Txid> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet.chain.broadcast_tx(&tx).await?;
+            Ok(tx.compute_txid())
+        })
         .await
 }

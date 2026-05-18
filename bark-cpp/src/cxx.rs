@@ -332,6 +332,8 @@ pub(crate) mod ffi {
             destination_address: &str,
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<String>;
+        fn extract_transaction(psbt: &str) -> Result<String>;
+        fn broadcast_transaction(tx_hex: &str) -> Result<String>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn estimate_send_onchain(destination: &str, amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
@@ -1016,6 +1018,20 @@ pub(crate) fn drain_exits(
 
     let psbt = TOKIO_RUNTIME.block_on(crate::drain_exits(vtxo_ids, addr, fee_rate))?;
     Ok(psbt.to_string())
+}
+
+pub(crate) fn extract_transaction(psbt: &str) -> anyhow::Result<String> {
+    let psbt = bitcoin::Psbt::from_str(psbt)
+        .with_context(|| format!("Invalid PSBT format: '{}'", psbt))?;
+    let tx = TOKIO_RUNTIME.block_on(crate::onchain::extract_transaction(psbt))?;
+    Ok(bitcoin::consensus::encode::serialize_hex(&tx))
+}
+
+pub(crate) fn broadcast_transaction(tx_hex: &str) -> anyhow::Result<String> {
+    let tx = bitcoin::consensus::encode::deserialize_hex(tx_hex)
+        .with_context(|| format!("Invalid transaction hex format: '{}'", tx_hex))?;
+    let txid = TOKIO_RUNTIME.block_on(crate::onchain::broadcast_transaction(tx))?;
+    Ok(txid.to_string())
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {

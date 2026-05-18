@@ -545,6 +545,28 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::string>> extractTransaction(const std::string& psbt) override {
+    return Promise<std::string>::async([psbt]() {
+      try {
+        rust::String result = bark_cxx::extract_transaction(psbt);
+        return std::string(result.data(), result.length());
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::string>> broadcastTransaction(const std::string& txHex) override {
+    return Promise<std::string>::async([txHex]() {
+      try {
+        rust::String result = bark_cxx::broadcast_transaction(txHex);
+        return std::string(result.data(), result.length());
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncPendingRounds() override {
     return Promise<void>::async([]() {
       try {

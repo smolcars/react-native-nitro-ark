@@ -1476,6 +1476,10 @@ bool has_pending_exits();
 
 ::rust::String drain_exits(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address, ::std::uint64_t const *fee_rate_sat_per_kvb);
 
+::rust::String extract_transaction(::rust::Str psbt);
+
+::rust::String broadcast_transaction(::rust::Str tx_hex);
+
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::bark_cxx::BarkFeeEstimate estimate_send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);

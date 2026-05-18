@@ -351,6 +351,24 @@ export function drainExits(
 }
 
 /**
+ * Extracts a raw transaction from a base64 PSBT.
+ * @param psbt Base64-encoded PSBT.
+ * @returns A promise resolving to transaction hex.
+ */
+export function extractTransaction(psbt: string): Promise<string> {
+  return NitroArkHybridObject.extractTransaction(psbt);
+}
+
+/**
+ * Broadcasts a raw transaction to the configured blockchain backend.
+ * @param txHex Raw transaction hex.
+ * @returns A promise resolving to the broadcast transaction ID.
+ */
+export function broadcastTransaction(txHex: string): Promise<string> {
+  return NitroArkHybridObject.broadcastTransaction(txHex);
+}
+
+/**
  * Synchronizes pending rounds.
  * @returns A promise that resolves on success.
  */

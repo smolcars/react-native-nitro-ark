@@ -73,19 +73,6 @@ export const ExitTab = ({
     );
   };
 
-  const handleSyncExits = () => {
-    runOperation(
-      'syncExits',
-      () => NitroArk.syncExits(),
-      'exitLifecycle',
-      () =>
-        setResults((prev) => ({
-          ...prev,
-          exitLifecycle: 'Exit synchronization completed.',
-        }))
-    );
-  };
-
   const handleProgressExits = () => {
     let feeRateSatPerKvb: number | undefined;
     try {
@@ -239,11 +226,6 @@ export const ExitTab = ({
           <CustomButton
             title="Sync Exit"
             onPress={handleSyncExit}
-            disabled={exitOpsDisabled}
-          />
-          <CustomButton
-            title="Sync Exits"
-            onPress={handleSyncExits}
             disabled={exitOpsDisabled}
           />
         </ButtonGrid>

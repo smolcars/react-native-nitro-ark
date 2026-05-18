@@ -246,12 +246,12 @@ export const WalletTab = ({
     );
   };
 
-  const handleSyncExits = () => {
+  const handleSyncExit = () => {
     runOperation(
-      'syncExits',
-      () => NitroArk.syncExits(),
+      'syncExit',
+      () => NitroArk.syncExit(),
       'sync',
-      () => setResults((prev) => ({ ...prev, sync: 'Exits synced!' }))
+      () => setResults((prev) => ({ ...prev, sync: 'Exit synced!' }))
     );
   };
 
@@ -554,8 +554,8 @@ export const WalletTab = ({
             small
           />
           <CustomButton
-            title="Sync Exits"
-            onPress={handleSyncExits}
+            title="Sync Exit"
+            onPress={handleSyncExit}
             disabled={walletOpsDisabled}
             small
           />

@@ -254,6 +254,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destinationAddress: string,
     feeRateSatPerKvb?: number
   ): Promise<string>;
+  extractTransaction(psbt: string): Promise<string>;
+  broadcastTransaction(txHex: string): Promise<string>;
   syncPendingRounds(): Promise<void>;
 
   // --- Wallet Info ---
