@@ -83,9 +83,50 @@ export interface BarkFeeEstimate {
   vtxos_spent: string[];
 }
 
+export interface ExitBlockRefResult {
+  height: number;
+  hash: string;
+}
+
+export interface ExitTxOriginResult {
+  kind: string;
+  confirmed_in?: ExitBlockRefResult;
+  fee_rate_sat_per_kvb?: number;
+  total_fee_sat?: number;
+}
+
+export interface ExitTxStatusResult {
+  kind: string;
+  txids?: string[];
+  min_fee_rate_sat_per_kvb?: number;
+  min_fee_sat?: number;
+  child_txid?: string;
+  origin?: ExitTxOriginResult;
+  block?: ExitBlockRefResult;
+}
+
+export interface ExitTxResult {
+  txid: string;
+  status: ExitTxStatusResult;
+}
+
+export interface ExitStateDetailsResult {
+  kind: string;
+  tip_height: number;
+  transactions?: ExitTxResult[];
+  confirmed_block?: ExitBlockRefResult;
+  claimable_height?: number;
+  claimable_since?: ExitBlockRefResult;
+  last_scanned_block?: ExitBlockRefResult;
+  claim_txid?: string;
+  txid?: string;
+  block?: ExitBlockRefResult;
+}
+
 export interface ExitProgressStatusResult {
   vtxo_id: string;
   state: string;
+  state_details: ExitStateDetailsResult;
   error?: string;
 }
 
@@ -93,7 +134,9 @@ export interface ExitVtxoResult {
   vtxo_id: string;
   amount_sat: number;
   state: string;
+  state_details: ExitStateDetailsResult;
   history: string[];
+  history_details: ExitStateDetailsResult[];
   txids: string[];
   is_claimable: boolean;
   is_initialized: boolean;
@@ -111,7 +154,9 @@ export interface ExitTransactionPackageResult {
 export interface ExitStatusResult {
   vtxo_id: string;
   state: string;
+  state_details: ExitStateDetailsResult;
   history: string[];
+  history_details: ExitStateDetailsResult[];
   transactions: ExitTransactionPackageResult[];
 }
 

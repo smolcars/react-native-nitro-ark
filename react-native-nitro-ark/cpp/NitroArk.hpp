@@ -6,6 +6,7 @@
 #include "generated/cxx.h"
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <sys/wait.h>
@@ -34,6 +35,102 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
   return vtxos;
 }
 
+inline ExitBlockRefResult convertRustExitBlockRef(const bark_cxx::ExitBlockRefResult& block_rs) {
+  ExitBlockRefResult block;
+  block.height = static_cast<double>(block_rs.height);
+  block.hash = std::string(block_rs.hash.data(), block_rs.hash.length());
+  return block;
+}
+
+inline ExitTxOriginResult convertRustExitTxOrigin(const bark_cxx::ExitTxOriginResult& origin_rs) {
+  ExitTxOriginResult origin;
+  origin.kind = std::string(origin_rs.kind.data(), origin_rs.kind.length());
+  if (origin_rs.has_confirmed_in) {
+    origin.confirmed_in = convertRustExitBlockRef(origin_rs.confirmed_in);
+  }
+  if (origin_rs.fee_rate_sat_per_kvb != 0) {
+    origin.fee_rate_sat_per_kvb = static_cast<double>(origin_rs.fee_rate_sat_per_kvb);
+  }
+  if (origin_rs.total_fee_sat != 0) {
+    origin.total_fee_sat = static_cast<double>(origin_rs.total_fee_sat);
+  }
+  return origin;
+}
+
+inline ExitTxStatusResult convertRustExitTxStatus(const bark_cxx::ExitTxStatusResult& status_rs) {
+  ExitTxStatusResult status;
+  status.kind = std::string(status_rs.kind.data(), status_rs.kind.length());
+
+  if (!status_rs.txids.empty()) {
+    status.txids = std::vector<std::string>();
+    status.txids->reserve(status_rs.txids.size());
+    for (const auto& txid : status_rs.txids) {
+      status.txids->emplace_back(std::string(txid.data(), txid.length()));
+    }
+  }
+  if (status_rs.min_fee_rate_sat_per_kvb != 0) {
+    status.min_fee_rate_sat_per_kvb = static_cast<double>(status_rs.min_fee_rate_sat_per_kvb);
+  }
+  if (status_rs.min_fee_sat != 0) {
+    status.min_fee_sat = static_cast<double>(status_rs.min_fee_sat);
+  }
+  if (status_rs.child_txid.length() != 0) {
+    status.child_txid = std::string(status_rs.child_txid.data(), status_rs.child_txid.length());
+  }
+  if (status_rs.has_origin) {
+    status.origin = convertRustExitTxOrigin(status_rs.origin);
+  }
+  if (status_rs.has_block) {
+    status.block = convertRustExitBlockRef(status_rs.block);
+  }
+
+  return status;
+}
+
+inline ExitTxResult convertRustExitTx(const bark_cxx::ExitTxResult& tx_rs) {
+  ExitTxResult tx;
+  tx.txid = std::string(tx_rs.txid.data(), tx_rs.txid.length());
+  tx.status = convertRustExitTxStatus(tx_rs.status);
+  return tx;
+}
+
+inline ExitStateDetailsResult convertRustExitStateDetails(const bark_cxx::ExitStateDetailsResult& state_rs) {
+  ExitStateDetailsResult state;
+  state.kind = std::string(state_rs.kind.data(), state_rs.kind.length());
+  state.tip_height = static_cast<double>(state_rs.tip_height);
+
+  if (!state_rs.transactions.empty()) {
+    state.transactions = std::vector<ExitTxResult>();
+    state.transactions->reserve(state_rs.transactions.size());
+    for (const auto& tx_rs : state_rs.transactions) {
+      state.transactions->push_back(convertRustExitTx(tx_rs));
+    }
+  }
+  if (state_rs.has_confirmed_block) {
+    state.confirmed_block = convertRustExitBlockRef(state_rs.confirmed_block);
+  }
+  if (state_rs.claimable_height != 0) {
+    state.claimable_height = static_cast<double>(state_rs.claimable_height);
+  }
+  if (state_rs.has_claimable_since) {
+    state.claimable_since = convertRustExitBlockRef(state_rs.claimable_since);
+  }
+  if (state_rs.has_last_scanned_block) {
+    state.last_scanned_block = convertRustExitBlockRef(state_rs.last_scanned_block);
+  }
+  if (state_rs.claim_txid.length() != 0) {
+    state.claim_txid = std::string(state_rs.claim_txid.data(), state_rs.claim_txid.length());
+  }
+  if (state_rs.txid.length() != 0) {
+    state.txid = std::string(state_rs.txid.data(), state_rs.txid.length());
+  }
+  if (state_rs.has_block) {
+    state.block = convertRustExitBlockRef(state_rs.block);
+  }
+
+  return state;
+}
+
 inline std::vector<ExitVtxoResult>
 convertRustExitVtxosToVector(const rust::Vec<bark_cxx::ExitVtxoResult>& rust_results) {
   std::vector<ExitVtxoResult> results;
@@ -44,10 +141,16 @@ convertRustExitVtxosToVector(const rust::Vec<bark_cxx::ExitVtxoResult>& rust_res
     result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
     result.amount_sat = static_cast<double>(rust_result.amount_sat);
     result.state = std::string(rust_result.state.data(), rust_result.state.length());
+    result.state_details = convertRustExitStateDetails(rust_result.state_details);
 
     result.history.reserve(rust_result.history.size());
     for (const auto& state : rust_result.history) {
       result.history.emplace_back(std::string(state.data(), state.length()));
+    }
+
+    result.history_details.reserve(rust_result.history_details.size());
+    for (const auto& stateDetails : rust_result.history_details) {
+      result.history_details.push_back(convertRustExitStateDetails(stateDetails));
     }
 
     result.txids.reserve(rust_result.txids.size());
@@ -406,6 +509,7 @@ public:
           ExitProgressStatusResult result;
           result.vtxo_id = std::string(rust_result.vtxo_id.data(), rust_result.vtxo_id.length());
           result.state = std::string(rust_result.state.data(), rust_result.state.length());
+          result.state_details = convertRustExitStateDetails(rust_result.state_details);
           if (rust_result.error.length() == 0) {
             result.error = std::nullopt;
           } else {
@@ -457,10 +561,16 @@ public:
         ExitStatusResult result;
         result.vtxo_id = std::string(rust_status->vtxo_id.data(), rust_status->vtxo_id.length());
         result.state = std::string(rust_status->state.data(), rust_status->state.length());
+        result.state_details = convertRustExitStateDetails(rust_status->state_details);
 
         result.history.reserve(rust_status->history.size());
         for (const auto& state : rust_status->history) {
           result.history.emplace_back(std::string(state.data(), state.length()));
+        }
+
+        result.history_details.reserve(rust_status->history_details.size());
+        for (const auto& stateDetails : rust_status->history_details) {
+          result.history_details.push_back(convertRustExitStateDetails(stateDetails));
         }
 
         result.transactions.reserve(rust_status->transactions.size());

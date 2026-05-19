@@ -74,9 +74,57 @@ pub(crate) mod ffi {
         destination_address: String,
     }
 
+    pub struct ExitBlockRefResult {
+        height: u32,
+        hash: String,
+    }
+
+    pub struct ExitTxOriginResult {
+        kind: String,
+        has_confirmed_in: bool,
+        confirmed_in: ExitBlockRefResult,
+        fee_rate_sat_per_kvb: u64,
+        total_fee_sat: u64,
+    }
+
+    pub struct ExitTxStatusResult {
+        kind: String,
+        txids: Vec<String>,
+        min_fee_rate_sat_per_kvb: u64,
+        min_fee_sat: u64,
+        child_txid: String,
+        has_origin: bool,
+        origin: ExitTxOriginResult,
+        has_block: bool,
+        block: ExitBlockRefResult,
+    }
+
+    pub struct ExitTxResult {
+        txid: String,
+        status: ExitTxStatusResult,
+    }
+
+    pub struct ExitStateDetailsResult {
+        kind: String,
+        tip_height: u32,
+        transactions: Vec<ExitTxResult>,
+        has_confirmed_block: bool,
+        confirmed_block: ExitBlockRefResult,
+        claimable_height: u32,
+        has_claimable_since: bool,
+        claimable_since: ExitBlockRefResult,
+        has_last_scanned_block: bool,
+        last_scanned_block: ExitBlockRefResult,
+        claim_txid: String,
+        txid: String,
+        has_block: bool,
+        block: ExitBlockRefResult,
+    }
+
     pub struct ExitProgressStatusResult {
         vtxo_id: String,
         state: String,
+        state_details: ExitStateDetailsResult,
         error: String,
     }
 
@@ -84,7 +132,9 @@ pub(crate) mod ffi {
         vtxo_id: String,
         amount_sat: u64,
         state: String,
+        state_details: ExitStateDetailsResult,
         history: Vec<String>,
+        history_details: Vec<ExitStateDetailsResult>,
         txids: Vec<String>,
         is_claimable: bool,
         is_initialized: bool,
@@ -102,7 +152,9 @@ pub(crate) mod ffi {
     pub struct ExitStatusResult {
         vtxo_id: String,
         state: String,
+        state_details: ExitStateDetailsResult,
         history: Vec<String>,
+        history_details: Vec<ExitStateDetailsResult>,
         transactions: Vec<ExitTransactionPackageResult>,
     }
 
@@ -853,6 +905,236 @@ pub(crate) fn pay_lightning_address(
     })
 }
 
+fn empty_exit_block_ref() -> ffi::ExitBlockRefResult {
+    ffi::ExitBlockRefResult {
+        height: 0,
+        hash: String::new(),
+    }
+}
+
+fn exit_block_ref_to_ffi(block: bitcoin_ext::BlockRef) -> ffi::ExitBlockRefResult {
+    ffi::ExitBlockRefResult {
+        height: block.height,
+        hash: block.hash.to_string(),
+    }
+}
+
+fn empty_exit_tx_origin() -> ffi::ExitTxOriginResult {
+    ffi::ExitTxOriginResult {
+        kind: String::new(),
+        has_confirmed_in: false,
+        confirmed_in: empty_exit_block_ref(),
+        fee_rate_sat_per_kvb: 0,
+        total_fee_sat: 0,
+    }
+}
+
+fn exit_tx_origin_to_ffi(origin: &bark::exit::ExitTxOrigin) -> ffi::ExitTxOriginResult {
+    match origin {
+        bark::exit::ExitTxOrigin::Wallet { confirmed_in } => ffi::ExitTxOriginResult {
+            kind: "wallet".to_string(),
+            has_confirmed_in: confirmed_in.is_some(),
+            confirmed_in: confirmed_in.map_or_else(empty_exit_block_ref, exit_block_ref_to_ffi),
+            fee_rate_sat_per_kvb: 0,
+            total_fee_sat: 0,
+        },
+        bark::exit::ExitTxOrigin::Mempool {
+            fee_rate,
+            total_fee,
+        } => ffi::ExitTxOriginResult {
+            kind: "mempool".to_string(),
+            has_confirmed_in: false,
+            confirmed_in: empty_exit_block_ref(),
+            fee_rate_sat_per_kvb: fee_rate.to_sat_per_kvb(),
+            total_fee_sat: total_fee.to_sat(),
+        },
+        bark::exit::ExitTxOrigin::Block { confirmed_in } => ffi::ExitTxOriginResult {
+            kind: "block".to_string(),
+            has_confirmed_in: true,
+            confirmed_in: exit_block_ref_to_ffi(*confirmed_in),
+            fee_rate_sat_per_kvb: 0,
+            total_fee_sat: 0,
+        },
+    }
+}
+
+fn empty_exit_tx_status() -> ffi::ExitTxStatusResult {
+    ffi::ExitTxStatusResult {
+        kind: String::new(),
+        txids: Vec::new(),
+        min_fee_rate_sat_per_kvb: 0,
+        min_fee_sat: 0,
+        child_txid: String::new(),
+        has_origin: false,
+        origin: empty_exit_tx_origin(),
+        has_block: false,
+        block: empty_exit_block_ref(),
+    }
+}
+
+fn exit_tx_status_to_ffi(status: &bark::exit::ExitTxStatus) -> ffi::ExitTxStatusResult {
+    match status {
+        bark::exit::ExitTxStatus::VerifyInputs => ffi::ExitTxStatusResult {
+            kind: "verify-inputs".to_string(),
+            ..empty_exit_tx_status()
+        },
+        bark::exit::ExitTxStatus::AwaitingInputConfirmation { txids } => {
+            let mut txids = txids.iter().map(ToString::to_string).collect::<Vec<_>>();
+            txids.sort();
+
+            ffi::ExitTxStatusResult {
+                kind: "awaiting-input-confirmation".to_string(),
+                txids,
+                ..empty_exit_tx_status()
+            }
+        }
+        bark::exit::ExitTxStatus::NeedsSignedPackage => ffi::ExitTxStatusResult {
+            kind: "needs-signed-package".to_string(),
+            ..empty_exit_tx_status()
+        },
+        bark::exit::ExitTxStatus::NeedsReplacementPackage {
+            min_fee_rate,
+            min_fee,
+        } => ffi::ExitTxStatusResult {
+            kind: "needs-replacement-package".to_string(),
+            min_fee_rate_sat_per_kvb: min_fee_rate.to_sat_per_kvb(),
+            min_fee_sat: min_fee.to_sat(),
+            ..empty_exit_tx_status()
+        },
+        bark::exit::ExitTxStatus::NeedsBroadcasting { child_txid, origin } => {
+            ffi::ExitTxStatusResult {
+                kind: "needs-broadcasting".to_string(),
+                child_txid: child_txid.to_string(),
+                has_origin: true,
+                origin: exit_tx_origin_to_ffi(origin),
+                ..empty_exit_tx_status()
+            }
+        }
+        bark::exit::ExitTxStatus::BroadcastWithCpfp { child_txid, origin } => {
+            ffi::ExitTxStatusResult {
+                kind: "broadcast-with-cpfp".to_string(),
+                child_txid: child_txid.to_string(),
+                has_origin: true,
+                origin: exit_tx_origin_to_ffi(origin),
+                ..empty_exit_tx_status()
+            }
+        }
+        bark::exit::ExitTxStatus::Confirmed {
+            child_txid,
+            block,
+            origin,
+        } => ffi::ExitTxStatusResult {
+            kind: "confirmed".to_string(),
+            child_txid: child_txid.to_string(),
+            has_origin: true,
+            origin: exit_tx_origin_to_ffi(origin),
+            has_block: true,
+            block: exit_block_ref_to_ffi(*block),
+            ..empty_exit_tx_status()
+        },
+    }
+}
+
+fn exit_tx_to_ffi(tx: &bark::exit::ExitTx) -> ffi::ExitTxResult {
+    let bark::exit::ExitTx { txid, status } = tx;
+    ffi::ExitTxResult {
+        txid: txid.to_string(),
+        status: exit_tx_status_to_ffi(status),
+    }
+}
+
+fn empty_exit_state_details(kind: &str, tip_height: u32) -> ffi::ExitStateDetailsResult {
+    ffi::ExitStateDetailsResult {
+        kind: kind.to_string(),
+        tip_height,
+        transactions: Vec::new(),
+        has_confirmed_block: false,
+        confirmed_block: empty_exit_block_ref(),
+        claimable_height: 0,
+        has_claimable_since: false,
+        claimable_since: empty_exit_block_ref(),
+        has_last_scanned_block: false,
+        last_scanned_block: empty_exit_block_ref(),
+        claim_txid: String::new(),
+        txid: String::new(),
+        has_block: false,
+        block: empty_exit_block_ref(),
+    }
+}
+
+fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDetailsResult {
+    match state {
+        bark::exit::ExitState::Start(state) => {
+            let bark::exit::ExitStartState { tip_height } = state;
+            empty_exit_state_details("start", *tip_height)
+        }
+        bark::exit::ExitState::Processing(state) => {
+            let bark::exit::ExitProcessingState {
+                tip_height,
+                transactions,
+            } = state;
+            ffi::ExitStateDetailsResult {
+                transactions: transactions.iter().map(exit_tx_to_ffi).collect(),
+                ..empty_exit_state_details("processing", *tip_height)
+            }
+        }
+        bark::exit::ExitState::AwaitingDelta(state) => {
+            let bark::exit::ExitAwaitingDeltaState {
+                tip_height,
+                confirmed_block,
+                claimable_height,
+            } = state;
+            ffi::ExitStateDetailsResult {
+                has_confirmed_block: true,
+                confirmed_block: exit_block_ref_to_ffi(*confirmed_block),
+                claimable_height: *claimable_height,
+                ..empty_exit_state_details("awaiting-delta", *tip_height)
+            }
+        }
+        bark::exit::ExitState::Claimable(state) => {
+            let bark::exit::ExitClaimableState {
+                tip_height,
+                claimable_since,
+                last_scanned_block,
+            } = state;
+            ffi::ExitStateDetailsResult {
+                has_claimable_since: true,
+                claimable_since: exit_block_ref_to_ffi(*claimable_since),
+                has_last_scanned_block: last_scanned_block.is_some(),
+                last_scanned_block: last_scanned_block
+                    .map_or_else(empty_exit_block_ref, exit_block_ref_to_ffi),
+                ..empty_exit_state_details("claimable", *tip_height)
+            }
+        }
+        bark::exit::ExitState::ClaimInProgress(state) => {
+            let bark::exit::ExitClaimInProgressState {
+                tip_height,
+                claimable_since,
+                claim_txid,
+            } = state;
+            ffi::ExitStateDetailsResult {
+                has_claimable_since: true,
+                claimable_since: exit_block_ref_to_ffi(*claimable_since),
+                claim_txid: claim_txid.to_string(),
+                ..empty_exit_state_details("claim-in-progress", *tip_height)
+            }
+        }
+        bark::exit::ExitState::Claimed(state) => {
+            let bark::exit::ExitClaimedState {
+                tip_height,
+                txid,
+                block,
+            } = state;
+            ffi::ExitStateDetailsResult {
+                txid: txid.to_string(),
+                has_block: true,
+                block: exit_block_ref_to_ffi(*block),
+                ..empty_exit_state_details("claimed", *tip_height)
+            }
+        }
+    }
+}
+
 pub(crate) fn progress_exits(
     fee_rate_sat_per_kvb: *const u64,
 ) -> anyhow::Result<Vec<ffi::ExitProgressStatusResult>> {
@@ -870,6 +1152,7 @@ pub(crate) fn progress_exits(
             Ok(ffi::ExitProgressStatusResult {
                 vtxo_id: status.vtxo_id.to_string(),
                 state: utils::exit_state_name(&status.state).to_string(),
+                state_details: exit_state_details_to_ffi(&status.state),
                 error: status
                     .error
                     .map_or(String::new(), |error| error.to_string()),
@@ -881,25 +1164,31 @@ pub(crate) fn progress_exits(
 pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
     let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
 
-    Ok(exits.into_iter().map(exit_vtxo_to_ffi).collect())
+    exits.into_iter().map(exit_vtxo_to_ffi).collect()
 }
 
 pub(crate) fn list_claimable() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
     let exits = TOKIO_RUNTIME.block_on(crate::list_claimable())?;
 
-    Ok(exits.into_iter().map(exit_vtxo_to_ffi).collect())
+    exits.into_iter().map(exit_vtxo_to_ffi).collect()
 }
 
-fn exit_vtxo_to_ffi(exit: bark::exit::ExitVtxo) -> ffi::ExitVtxoResult {
-    ffi::ExitVtxoResult {
+fn exit_vtxo_to_ffi(exit: bark::exit::ExitVtxo) -> anyhow::Result<ffi::ExitVtxoResult> {
+    Ok(ffi::ExitVtxoResult {
         vtxo_id: exit.id().to_string(),
         amount_sat: exit.amount().to_sat(),
         state: utils::exit_state_name(exit.state()).to_string(),
+        state_details: exit_state_details_to_ffi(exit.state()),
         history: exit
             .history()
             .iter()
             .map(utils::exit_state_name)
             .map(str::to_string)
+            .collect(),
+        history_details: exit
+            .history()
+            .iter()
+            .map(exit_state_details_to_ffi)
             .collect(),
         txids: exit
             .txids()
@@ -907,7 +1196,7 @@ fn exit_vtxo_to_ffi(exit: bark::exit::ExitVtxo) -> ffi::ExitVtxoResult {
             .unwrap_or_default(),
         is_claimable: exit.is_claimable(),
         is_initialized: exit.is_initialized(),
-    }
+    })
 }
 
 fn exit_transaction_package_to_ffi(
@@ -946,16 +1235,17 @@ pub(crate) fn get_exit_status(
 
     match status {
         Some(status) => {
+            let history = status.history.unwrap_or_default();
             let result = ffi::ExitStatusResult {
                 vtxo_id: status.vtxo_id.to_string(),
                 state: utils::exit_state_name(&status.state).to_string(),
-                history: status
-                    .history
-                    .unwrap_or_default()
+                state_details: exit_state_details_to_ffi(&status.state),
+                history: history
                     .iter()
                     .map(utils::exit_state_name)
                     .map(str::to_string)
                     .collect(),
+                history_details: history.iter().map(exit_state_details_to_ffi).collect(),
                 transactions: status
                     .transactions
                     .into_iter()

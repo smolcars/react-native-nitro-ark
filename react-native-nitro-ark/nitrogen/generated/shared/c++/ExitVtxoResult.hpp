@@ -28,9 +28,11 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `ExitStateDetailsResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ExitStateDetailsResult; }
 
 #include <string>
+#include "ExitStateDetailsResult.hpp"
 #include <vector>
 
 namespace margelo::nitro::nitroark {
@@ -43,14 +45,16 @@ namespace margelo::nitro::nitroark {
     std::string vtxo_id     SWIFT_PRIVATE;
     double amount_sat     SWIFT_PRIVATE;
     std::string state     SWIFT_PRIVATE;
+    ExitStateDetailsResult state_details     SWIFT_PRIVATE;
     std::vector<std::string> history     SWIFT_PRIVATE;
+    std::vector<ExitStateDetailsResult> history_details     SWIFT_PRIVATE;
     std::vector<std::string> txids     SWIFT_PRIVATE;
     bool is_claimable     SWIFT_PRIVATE;
     bool is_initialized     SWIFT_PRIVATE;
 
   public:
     ExitVtxoResult() = default;
-    explicit ExitVtxoResult(std::string vtxo_id, double amount_sat, std::string state, std::vector<std::string> history, std::vector<std::string> txids, bool is_claimable, bool is_initialized): vtxo_id(vtxo_id), amount_sat(amount_sat), state(state), history(history), txids(txids), is_claimable(is_claimable), is_initialized(is_initialized) {}
+    explicit ExitVtxoResult(std::string vtxo_id, double amount_sat, std::string state, ExitStateDetailsResult state_details, std::vector<std::string> history, std::vector<ExitStateDetailsResult> history_details, std::vector<std::string> txids, bool is_claimable, bool is_initialized): vtxo_id(vtxo_id), amount_sat(amount_sat), state(state), state_details(state_details), history(history), history_details(history_details), txids(txids), is_claimable(is_claimable), is_initialized(is_initialized) {}
 
   public:
     friend bool operator==(const ExitVtxoResult& lhs, const ExitVtxoResult& rhs) = default;
@@ -69,7 +73,9 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state"))),
+        JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state_details"))),
         JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "history"))),
+        JSIConverter<std::vector<margelo::nitro::nitroark::ExitStateDetailsResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "history_details"))),
         JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txids"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "is_claimable"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "is_initialized")))
@@ -80,7 +86,9 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id"), JSIConverter<std::string>::toJSI(runtime, arg.vtxo_id));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"), JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "state"), JSIConverter<std::string>::toJSI(runtime, arg.state));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "state_details"), JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::toJSI(runtime, arg.state_details));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "history"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.history));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "history_details"), JSIConverter<std::vector<margelo::nitro::nitroark::ExitStateDetailsResult>>::toJSI(runtime, arg.history_details));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "txids"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.txids));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "is_claimable"), JSIConverter<bool>::toJSI(runtime, arg.is_claimable));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "is_initialized"), JSIConverter<bool>::toJSI(runtime, arg.is_initialized));
@@ -97,7 +105,9 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state")))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state_details")))) return false;
       if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "history")))) return false;
+      if (!JSIConverter<std::vector<margelo::nitro::nitroark::ExitStateDetailsResult>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "history_details")))) return false;
       if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txids")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "is_claimable")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "is_initialized")))) return false;

@@ -10,6 +10,11 @@ import type {
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
   ExitStatusResult as NitroExitStatusResult,
+  ExitBlockRefResult as NitroExitBlockRefResult,
+  ExitTxOriginResult as NitroExitTxOriginResult,
+  ExitTxStatusResult as NitroExitTxStatusResult,
+  ExitTxResult as NitroExitTxResult,
+  ExitStateDetailsResult as NitroExitStateDetailsResult,
   ExitTransactionPackageResult as NitroExitTransactionPackageResult,
   LightningSendResult,
   OnchainPaymentResult,
@@ -47,6 +52,12 @@ export type ExitProgressState =
   | 'Claimable'
   | 'ClaimInProgress'
   | 'Claimed';
+
+export type BlockRef = NitroExitBlockRefResult;
+export type ExitTxOrigin = NitroExitTxOriginResult;
+export type ExitTxStatus = NitroExitTxStatusResult;
+export type ExitTx = NitroExitTxResult;
+export type ExitStateDetails = NitroExitStateDetailsResult;
 
 export type ExitProgressStatusResult = Omit<
   NitroExitProgressStatusResult,
@@ -101,9 +112,36 @@ export type BarkNotificationEvent = Omit<
   movement?: BarkMovement;
 };
 
-// Create the hybrid object instance
 export const NitroArkHybridObject =
   NitroModules.createHybridObject<NitroArk>('NitroArk');
+
+function enrichExitProgressStatus(
+  result: NitroExitProgressStatusResult
+): ExitProgressStatusResult {
+  const { state, ...rest } = result;
+  return {
+    ...rest,
+    state: state as ExitProgressState,
+  };
+}
+
+function enrichExitVtxo(result: NitroExitVtxoResult): ExitVtxoResult {
+  const { state, history: stateHistory, ...rest } = result;
+  return {
+    ...rest,
+    state: state as ExitProgressState,
+    history: stateHistory as ExitProgressState[],
+  };
+}
+
+function enrichExitStatus(result: NitroExitStatusResult): ExitStatusResult {
+  const { state, history: stateHistory, ...rest } = result;
+  return {
+    ...rest,
+    state: state as ExitProgressState,
+    history: stateHistory as ExitProgressState[],
+  };
+}
 
 // --- Management ---
 
@@ -267,9 +305,9 @@ export function syncNoProgress(): Promise<void> {
 export function progressExits(
   feeRateSatPerKvb?: number
 ): Promise<ExitProgressStatusResult[]> {
-  return NitroArkHybridObject.progressExits(feeRateSatPerKvb) as Promise<
-    ExitProgressStatusResult[]
-  >;
+  return NitroArkHybridObject.progressExits(feeRateSatPerKvb).then((results) =>
+    results.map(enrichExitProgressStatus)
+  );
 }
 
 /**
@@ -277,7 +315,9 @@ export function progressExits(
  * @returns A promise resolving to simplified exit entries.
  */
 export function getExitVtxos(): Promise<ExitVtxoResult[]> {
-  return NitroArkHybridObject.getExitVtxos() as Promise<ExitVtxoResult[]>;
+  return NitroArkHybridObject.getExitVtxos().then((results) =>
+    results.map(enrichExitVtxo)
+  );
 }
 
 /**
@@ -285,7 +325,9 @@ export function getExitVtxos(): Promise<ExitVtxoResult[]> {
  * @returns A promise resolving to claimable exit entries.
  */
 export function listClaimable(): Promise<ExitVtxoResult[]> {
-  return NitroArkHybridObject.listClaimable() as Promise<ExitVtxoResult[]>;
+  return NitroArkHybridObject.listClaimable().then((results) =>
+    results.map(enrichExitVtxo)
+  );
 }
 
 /**
@@ -304,7 +346,7 @@ export function getExitStatus(
     vtxoId,
     includeHistory,
     includeTransactions
-  ) as Promise<ExitStatusResult | undefined>;
+  ).then((result) => (result ? enrichExitStatus(result) : undefined));
 }
 
 /**

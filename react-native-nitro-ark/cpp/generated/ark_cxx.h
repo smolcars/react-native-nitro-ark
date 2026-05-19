@@ -974,6 +974,11 @@ namespace bark_cxx {
   struct ArkoorPaymentResult;
   struct BarkFeeEstimate;
   struct OnchainPaymentResult;
+  struct ExitBlockRefResult;
+  struct ExitTxOriginResult;
+  struct ExitTxStatusResult;
+  struct ExitTxResult;
+  struct ExitStateDetailsResult;
   struct ExitProgressStatusResult;
   struct ExitVtxoResult;
   struct ExitTransactionPackageResult;
@@ -1092,11 +1097,84 @@ struct OnchainPaymentResult final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitBlockRefResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitBlockRefResult
+struct ExitBlockRefResult final {
+  ::std::uint32_t height CXX_DEFAULT_VALUE(0);
+  ::rust::String hash;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitBlockRefResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitTxOriginResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitTxOriginResult
+struct ExitTxOriginResult final {
+  ::rust::String kind;
+  bool has_confirmed_in CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult confirmed_in;
+  ::std::uint64_t fee_rate_sat_per_kvb CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitTxOriginResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitTxStatusResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitTxStatusResult
+struct ExitTxStatusResult final {
+  ::rust::String kind;
+  ::rust::Vec<::rust::String> txids;
+  ::std::uint64_t min_fee_rate_sat_per_kvb CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t min_fee_sat CXX_DEFAULT_VALUE(0);
+  ::rust::String child_txid;
+  bool has_origin CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitTxOriginResult origin;
+  bool has_block CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult block;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitTxStatusResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitTxResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitTxResult
+struct ExitTxResult final {
+  ::rust::String txid;
+  ::bark_cxx::ExitTxStatusResult status;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitTxResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitStateDetailsResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitStateDetailsResult
+struct ExitStateDetailsResult final {
+  ::rust::String kind;
+  ::std::uint32_t tip_height CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::bark_cxx::ExitTxResult> transactions;
+  bool has_confirmed_block CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult confirmed_block;
+  ::std::uint32_t claimable_height CXX_DEFAULT_VALUE(0);
+  bool has_claimable_since CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult claimable_since;
+  bool has_last_scanned_block CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult last_scanned_block;
+  ::rust::String claim_txid;
+  ::rust::String txid;
+  bool has_block CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::ExitBlockRefResult block;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitStateDetailsResult
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$ExitProgressStatusResult
 struct ExitProgressStatusResult final {
   ::rust::String vtxo_id;
   ::rust::String state;
+  ::bark_cxx::ExitStateDetailsResult state_details;
   ::rust::String error;
 
   using IsRelocatable = ::std::true_type;
@@ -1109,7 +1187,9 @@ struct ExitVtxoResult final {
   ::rust::String vtxo_id;
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
   ::rust::String state;
+  ::bark_cxx::ExitStateDetailsResult state_details;
   ::rust::Vec<::rust::String> history;
+  ::rust::Vec<::bark_cxx::ExitStateDetailsResult> history_details;
   ::rust::Vec<::rust::String> txids;
   bool is_claimable CXX_DEFAULT_VALUE(false);
   bool is_initialized CXX_DEFAULT_VALUE(false);
@@ -1137,7 +1217,9 @@ struct ExitTransactionPackageResult final {
 struct ExitStatusResult final {
   ::rust::String vtxo_id;
   ::rust::String state;
+  ::bark_cxx::ExitStateDetailsResult state_details;
   ::rust::Vec<::rust::String> history;
+  ::rust::Vec<::bark_cxx::ExitStateDetailsResult> history_details;
   ::rust::Vec<::bark_cxx::ExitTransactionPackageResult> transactions;
 
   using IsRelocatable = ::std::true_type;

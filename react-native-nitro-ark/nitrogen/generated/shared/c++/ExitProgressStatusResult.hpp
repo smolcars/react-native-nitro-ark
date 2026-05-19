@@ -28,9 +28,11 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `ExitStateDetailsResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ExitStateDetailsResult; }
 
 #include <string>
+#include "ExitStateDetailsResult.hpp"
 #include <optional>
 
 namespace margelo::nitro::nitroark {
@@ -42,11 +44,12 @@ namespace margelo::nitro::nitroark {
   public:
     std::string vtxo_id     SWIFT_PRIVATE;
     std::string state     SWIFT_PRIVATE;
+    ExitStateDetailsResult state_details     SWIFT_PRIVATE;
     std::optional<std::string> error     SWIFT_PRIVATE;
 
   public:
     ExitProgressStatusResult() = default;
-    explicit ExitProgressStatusResult(std::string vtxo_id, std::string state, std::optional<std::string> error): vtxo_id(vtxo_id), state(state), error(error) {}
+    explicit ExitProgressStatusResult(std::string vtxo_id, std::string state, ExitStateDetailsResult state_details, std::optional<std::string> error): vtxo_id(vtxo_id), state(state), state_details(state_details), error(error) {}
 
   public:
     friend bool operator==(const ExitProgressStatusResult& lhs, const ExitProgressStatusResult& rhs) = default;
@@ -64,6 +67,7 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::ExitProgressStatusResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state"))),
+        JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state_details"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "error")))
       );
     }
@@ -71,6 +75,7 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id"), JSIConverter<std::string>::toJSI(runtime, arg.vtxo_id));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "state"), JSIConverter<std::string>::toJSI(runtime, arg.state));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "state_details"), JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::toJSI(runtime, arg.state_details));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "error"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.error));
       return obj;
     }
@@ -84,6 +89,7 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_id")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state")))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::ExitStateDetailsResult>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state_details")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "error")))) return false;
       return true;
     }
