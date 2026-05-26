@@ -18,6 +18,7 @@ use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::{self, Preimage};
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
+use bark::lock_manager::memory::MemoryLockManager;
 use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
@@ -239,8 +240,10 @@ impl WalletManager {
         let onchain_wallet =
             OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())
                 .await?;
+        let lock_manager = Box::new(MemoryLockManager::new());
         let wallet =
-            Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet, config).await?;
+            Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet, config, lock_manager)
+                .await?;
 
         Ok((wallet, onchain_wallet))
     }

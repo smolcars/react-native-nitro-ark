@@ -10,9 +10,7 @@ pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .exit
-                .write()
-                .await
+                .exit_mgr()
                 .start_exit_for_entire_wallet()
                 .await
                 .context("Failed to start exit for entire wallet")?;
@@ -66,9 +64,7 @@ pub async fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
                 .collect::<Vec<_>>();
 
             ctx.wallet
-                .exit
-                .write()
-                .await
+                .exit_mgr()
                 .start_exit_for_vtxos(&vtxos)
                 .await
                 .context("Failed to start exit for VTXOs")?;
@@ -82,10 +78,7 @@ pub async fn sync_exit() -> anyhow::Result<()> {
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .exit
-                .write()
-                .await
-                .sync(ctx.wallet.as_ref(), &mut ctx.onchain_wallet)
+                .sync_exits(&mut ctx.onchain_wallet)
                 .await
                 .context("Failed to sync exit")?;
             Ok(())
@@ -98,9 +91,7 @@ pub async fn sync_no_progress() -> anyhow::Result<()> {
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .exit
-                .write()
-                .await
+                .exit_mgr()
                 .sync_no_progress(&ctx.onchain_wallet)
                 .await
                 .context("Failed to sync exits without progress")?;
@@ -117,9 +108,7 @@ pub async fn progress_exits(
         .with_context_async(|ctx| async {
             let result = ctx
                 .wallet
-                .exit
-                .write()
-                .await
+                .exit_mgr()
                 .progress_exits(ctx.wallet.as_ref(), &mut ctx.onchain_wallet, fee_rate)
                 .await
                 .context("Failed to progress exits")?;
@@ -131,9 +120,7 @@ pub async fn progress_exits(
 pub async fn get_exit_vtxos() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async {
-            Ok(ctx.wallet.exit.read().await.get_exit_vtxos().clone())
-        })
+        .with_context_async(|ctx| async { Ok(ctx.wallet.exit_mgr().get_exit_vtxos().await) })
         .await
 }
 
@@ -143,12 +130,10 @@ pub async fn list_claimable() -> anyhow::Result<Vec<bark::exit::ExitVtxo>> {
         .with_context_async(|ctx| async {
             Ok(ctx
                 .wallet
-                .exit
-                .read()
-                .await
+                .exit_mgr()
                 .list_claimable()
+                .await
                 .into_iter()
-                .cloned()
                 .collect())
         })
         .await
@@ -164,9 +149,7 @@ pub async fn get_exit_status(
     manager
         .with_context_async(|ctx| async move {
             ctx.wallet
-                .exit
-                .read()
-                .await
+                .exit_mgr()
                 .get_exit_status(vtxo_id, include_history, include_transactions)
                 .await
                 .context("Failed to get exit status")
@@ -177,14 +160,19 @@ pub async fn get_exit_status(
 pub async fn has_pending_exits() -> anyhow::Result<bool> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { Ok(ctx.wallet.exit.read().await.has_pending_exits()) })
+        .with_context_async(|ctx| async { Ok(ctx.wallet.exit_mgr().has_pending_exits().await) })
         .await
 }
 
 pub async fn pending_exit_total() -> anyhow::Result<bark::ark::bitcoin::Amount> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { Ok(ctx.wallet.exit.read().await.pending_total()) })
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .exit_mgr()
+                .try_pending_total()
+                .context("Exit manager is currently locked")
+        })
         .await
 }
 
@@ -192,7 +180,7 @@ pub async fn all_claimable_at_height() -> anyhow::Result<Option<u32>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            Ok(ctx.wallet.exit.read().await.all_claimable_at_height().await)
+            Ok(ctx.wallet.exit_mgr().all_claimable_at_height().await)
         })
         .await
 }
@@ -205,18 +193,25 @@ pub async fn drain_exits(
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async move {
-            let exit = ctx.wallet.exit.read().await;
+            let exit = ctx.wallet.exit_mgr();
             let inputs = vtxo_ids
                 .iter()
                 .map(|id| {
                     let vtxo_id = bark::ark::VtxoId::from_str(id)?;
-                    exit.get_exit_vtxo(vtxo_id)
-                        .cloned()
-                        .with_context(|| format!("Exit VTXO not found: {}", id))
+                    Ok(vtxo_id)
                 })
                 .collect::<anyhow::Result<Vec<_>>>()?;
 
-            exit.drain_exits(&inputs, ctx.wallet.as_ref(), address, fee_rate)
+            let mut exit_vtxos = Vec::with_capacity(inputs.len());
+            for (id, vtxo_id) in vtxo_ids.iter().zip(inputs) {
+                let exit_vtxo = exit
+                    .get_exit_vtxo(vtxo_id)
+                    .await
+                    .with_context(|| format!("Exit VTXO not found: {}", id))?;
+                exit_vtxos.push(exit_vtxo);
+            }
+
+            exit.drain_exits(&exit_vtxos, ctx.wallet.as_ref(), address, fee_rate)
                 .await
                 .context("Failed to drain exits")
         })
