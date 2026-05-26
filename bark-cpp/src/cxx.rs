@@ -1645,7 +1645,9 @@ pub(crate) fn onchain_send(
         let fee_rate = if fee_rate.is_null() {
             let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
             manager
-                .with_context_async(|ctx| async { Ok(ctx.wallet.chain.fee_rates().await.regular) })
+                .with_context_async(|ctx| async {
+                    Ok(ctx.wallet.chain().fee_rates().await.regular)
+                })
                 .await?
         } else {
             FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
@@ -1671,7 +1673,7 @@ pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::
                     .require_network(net)
                     .context("Address on wrong network")?;
                 let fee_rate = if fee_rate.is_null() {
-                    ctx.wallet.chain.fee_rates().await.regular
+                    ctx.wallet.chain().fee_rates().await.regular
                 } else {
                     FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
@@ -1690,27 +1692,29 @@ pub(crate) fn onchain_send_many(
 ) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        let (destinations, fee_rate) = manager
-            .with_context_async(|ctx| async {
-                let mut destinations = Vec::new();
-                let net = ctx.wallet.properties().await?.network;
-                for output in outputs {
-                    let address = Address::from_str(&output.destination)
-                        .context("Invalid address format")?
-                        .require_network(net)
-                        .context("Address on wrong network")?;
-                    let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
-                    destinations.push((address, amount));
-                }
+        let (destinations, fee_rate): (Vec<(Address, bark::ark::bitcoin::Amount)>, FeeRate) =
+            manager
+                .with_context_async(|ctx| async {
+                    let mut destinations = Vec::new();
+                    let net = ctx.wallet.properties().await?.network;
+                    for output in outputs {
+                        let address = Address::from_str(&output.destination)
+                            .context("Invalid address format")?
+                            .require_network(net)
+                            .context("Address on wrong network")?;
+                        let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
+                        destinations.push((address, amount));
+                    }
 
-                let fee_rate = if fee_rate.is_null() {
-                    ctx.wallet.chain.fee_rates().await.regular
-                } else {
-                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
-                };
-                Ok((destinations, fee_rate))
-            })
-            .await?;
+                    let fee_rate = if fee_rate.is_null() {
+                        ctx.wallet.chain().fee_rates().await.regular
+                    } else {
+                        FeeRate::from_sat_per_vb(unsafe { *fee_rate })
+                            .context("Invalid fee rate")?
+                    };
+                    Ok((destinations, fee_rate))
+                })
+                .await?;
 
         crate::onchain::send_many(&destinations, fee_rate).await
     })?;

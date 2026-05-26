@@ -35,7 +35,7 @@ pub async fn send(dest: Address, amount: Amount, fee_rate: FeeRate) -> anyhow::R
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
-                .send(&ctx.wallet.chain, dest, amount, fee_rate)
+                .send(ctx.wallet.chain(), dest, amount, fee_rate)
                 .await
         })
         .await
@@ -50,7 +50,7 @@ pub async fn send_many(
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
-                .send_many(&ctx.wallet.chain, destinations, fee_rate)
+                .send_many(ctx.wallet.chain(), destinations, fee_rate)
                 .await
         })
         .await
@@ -62,7 +62,7 @@ pub async fn drain(destination: Address, fee_rate: FeeRate) -> anyhow::Result<Tx
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
-                .drain(&ctx.wallet.chain, destination, fee_rate)
+                .drain(ctx.wallet.chain(), destination, fee_rate)
                 .await
         })
         .await
@@ -72,7 +72,7 @@ pub async fn drain(destination: Address, fee_rate: FeeRate) -> anyhow::Result<Tx
 pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.onchain_wallet.sync(&ctx.wallet.chain).await })
+        .with_context_async(|ctx| async { ctx.onchain_wallet.sync(ctx.wallet.chain()).await })
         .await
 }
 
@@ -86,7 +86,7 @@ pub async fn broadcast_transaction(tx: Transaction) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet.chain.broadcast_tx(&tx).await?;
+            ctx.wallet.chain().broadcast_tx(&tx).await?;
             Ok(tx.compute_txid())
         })
         .await

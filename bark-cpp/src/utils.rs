@@ -9,6 +9,7 @@ use bark::{
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
+    lock_manager::memory::MemoryLockManager,
     movement::{Movement, PaymentMethod},
     onchain::OnchainWallet,
     persist::sqlite::SqliteClient,
@@ -157,7 +158,8 @@ pub(crate) async fn try_create_wallet(
     let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
 
     let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone()).await?;
-    BarkWallet::create_with_onchain(&mnemonic, net, config, db, &bdk_wallet, false)
+    let lock_manager = Box::new(MemoryLockManager::new());
+    BarkWallet::create_with_onchain(&mnemonic, net, config, db, lock_manager, &bdk_wallet, false)
         .await
         .context("error creating wallet")?;
 
@@ -280,7 +282,7 @@ pub fn vtxo_state_name(state: &VtxoState) -> &'static str {
     match state {
         VtxoState::Spendable => "Spendable",
         VtxoState::Spent => "Spent",
-        VtxoState::Locked { movement_id: _ } => "Locked",
+        VtxoState::Locked { holder: _ } => "Locked",
     }
 }
 
