@@ -50,7 +50,7 @@ export const getWalletConfig = (mnemonic: string): BarkCreateOpts => {
 };
 
 // Signet config (commented out for reference)
-// export const getSignetWalletConfig = (mnemonic: string): BarkCreateOpts => ({
+// export const getWalletConfig = (mnemonic: string): BarkCreateOpts => ({
 //   mnemonic: mnemonic,
 //   regtest: false,
 //   signet: true,
@@ -60,6 +60,9 @@ export const getWalletConfig = (mnemonic: string): BarkCreateOpts => {
 //     ark: 'ark.signet.2nd.dev',
 //     vtxo_refresh_expiry_threshold: 288,
 //     fallback_fee_rate: 100000,
+//     htlc_recv_claim_delta: 18,
+//     vtxo_exit_margin: 12,
+//     round_tx_required_confirmations: 1,
 //   },
 // });
 

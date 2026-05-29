@@ -66,6 +66,18 @@ fn ffi_config_to_config_maps_non_empty_server_access_token_to_some() {
     );
 }
 
+#[test]
+fn format_error_chain_includes_causes() {
+    let error = anyhow::anyhow!("root cause")
+        .context("middle context")
+        .context("outer context");
+
+    assert_eq!(
+        crate::utils::format_error_chain(&error),
+        "outer context\ncaused by: middle context\ncaused by: root cause"
+    );
+}
+
 /// A test fixture to ensure the wallet is loaded for a test and closed afterward.
 struct WalletTestFixture {
     _temp_dir: tempfile::TempDir,

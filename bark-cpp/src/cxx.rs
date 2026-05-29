@@ -15,6 +15,12 @@ use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
 
+fn full_ffi_error(context: &str, err: anyhow::Error) -> anyhow::Error {
+    let message = utils::format_error_chain(&err);
+    log::error!("{} failed:\n{}", context, message);
+    anyhow::anyhow!(message)
+}
+
 #[cxx::bridge(namespace = "bark_cxx")]
 pub(crate) mod ffi {
 
@@ -717,11 +723,14 @@ pub(crate) fn sync() -> anyhow::Result<()> {
 }
 
 pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
-    let create_opts = utils::ffi_config_to_config(opts)?;
+    let create_opts = utils::ffi_config_to_config(opts)
+        .map_err(|err| full_ffi_error("create_wallet config", err))?;
 
     log::info!("Creating wallet with options: {:?}", create_opts);
 
-    crate::TOKIO_RUNTIME.block_on(crate::create_wallet(Path::new(datadir), create_opts))
+    crate::TOKIO_RUNTIME
+        .block_on(crate::create_wallet(Path::new(datadir), create_opts))
+        .map_err(|err| full_ffi_error("create_wallet", err))
 }
 
 pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Result<()> {
@@ -730,11 +739,15 @@ pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Res
 
     log::info!("Loading wallet with datadir: {}", datadir);
 
-    let create_opts = utils::ffi_config_to_config(config)?;
+    let create_opts = utils::ffi_config_to_config(config)
+        .map_err(|err| full_ffi_error("load_wallet config", err))?;
 
-    let (config, _) = utils::merge_config_opts(create_opts)?;
+    let (config, _) = utils::merge_config_opts(create_opts)
+        .map_err(|err| full_ffi_error("load_wallet config", err))?;
 
-    crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
+    crate::TOKIO_RUNTIME
+        .block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
+        .map_err(|err| full_ffi_error("load_wallet", err))
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<ffi::BoardResult> {

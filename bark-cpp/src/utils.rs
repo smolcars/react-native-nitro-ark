@@ -18,13 +18,28 @@ use bark::{
 };
 
 use bitcoin_ext::FeeRateExt;
-use logger::log::{debug, info};
+use logger::log::{debug, error, info};
 use tokio::fs;
 use tonic::transport::Uri;
 
 use crate::cxx::ffi;
 
 pub(crate) const DB_FILE: &str = "db.sqlite";
+
+pub(crate) fn format_error_chain(error: &anyhow::Error) -> String {
+    error
+        .chain()
+        .enumerate()
+        .map(|(index, cause)| {
+            if index == 0 {
+                cause.to_string()
+            } else {
+                format!("caused by: {}", cause)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
 impl ConfigOpts {
     pub fn merge_into(self, cfg: &mut Config) -> anyhow::Result<()> {
@@ -143,7 +158,7 @@ pub(crate) async fn try_create_wallet(
 
     fs::create_dir_all(datadir)
         .await
-        .context("can't create dir")?;
+        .with_context(|| format!("can't create wallet datadir {}", datadir.display()))?;
 
     debug!("try_create_wallet datadir {:?} ", datadir);
     debug!("try_create_walletnetwork {:?}", net);
@@ -155,15 +170,42 @@ pub(crate) async fn try_create_wallet(
     let seed = mnemonic.to_seed("");
 
     // open db
-    let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
+    let db_path = datadir.join(DB_FILE);
+    let db = Arc::new(
+        SqliteClient::open(db_path.clone())
+            .with_context(|| format!("failed to open wallet database {}", db_path.display()))?,
+    );
 
-    let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone()).await?;
-    let lock_manager = Box::new(MemoryLockManager::new());
-    BarkWallet::create_with_onchain(&mnemonic, net, config, db, lock_manager, &bdk_wallet, false)
+    debug!("Loading or creating onchain wallet");
+    let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone())
         .await
-        .context("error creating wallet")?;
-
-    Ok(())
+        .context("failed to load or create onchain wallet")?;
+    let lock_manager = Box::new(MemoryLockManager::new());
+    debug!("Creating bark wallet with onchain backend");
+    match BarkWallet::create_with_onchain(
+        &mnemonic,
+        net,
+        config,
+        db,
+        lock_manager,
+        &bdk_wallet,
+        false,
+    )
+    .await
+    .context("error creating wallet")
+    {
+        Ok(_) => {
+            info!("Created bark wallet successfully");
+            Ok(())
+        }
+        Err(err) => {
+            error!(
+                "Failed to create bark wallet:\n{}",
+                format_error_chain(&err)
+            );
+            Err(err)
+        }
+    }
 }
 
 /// Represents the different destinations for the `send` command

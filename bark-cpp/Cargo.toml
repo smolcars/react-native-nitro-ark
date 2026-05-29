@@ -8,6 +8,7 @@ bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.2
   "native",
   "tls-webpki-roots",
   "onchain-bdk",
+  "bitcoind-rpc",
   "sqlite",
 ], default-features = false }
 
