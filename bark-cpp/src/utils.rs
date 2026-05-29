@@ -182,16 +182,9 @@ pub(crate) async fn try_create_wallet(
         .context("failed to load or create onchain wallet")?;
     let lock_manager = Box::new(MemoryLockManager::new());
     debug!("Creating bark wallet with exit support");
-    match BarkWallet::create_with_exits(
-        &mnemonic,
-        net,
-        config,
-        db,
-        lock_manager,
-        false,
-    )
-    .await
-    .context("error creating wallet")
+    match BarkWallet::create_with_exits(&mnemonic, net, config, db, lock_manager, false)
+        .await
+        .context("error creating wallet")
     {
         Ok(_) => {
             info!("Created bark wallet successfully");
