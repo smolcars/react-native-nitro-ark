@@ -241,9 +241,7 @@ impl WalletManager {
             OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())
                 .await?;
         let lock_manager = Box::new(MemoryLockManager::new());
-        let wallet =
-            Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet, config, lock_manager)
-                .await?;
+        let wallet = Wallet::open_with_exits(&mnemonic, db.clone(), config, lock_manager).await?;
 
         Ok((wallet, onchain_wallet))
     }

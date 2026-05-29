@@ -30,7 +30,6 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("startExitForEntireWallet", &HybridNitroArkSpec::startExitForEntireWallet);
       prototype.registerHybridMethod("startExitForVtxos", &HybridNitroArkSpec::startExitForVtxos);
       prototype.registerHybridMethod("syncExit", &HybridNitroArkSpec::syncExit);
-      prototype.registerHybridMethod("syncNoProgress", &HybridNitroArkSpec::syncNoProgress);
       prototype.registerHybridMethod("progressExits", &HybridNitroArkSpec::progressExits);
       prototype.registerHybridMethod("getExitVtxos", &HybridNitroArkSpec::getExitVtxos);
       prototype.registerHybridMethod("listClaimable", &HybridNitroArkSpec::listClaimable);

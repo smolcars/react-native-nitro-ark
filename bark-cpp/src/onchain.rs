@@ -1,4 +1,4 @@
-use bark::onchain::{ChainSync, Utxo};
+use bark::onchain::{ChainSync, GetAddress, Utxo};
 use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;

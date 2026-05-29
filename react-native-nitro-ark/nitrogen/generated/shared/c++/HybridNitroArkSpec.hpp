@@ -136,7 +136,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
       virtual std::shared_ptr<Promise<void>> startExitForVtxos(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<void>> syncExit() = 0;
-      virtual std::shared_ptr<Promise<void>> syncNoProgress() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>> progressExits(std::optional<double> feeRateSatPerKvb) = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> listClaimable() = 0;
