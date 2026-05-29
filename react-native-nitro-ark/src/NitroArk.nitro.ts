@@ -91,15 +91,11 @@ export interface ExitBlockRefResult {
 export interface ExitTxOriginResult {
   kind: string;
   confirmed_in?: ExitBlockRefResult;
-  fee_rate_sat_per_kvb?: number;
-  total_fee_sat?: number;
 }
 
 export interface ExitTxStatusResult {
   kind: string;
   txids?: string[];
-  min_fee_rate_sat_per_kvb?: number;
-  min_fee_sat?: number;
   child_txid?: string;
   origin?: ExitTxOriginResult;
   block?: ExitBlockRefResult;
@@ -282,7 +278,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   startExitForEntireWallet(): Promise<void>;
   startExitForVtxos(vtxoIds: string[]): Promise<void>;
   syncExit(): Promise<void>;
-  syncNoProgress(): Promise<void>;
   progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;
   listClaimable(): Promise<ExitVtxoResult[]>;

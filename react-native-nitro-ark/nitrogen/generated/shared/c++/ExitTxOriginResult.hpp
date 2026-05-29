@@ -44,12 +44,10 @@ namespace margelo::nitro::nitroark {
   public:
     std::string kind     SWIFT_PRIVATE;
     std::optional<ExitBlockRefResult> confirmed_in     SWIFT_PRIVATE;
-    std::optional<double> fee_rate_sat_per_kvb     SWIFT_PRIVATE;
-    std::optional<double> total_fee_sat     SWIFT_PRIVATE;
 
   public:
     ExitTxOriginResult() = default;
-    explicit ExitTxOriginResult(std::string kind, std::optional<ExitBlockRefResult> confirmed_in, std::optional<double> fee_rate_sat_per_kvb, std::optional<double> total_fee_sat): kind(kind), confirmed_in(confirmed_in), fee_rate_sat_per_kvb(fee_rate_sat_per_kvb), total_fee_sat(total_fee_sat) {}
+    explicit ExitTxOriginResult(std::string kind, std::optional<ExitBlockRefResult> confirmed_in): kind(kind), confirmed_in(confirmed_in) {}
 
   public:
     friend bool operator==(const ExitTxOriginResult& lhs, const ExitTxOriginResult& rhs) = default;
@@ -66,17 +64,13 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::ExitTxOriginResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind"))),
-        JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "confirmed_in"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_kvb"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat")))
+        JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "confirmed_in")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::ExitTxOriginResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "kind"), JSIConverter<std::string>::toJSI(runtime, arg.kind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "confirmed_in"), JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::toJSI(runtime, arg.confirmed_in));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_kvb"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.fee_rate_sat_per_kvb));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.total_fee_sat));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -89,8 +83,6 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "confirmed_in")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_kvb")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat")))) return false;
       return true;
     }
   };

@@ -89,15 +89,11 @@ pub(crate) mod ffi {
         kind: String,
         has_confirmed_in: bool,
         confirmed_in: ExitBlockRefResult,
-        fee_rate_sat_per_kvb: u64,
-        total_fee_sat: u64,
     }
 
     pub struct ExitTxStatusResult {
         kind: String,
         txids: Vec<String>,
-        min_fee_rate_sat_per_kvb: u64,
-        min_fee_sat: u64,
         child_txid: String,
         has_origin: bool,
         origin: ExitTxOriginResult,
@@ -406,7 +402,6 @@ pub(crate) mod ffi {
         fn start_exit_for_entire_wallet() -> Result<()>;
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
         fn sync_exit() -> Result<()>;
-        fn sync_no_progress() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
         fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
@@ -937,8 +932,6 @@ fn empty_exit_tx_origin() -> ffi::ExitTxOriginResult {
         kind: String::new(),
         has_confirmed_in: false,
         confirmed_in: empty_exit_block_ref(),
-        fee_rate_sat_per_kvb: 0,
-        total_fee_sat: 0,
     }
 }
 
@@ -948,25 +941,16 @@ fn exit_tx_origin_to_ffi(origin: &bark::exit::ExitTxOrigin) -> ffi::ExitTxOrigin
             kind: "wallet".to_string(),
             has_confirmed_in: confirmed_in.is_some(),
             confirmed_in: confirmed_in.map_or_else(empty_exit_block_ref, exit_block_ref_to_ffi),
-            fee_rate_sat_per_kvb: 0,
-            total_fee_sat: 0,
         },
-        bark::exit::ExitTxOrigin::Mempool {
-            fee_rate,
-            total_fee,
-        } => ffi::ExitTxOriginResult {
+        bark::exit::ExitTxOrigin::Mempool => ffi::ExitTxOriginResult {
             kind: "mempool".to_string(),
             has_confirmed_in: false,
             confirmed_in: empty_exit_block_ref(),
-            fee_rate_sat_per_kvb: fee_rate.to_sat_per_kvb(),
-            total_fee_sat: total_fee.to_sat(),
         },
         bark::exit::ExitTxOrigin::Block { confirmed_in } => ffi::ExitTxOriginResult {
             kind: "block".to_string(),
             has_confirmed_in: true,
             confirmed_in: exit_block_ref_to_ffi(*confirmed_in),
-            fee_rate_sat_per_kvb: 0,
-            total_fee_sat: 0,
         },
     }
 }
@@ -975,8 +959,6 @@ fn empty_exit_tx_status() -> ffi::ExitTxStatusResult {
     ffi::ExitTxStatusResult {
         kind: String::new(),
         txids: Vec::new(),
-        min_fee_rate_sat_per_kvb: 0,
-        min_fee_sat: 0,
         child_txid: String::new(),
         has_origin: false,
         origin: empty_exit_tx_origin(),
@@ -1001,31 +983,13 @@ fn exit_tx_status_to_ffi(status: &bark::exit::ExitTxStatus) -> ffi::ExitTxStatus
                 ..empty_exit_tx_status()
             }
         }
-        bark::exit::ExitTxStatus::NeedsSignedPackage => ffi::ExitTxStatusResult {
-            kind: "needs-signed-package".to_string(),
+        bark::exit::ExitTxStatus::AwaitingCpfpBroadcast => ffi::ExitTxStatusResult {
+            kind: "awaiting-cpfp-broadcast".to_string(),
             ..empty_exit_tx_status()
         },
-        bark::exit::ExitTxStatus::NeedsReplacementPackage {
-            min_fee_rate,
-            min_fee,
-        } => ffi::ExitTxStatusResult {
-            kind: "needs-replacement-package".to_string(),
-            min_fee_rate_sat_per_kvb: min_fee_rate.to_sat_per_kvb(),
-            min_fee_sat: min_fee.to_sat(),
-            ..empty_exit_tx_status()
-        },
-        bark::exit::ExitTxStatus::NeedsBroadcasting { child_txid, origin } => {
+        bark::exit::ExitTxStatus::AwaitingConfirmation { child_txid, origin } => {
             ffi::ExitTxStatusResult {
-                kind: "needs-broadcasting".to_string(),
-                child_txid: child_txid.to_string(),
-                has_origin: true,
-                origin: exit_tx_origin_to_ffi(origin),
-                ..empty_exit_tx_status()
-            }
-        }
-        bark::exit::ExitTxStatus::BroadcastWithCpfp { child_txid, origin } => {
-            ffi::ExitTxStatusResult {
-                kind: "broadcast-with-cpfp".to_string(),
+                kind: "awaiting-confirmation".to_string(),
                 child_txid: child_txid.to_string(),
                 has_origin: true,
                 origin: exit_tx_origin_to_ffi(origin),
@@ -1540,10 +1504,6 @@ pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
 
 pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(vtxo_ids))
-}
-
-pub(crate) fn sync_no_progress() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::sync_no_progress())
 }
 
 pub(crate) fn sync_exit() -> anyhow::Result<()> {

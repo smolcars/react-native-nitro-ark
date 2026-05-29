@@ -1113,8 +1113,6 @@ struct ExitTxOriginResult final {
   ::rust::String kind;
   bool has_confirmed_in CXX_DEFAULT_VALUE(false);
   ::bark_cxx::ExitBlockRefResult confirmed_in;
-  ::std::uint64_t fee_rate_sat_per_kvb CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1125,8 +1123,6 @@ struct ExitTxOriginResult final {
 struct ExitTxStatusResult final {
   ::rust::String kind;
   ::rust::Vec<::rust::String> txids;
-  ::std::uint64_t min_fee_rate_sat_per_kvb CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t min_fee_sat CXX_DEFAULT_VALUE(0);
   ::rust::String child_txid;
   bool has_origin CXX_DEFAULT_VALUE(false);
   ::bark_cxx::ExitTxOriginResult origin;
@@ -1581,8 +1577,6 @@ void start_exit_for_entire_wallet();
 void start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
 void sync_exit();
-
-void sync_no_progress();
 
 void sync_pending_rounds();
 

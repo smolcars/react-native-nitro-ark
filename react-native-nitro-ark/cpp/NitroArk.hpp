@@ -48,12 +48,6 @@ inline ExitTxOriginResult convertRustExitTxOrigin(const bark_cxx::ExitTxOriginRe
   if (origin_rs.has_confirmed_in) {
     origin.confirmed_in = convertRustExitBlockRef(origin_rs.confirmed_in);
   }
-  if (origin_rs.fee_rate_sat_per_kvb != 0) {
-    origin.fee_rate_sat_per_kvb = static_cast<double>(origin_rs.fee_rate_sat_per_kvb);
-  }
-  if (origin_rs.total_fee_sat != 0) {
-    origin.total_fee_sat = static_cast<double>(origin_rs.total_fee_sat);
-  }
   return origin;
 }
 
@@ -67,12 +61,6 @@ inline ExitTxStatusResult convertRustExitTxStatus(const bark_cxx::ExitTxStatusRe
     for (const auto& txid : status_rs.txids) {
       status.txids->emplace_back(std::string(txid.data(), txid.length()));
     }
-  }
-  if (status_rs.min_fee_rate_sat_per_kvb != 0) {
-    status.min_fee_rate_sat_per_kvb = static_cast<double>(status_rs.min_fee_rate_sat_per_kvb);
-  }
-  if (status_rs.min_fee_sat != 0) {
-    status.min_fee_sat = static_cast<double>(status_rs.min_fee_sat);
   }
   if (status_rs.child_txid.length() != 0) {
     status.child_txid = std::string(status_rs.child_txid.data(), status_rs.child_txid.length());
@@ -474,16 +462,6 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::sync_exit();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
-  std::shared_ptr<Promise<void>> syncNoProgress() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::sync_no_progress();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

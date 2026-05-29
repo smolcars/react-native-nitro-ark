@@ -290,14 +290,6 @@ export function syncExit(): Promise<void> {
 }
 
 /**
- * Synchronizes tracked exits without advancing their state.
- * @returns A promise that resolves on success.
- */
-export function syncNoProgress(): Promise<void> {
-  return NitroArkHybridObject.syncNoProgress();
-}
-
-/**
  * Progresses tracked exits by one step.
  * @param feeRateSatPerKvb Optional fee rate override in sat/kvB.
  * @returns A promise resolving to simplified exit progress entries.

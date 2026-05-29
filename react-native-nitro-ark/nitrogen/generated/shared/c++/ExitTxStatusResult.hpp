@@ -48,15 +48,13 @@ namespace margelo::nitro::nitroark {
   public:
     std::string kind     SWIFT_PRIVATE;
     std::optional<std::vector<std::string>> txids     SWIFT_PRIVATE;
-    std::optional<double> min_fee_rate_sat_per_kvb     SWIFT_PRIVATE;
-    std::optional<double> min_fee_sat     SWIFT_PRIVATE;
     std::optional<std::string> child_txid     SWIFT_PRIVATE;
     std::optional<ExitTxOriginResult> origin     SWIFT_PRIVATE;
     std::optional<ExitBlockRefResult> block     SWIFT_PRIVATE;
 
   public:
     ExitTxStatusResult() = default;
-    explicit ExitTxStatusResult(std::string kind, std::optional<std::vector<std::string>> txids, std::optional<double> min_fee_rate_sat_per_kvb, std::optional<double> min_fee_sat, std::optional<std::string> child_txid, std::optional<ExitTxOriginResult> origin, std::optional<ExitBlockRefResult> block): kind(kind), txids(txids), min_fee_rate_sat_per_kvb(min_fee_rate_sat_per_kvb), min_fee_sat(min_fee_sat), child_txid(child_txid), origin(origin), block(block) {}
+    explicit ExitTxStatusResult(std::string kind, std::optional<std::vector<std::string>> txids, std::optional<std::string> child_txid, std::optional<ExitTxOriginResult> origin, std::optional<ExitBlockRefResult> block): kind(kind), txids(txids), child_txid(child_txid), origin(origin), block(block) {}
 
   public:
     friend bool operator==(const ExitTxStatusResult& lhs, const ExitTxStatusResult& rhs) = default;
@@ -74,8 +72,6 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::ExitTxStatusResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind"))),
         JSIConverter<std::optional<std::vector<std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txids"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "min_fee_rate_sat_per_kvb"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "min_fee_sat"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "child_txid"))),
         JSIConverter<std::optional<margelo::nitro::nitroark::ExitTxOriginResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "origin"))),
         JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "block")))
@@ -85,8 +81,6 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "kind"), JSIConverter<std::string>::toJSI(runtime, arg.kind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "txids"), JSIConverter<std::optional<std::vector<std::string>>>::toJSI(runtime, arg.txids));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "min_fee_rate_sat_per_kvb"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.min_fee_rate_sat_per_kvb));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "min_fee_sat"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.min_fee_sat));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "child_txid"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.child_txid));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "origin"), JSIConverter<std::optional<margelo::nitro::nitroark::ExitTxOriginResult>>::toJSI(runtime, arg.origin));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "block"), JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::toJSI(runtime, arg.block));
@@ -102,8 +96,6 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind")))) return false;
       if (!JSIConverter<std::optional<std::vector<std::string>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txids")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "min_fee_rate_sat_per_kvb")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "min_fee_sat")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "child_txid")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::nitroark::ExitTxOriginResult>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "origin")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "block")))) return false;

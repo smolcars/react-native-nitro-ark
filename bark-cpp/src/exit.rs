@@ -78,23 +78,9 @@ pub async fn sync_exit() -> anyhow::Result<()> {
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .sync_exits(&mut ctx.onchain_wallet)
+                .sync_exits()
                 .await
                 .context("Failed to sync exit")?;
-            Ok(())
-        })
-        .await
-}
-
-pub async fn sync_no_progress() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .exit_mgr()
-                .sync_no_progress(&ctx.onchain_wallet)
-                .await
-                .context("Failed to sync exits without progress")?;
             Ok(())
         })
         .await
@@ -109,7 +95,7 @@ pub async fn progress_exits(
             let result = ctx
                 .wallet
                 .exit_mgr()
-                .progress_exits(ctx.wallet.as_ref(), &mut ctx.onchain_wallet, fee_rate)
+                .progress_exits_with_bdk(ctx.wallet.as_ref(), &mut ctx.onchain_wallet, fee_rate)
                 .await
                 .context("Failed to progress exits")?;
             Ok(result.unwrap_or_default())
