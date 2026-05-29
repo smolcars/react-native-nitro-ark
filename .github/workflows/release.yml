@@ -18,7 +18,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check formatting (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo fmt -- --check"
@@ -37,7 +37,7 @@ jobs:
     needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-android.sh"
@@ -63,7 +63,7 @@ jobs:
     needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
@@ -104,7 +104,7 @@ jobs:
       id-token: write # Required for npm trusted publishing
     steps:
       - name: Checkout code at tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }} # Checkout the specific tag
 
