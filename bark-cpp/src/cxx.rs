@@ -52,11 +52,14 @@ pub(crate) mod ffi {
         payment_hash: String,
     }
 
-    pub struct LightningSend {
+    pub struct LightningPaymentResult {
+        pub state: String,
         pub invoice: String,
         pub payment_hash: String,
+        pub has_amount: bool,
         pub amount: u64,
         pub htlc_vtxos: Vec<BarkVtxo>,
+        pub has_movement_id: bool,
         pub movement_id: u32,
         pub preimage: String,
     }
@@ -340,7 +343,10 @@ pub(crate) mod ffi {
             description: *const String,
         ) -> Result<Bolt11Invoice>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
-        fn check_lightning_payment(payment_hash: String, wait: bool) -> Result<String>;
+        fn check_lightning_payment(
+            payment_hash: String,
+            wait: bool,
+        ) -> Result<LightningPaymentResult>;
         fn sync_pending_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
         fn maintenance_delegated() -> Result<()>;
@@ -360,14 +366,19 @@ pub(crate) mod ffi {
         unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
-        ) -> Result<LightningSend>;
-        unsafe fn pay_lightning_offer(offer: &str, amount_sat: *const u64)
-        -> Result<LightningSend>;
+            wait: bool,
+        ) -> Result<LightningPaymentResult>;
+        unsafe fn pay_lightning_offer(
+            offer: &str,
+            amount_sat: *const u64,
+            wait: bool,
+        ) -> Result<LightningPaymentResult>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
             comment: &str,
-        ) -> Result<LightningSend>;
+            wait: bool,
+        ) -> Result<LightningPaymentResult>;
         unsafe fn progress_exits(
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<Vec<ExitProgressStatusResult>>;
@@ -826,91 +837,87 @@ pub(crate) fn estimate_lightning_send_fee(amount_sat: u64) -> anyhow::Result<Bar
     })
 }
 
+fn lightning_payment_result_to_ffi(
+    payment: crate::LightningPaymentResult,
+) -> ffi::LightningPaymentResult {
+    ffi::LightningPaymentResult {
+        state: payment.state,
+        invoice: payment
+            .invoice
+            .as_ref()
+            .map_or(String::new(), ToString::to_string),
+        payment_hash: payment.payment_hash.to_string(),
+        has_amount: payment.amount.is_some(),
+        amount: payment.amount.map_or(0, |amount| amount.to_sat()),
+        htlc_vtxos: payment
+            .htlc_vtxos
+            .into_iter()
+            .map(utils::wallet_vtxo_to_bark_vtxo)
+            .collect(),
+        has_movement_id: payment.movement_id.is_some(),
+        movement_id: payment.movement_id.unwrap_or(0),
+        preimage: payment
+            .preimage
+            .map_or(String::new(), |p| p.to_lower_hex_string()),
+    }
+}
+
 pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
-) -> anyhow::Result<ffi::LightningSend> {
+    wait: bool,
+) -> anyhow::Result<ffi::LightningPaymentResult> {
     let amount_opt =
         unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
     let invoice = lightning::Invoice::from_str(destination)?;
 
     let send_result =
-        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_invoice(invoice, amount_opt))?;
+        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
 
-    Ok(ffi::LightningSend {
-        htlc_vtxos: send_result
-            .htlc_vtxos
-            .into_iter()
-            .map(utils::wallet_vtxo_to_bark_vtxo)
-            .collect(),
-        amount: send_result.amount.to_sat(),
-        invoice: send_result.invoice.to_string(),
-        payment_hash: send_result.invoice.payment_hash().to_string(),
-        movement_id: send_result.movement_id.0,
-        preimage: send_result
-            .preimage
-            .map_or(String::new(), |p| p.to_lower_hex_string()),
-    })
+    Ok(lightning_payment_result_to_ffi(send_result))
 }
 
 pub(crate) fn pay_lightning_offer(
     offer: &str,
     amount_sat: *const u64,
-) -> anyhow::Result<ffi::LightningSend> {
+    wait: bool,
+) -> anyhow::Result<ffi::LightningPaymentResult> {
     let amount_opt =
         unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
     let offer = lightning::Offer::from_str(offer)
         .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
 
-    let send_result =
-        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(offer.clone(), amount_opt))?;
+    let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(
+        offer.clone(),
+        amount_opt,
+        wait,
+    ))?;
 
-    Ok(ffi::LightningSend {
-        htlc_vtxos: send_result
-            .htlc_vtxos
-            .into_iter()
-            .map(utils::wallet_vtxo_to_bark_vtxo)
-            .collect(),
-        amount: send_result.amount.to_sat(),
-        invoice: send_result.invoice.to_string(),
-        payment_hash: send_result.invoice.payment_hash().to_string(),
-        movement_id: send_result.movement_id.0,
-        preimage: send_result
-            .preimage
-            .map_or(String::new(), |p| p.to_lower_hex_string()),
-    })
+    Ok(lightning_payment_result_to_ffi(send_result))
 }
 
 pub(crate) fn pay_lightning_address(
     addr: &str,
     amount_sat: u64,
     comment: &str,
-) -> anyhow::Result<ffi::LightningSend> {
+    wait: bool,
+) -> anyhow::Result<ffi::LightningPaymentResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let comment_opt = if comment.is_empty() {
         None
     } else {
         Some(comment)
     };
-    let send_result =
-        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(addr, amount, comment_opt))?;
+    let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(
+        addr,
+        amount,
+        comment_opt,
+        wait,
+    ))?;
 
-    Ok(ffi::LightningSend {
-        htlc_vtxos: send_result
-            .htlc_vtxos
-            .into_iter()
-            .map(utils::wallet_vtxo_to_bark_vtxo)
-            .collect(),
-        amount: send_result.amount.to_sat(),
-        invoice: send_result.invoice.to_string(),
-        payment_hash: send_result.invoice.payment_hash().to_string(),
-        movement_id: send_result.movement_id.0,
-        preimage: send_result
-            .preimage
-            .map_or(String::new(), |p| p.to_lower_hex_string()),
-    })
+    Ok(lightning_payment_result_to_ffi(send_result))
 }
 
 fn empty_exit_block_ref() -> ffi::ExitBlockRefResult {
@@ -1491,11 +1498,14 @@ pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()>
     Ok(())
 }
 
-pub(crate) fn check_lightning_payment(payment_hash: String, wait: bool) -> anyhow::Result<String> {
+pub(crate) fn check_lightning_payment(
+    payment_hash: String,
+    wait: bool,
+) -> anyhow::Result<ffi::LightningPaymentResult> {
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
     let result =
         crate::TOKIO_RUNTIME.block_on(crate::check_lightning_payment(payment_hash, wait))?;
-    Ok(result.map_or(String::new(), |p| p.to_lower_hex_string()))
+    Ok(lightning_payment_result_to_ffi(result))
 }
 
 pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {

@@ -16,7 +16,7 @@ import type {
   ExitTxResult as NitroExitTxResult,
   ExitStateDetailsResult as NitroExitStateDetailsResult,
   ExitTransactionPackageResult as NitroExitTransactionPackageResult,
-  LightningSendResult,
+  LightningPaymentResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
   OnchainBalanceResult,
@@ -110,6 +110,12 @@ export type BarkNotificationEvent = Omit<
 > & {
   kind: BarkNotificationKind;
   movement?: BarkMovement;
+};
+
+export type LightningPaymentState = 'unknown' | 'in_progress' | 'paid';
+
+export type LightningPayment = Omit<LightningPaymentResult, 'state'> & {
+  state: LightningPaymentState;
 };
 
 export const NitroArkHybridObject =
@@ -744,16 +750,21 @@ export function lightningReceiveStatus(
 }
 
 /**
- * Checks if a Lightning payment has been received and returns the preimage if available.
+ * Checks a Lightning payment and optionally waits for completion.
  * @param paymentHash The payment hash of the Lightning payment.
- * @param wait Whether to wait for the payment to be received.
- * @returns A promise resolving to the preimage string if payment received, or null if not.
+ * @param wait Whether to wait for the payment to complete.
+ * @returns A promise resolving to the current Lightning payment state.
  */
 export function checkLightningPayment(
   paymentHash: string,
   wait: boolean
-): Promise<string | null> {
-  return NitroArkHybridObject.checkLightningPayment(paymentHash, wait);
+): Promise<LightningPayment> {
+  return NitroArkHybridObject.checkLightningPayment(paymentHash, wait).then(
+    (result) => ({
+      ...result,
+      state: result.state as LightningPaymentState,
+    })
+  );
 }
 
 /**
@@ -787,27 +798,43 @@ export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
 /**
  * Pays a Bolt11 Lightning invoice.
  * @param destination The Lightning invoice.
+ * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a LightningSendResult object
+ * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningInvoice(
   destination: string,
+  wait: boolean,
   amountSat?: number
-): Promise<LightningSendResult> {
-  return NitroArkHybridObject.payLightningInvoice(destination, amountSat);
+): Promise<LightningPayment> {
+  return NitroArkHybridObject.payLightningInvoice(
+    destination,
+    wait,
+    amountSat
+  ).then((result) => ({
+    ...result,
+    state: result.state as LightningPaymentState,
+  }));
 }
 
 /**
  * Sends a payment to a Bolt12 offer.
  * @param offer The Bolt12 offer.
+ * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a LightningSendResult object
+ * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningOffer(
   offer: string,
+  wait: boolean,
   amountSat?: number
-): Promise<LightningSendResult> {
-  return NitroArkHybridObject.payLightningOffer(offer, amountSat);
+): Promise<LightningPayment> {
+  return NitroArkHybridObject.payLightningOffer(offer, wait, amountSat).then(
+    (result) => ({
+      ...result,
+      state: result.state as LightningPaymentState,
+    })
+  );
 }
 
 /**
@@ -815,14 +842,24 @@ export function payLightningOffer(
  * @param addr The Lightning Address.
  * @param amountSat The amount in satoshis to send.
  * @param comment An optional comment.
- * @returns A promise resolving to a LightningSendResult object
+ * @param wait Whether to wait for the payment to complete.
+ * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningAddress(
   addr: string,
   amountSat: number,
-  comment: string
-): Promise<LightningSendResult> {
-  return NitroArkHybridObject.payLightningAddress(addr, amountSat, comment);
+  comment: string,
+  wait: boolean
+): Promise<LightningPayment> {
+  return NitroArkHybridObject.payLightningAddress(
+    addr,
+    amountSat,
+    comment,
+    wait
+  ).then((result) => ({
+    ...result,
+    state: result.state as LightningPaymentState,
+  }));
 }
 
 /**
@@ -960,7 +997,7 @@ export type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,
-  LightningSendResult,
+  LightningPaymentResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
   OnchainBalanceResult,

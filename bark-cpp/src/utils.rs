@@ -3,9 +3,11 @@ use std::{path::Path, str::FromStr, sync::Arc};
 use anyhow::{self, Context, bail};
 use bark::{
     Config, Wallet as BarkWallet, WalletVtxo,
+    actions::lightning::pay::{LightningSendState, Progress},
     ark::{
         Vtxo, VtxoId,
         bitcoin::{FeeRate, Network, secp256k1::PublicKey},
+        lightning::PaymentHash,
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
@@ -23,6 +25,7 @@ use tokio::fs;
 use tonic::transport::Uri;
 
 use crate::cxx::ffi;
+use crate::{LightningPaymentResult, WalletContext};
 
 pub(crate) const DB_FILE: &str = "db.sqlite";
 
@@ -39,6 +42,60 @@ pub(crate) fn format_error_chain(error: &anyhow::Error) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+pub(crate) async fn lightning_payment_result_from_state(
+    ctx: &WalletContext,
+    payment_hash: PaymentHash,
+    state: LightningSendState,
+) -> anyhow::Result<LightningPaymentResult> {
+    let (state, invoice, amount, htlc_vtxo_ids, movement_id, preimage) = match state {
+        LightningSendState::Unknown => ("unknown", None, None, Vec::new(), None, None),
+        LightningSendState::Paid(paid) => {
+            ("paid", None, None, Vec::new(), None, Some(paid.preimage))
+        }
+        LightningSendState::InProgress(send) => match send.progress {
+            Progress::Start => (
+                "in_progress",
+                Some(send.invoice),
+                Some(send.payment_amount),
+                Vec::new(),
+                None,
+                None,
+            ),
+            Progress::HtlcReceived(htlcs) | Progress::PaymentInitiated(htlcs) => (
+                "in_progress",
+                Some(send.invoice),
+                Some(send.payment_amount),
+                htlcs.vtxo_ids,
+                Some(htlcs.movement_id.0),
+                None,
+            ),
+            Progress::RevocableHtlcs { htlcs, .. } => (
+                "in_progress",
+                Some(send.invoice),
+                Some(send.payment_amount),
+                htlcs.vtxo_ids,
+                Some(htlcs.movement_id.0),
+                None,
+            ),
+        },
+    };
+
+    let mut htlc_vtxos = Vec::with_capacity(htlc_vtxo_ids.len());
+    for vtxo_id in htlc_vtxo_ids {
+        htlc_vtxos.push(ctx.wallet.get_vtxo_by_id(vtxo_id).await?);
+    }
+
+    Ok(LightningPaymentResult {
+        state: state.to_string(),
+        invoice,
+        payment_hash,
+        amount,
+        htlc_vtxos,
+        movement_id,
+        preimage,
+    })
 }
 
 impl ConfigOpts {

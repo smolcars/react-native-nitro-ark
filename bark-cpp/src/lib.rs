@@ -1,6 +1,5 @@
 use anyhow::{self, bail};
 use bark::ark::mailbox::MailboxAuthorization;
-use bark::persist::models::LightningSend;
 use bark::{self, ark::bitcoin::Address};
 use std::result::Result::Ok;
 
@@ -69,6 +68,16 @@ pub struct FeeEstimateResult {
     pub fee: Amount,
     pub net_amount: Amount,
     pub vtxos_spent: Vec<VtxoId>,
+}
+
+pub struct LightningPaymentResult {
+    pub state: String,
+    pub invoice: Option<lightning::Invoice>,
+    pub payment_hash: PaymentHash,
+    pub amount: Option<Amount>,
+    pub htlc_vtxos: Vec<WalletVtxo>,
+    pub movement_id: Option<u32>,
+    pub preimage: Option<Preimage>,
 }
 
 // Global wallet manager instance
@@ -740,7 +749,7 @@ pub async fn estimate_lightning_send_fee(amount: Amount) -> anyhow::Result<FeeEs
 pub async fn check_lightning_payment(
     payment_hash: PaymentHash,
     wait: bool,
-) -> anyhow::Result<Option<Preimage>> {
+) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -748,7 +757,7 @@ pub async fn check_lightning_payment(
                 .wallet
                 .check_lightning_payment(payment_hash, wait)
                 .await?;
-            Ok(payment.and_then(|send| send.preimage))
+            lightning_payment_result_from_state(ctx, payment_hash, payment).await
         })
         .await
 }
@@ -756,13 +765,22 @@ pub async fn check_lightning_payment(
 pub async fn pay_lightning_invoice(
     destination: lightning::Invoice,
     amount_sat: Option<Amount>,
-) -> anyhow::Result<LightningSend> {
+    wait: bool,
+) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet
-                .pay_lightning_invoice(destination, amount_sat)
-                .await
+            let invoice = ctx
+                .wallet
+                .pay_lightning_invoice(destination, amount_sat, wait)
+                .await?;
+            let payment_hash = invoice.payment_hash();
+            let payment_amount = invoice.get_payment_amount(amount_sat)?;
+            let state = ctx.wallet.lightning_send_state(payment_hash).await?;
+            let mut result = lightning_payment_result_from_state(ctx, payment_hash, state).await?;
+            result.invoice.get_or_insert(invoice);
+            result.amount.get_or_insert(payment_amount);
+            Ok(result)
         })
         .await
 }
@@ -770,10 +788,20 @@ pub async fn pay_lightning_invoice(
 pub async fn pay_lightning_offer(
     offer: Offer,
     amount: Option<Amount>,
-) -> anyhow::Result<LightningSend> {
+    wait: bool,
+) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.wallet.pay_lightning_offer(offer, amount).await })
+        .with_context_async(|ctx| async {
+            let invoice = ctx.wallet.pay_lightning_offer(offer, amount, wait).await?;
+            let payment_hash = invoice.payment_hash();
+            let payment_amount = invoice.get_payment_amount(amount)?;
+            let state = ctx.wallet.lightning_send_state(payment_hash).await?;
+            let mut result = lightning_payment_result_from_state(ctx, payment_hash, state).await?;
+            result.invoice.get_or_insert(invoice);
+            result.amount.get_or_insert(payment_amount);
+            Ok(result)
+        })
         .await
 }
 
@@ -806,16 +834,24 @@ pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
-) -> anyhow::Result<LightningSend> {
+    wait: bool,
+) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let lightning_address = LightningAddress::from_str(addr)
                 .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
 
-            ctx.wallet
-                .pay_lightning_address(&lightning_address, amount, comment)
-                .await
+            let invoice = ctx
+                .wallet
+                .pay_lightning_address(&lightning_address, amount, comment, wait)
+                .await?;
+            let payment_hash = invoice.payment_hash();
+            let state = ctx.wallet.lightning_send_state(payment_hash).await?;
+            let mut result = lightning_payment_result_from_state(ctx, payment_hash, state).await?;
+            result.invoice.get_or_insert(invoice);
+            result.amount.get_or_insert(amount);
+            Ok(result)
         })
         .await
 }

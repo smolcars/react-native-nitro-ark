@@ -156,13 +156,14 @@ export interface ExitStatusResult {
   transactions: ExitTransactionPackageResult[];
 }
 
-export interface LightningSendResult {
-  invoice: string;
+export interface LightningPaymentResult {
+  state: string;
+  invoice?: string;
   payment_hash: string;
-  amount: number; // u64
+  amount?: number; // u64
   htlc_vtxos: BarkVtxo[];
-  movement_id: number; // u32
-  preimage: string | null;
+  movement_id?: number; // u32
+  preimage?: string;
 }
 
 export interface OnchainPaymentResult {
@@ -377,17 +378,20 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   estimateArkoorPaymentFee(amountSat: number): Promise<BarkFeeEstimate>;
   payLightningInvoice(
     destination: string,
+    wait: boolean,
     amountSat?: number
-  ): Promise<LightningSendResult>;
+  ): Promise<LightningPaymentResult>;
   payLightningOffer(
     offer: string,
+    wait: boolean,
     amountSat?: number
-  ): Promise<LightningSendResult>;
+  ): Promise<LightningPaymentResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,
-    comment: string
-  ): Promise<LightningSendResult>;
+    comment: string,
+    wait: boolean
+  ): Promise<LightningPaymentResult>;
   estimateLightningSendFee(amountSat: number): Promise<BarkFeeEstimate>;
   sendOnchain(destination: string, amountSat: number): Promise<string>;
   estimateSendOnchain(
@@ -406,7 +410,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   checkLightningPayment(
     paymentHash: string,
     wait: boolean
-  ): Promise<string | null>;
+  ): Promise<LightningPaymentResult>;
   tryClaimLightningReceive(
     paymentHash: string,
     wait: boolean,

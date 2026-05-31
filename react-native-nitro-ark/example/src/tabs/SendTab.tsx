@@ -264,7 +264,7 @@ export const SendTab = ({
         if (amount !== undefined) {
           await showLightningSendFeeEstimate(amount);
         }
-        return NitroArk.payLightningInvoice(arkDestination, amount);
+        return NitroArk.payLightningInvoice(arkDestination, false, amount);
       },
       'lightning'
     );
@@ -282,7 +282,7 @@ export const SendTab = ({
         if (amount !== undefined) {
           await showLightningSendFeeEstimate(amount);
         }
-        return NitroArk.payLightningOffer(arkDestination, amount);
+        return NitroArk.payLightningOffer(arkDestination, false, amount);
       },
       'lightning'
     );
@@ -304,7 +304,7 @@ export const SendTab = ({
       'payLightningAddress',
       async () => {
         await showLightningSendFeeEstimate(amount);
-        return NitroArk.payLightningAddress(arkDestination, amount, arkComment);
+        return NitroArk.payLightningAddress(arkDestination, amount, arkComment, false);
       },
       'lightning'
     );
@@ -320,16 +320,16 @@ export const SendTab = ({
       'checkLightningPayment',
       () => NitroArk.checkLightningPayment(paymentHash, false),
       'lnstatus',
-      (preimage) => {
-        if (preimage) {
+      (payment) => {
+        if (payment.preimage) {
           setResults((prev) => ({
             ...prev,
-            lnstatus: `Payment confirmed!\n\nPreimage: ${preimage}`,
+            lnstatus: `Payment confirmed!\n\nPreimage: ${payment.preimage}`,
           }));
         } else {
           setResults((prev) => ({
             ...prev,
-            lnstatus: 'Payment not yet confirmed',
+            lnstatus: `Payment state: ${payment.state}`,
           }));
         }
       }
@@ -345,16 +345,16 @@ export const SendTab = ({
       'checkLightningPayment (wait)',
       () => NitroArk.checkLightningPayment(paymentHash, true),
       'lnstatus',
-      (preimage) => {
-        if (preimage) {
+      (payment) => {
+        if (payment.preimage) {
           setResults((prev) => ({
             ...prev,
-            lnstatus: `Payment confirmed!\n\nPreimage: ${preimage}`,
+            lnstatus: `Payment confirmed!\n\nPreimage: ${payment.preimage}`,
           }));
         } else {
           setResults((prev) => ({
             ...prev,
-            lnstatus: 'Timed out waiting for confirmation',
+            lnstatus: `Payment state: ${payment.state}`,
           }));
         }
       }
