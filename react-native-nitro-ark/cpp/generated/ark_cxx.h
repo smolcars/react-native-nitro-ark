@@ -975,6 +975,7 @@ namespace bark_cxx {
   struct BarkFeeEstimate;
   struct BarkFeeRates;
   struct OnchainPaymentResult;
+  struct OnchainTransactionInfo;
   struct ExitBlockRefResult;
   struct ExitTxOriginResult;
   struct ExitTxStatusResult;
@@ -1111,6 +1112,22 @@ struct OnchainPaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$OnchainTransactionInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$OnchainTransactionInfo
+struct OnchainTransactionInfo final {
+  ::rust::String txid;
+  ::rust::String tx_hex;
+  bool has_onchain_fee CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t onchain_fee_sat CXX_DEFAULT_VALUE(0);
+  ::std::int64_t balance_change_sat CXX_DEFAULT_VALUE(0);
+  bool has_confirmation CXX_DEFAULT_VALUE(false);
+  ::std::uint32_t confirmation_height CXX_DEFAULT_VALUE(0);
+  ::rust::String confirmation_hash;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainTransactionInfo
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitBlockRefResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$ExitBlockRefResult
@@ -1614,6 +1631,8 @@ void onchain_sync();
 ::rust::String onchain_utxos();
 
 ::bark_cxx::BarkFeeRates onchain_fee_rates();
+
+::rust::Vec<::bark_cxx::OnchainTransactionInfo> onchain_transactions();
 
 ::rust::String onchain_address();
 

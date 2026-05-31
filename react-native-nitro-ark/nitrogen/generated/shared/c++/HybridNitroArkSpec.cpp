@@ -66,6 +66,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("onchainListUnspent", &HybridNitroArkSpec::onchainListUnspent);
       prototype.registerHybridMethod("onchainUtxos", &HybridNitroArkSpec::onchainUtxos);
       prototype.registerHybridMethod("onchainFeeRates", &HybridNitroArkSpec::onchainFeeRates);
+      prototype.registerHybridMethod("onchainTransactions", &HybridNitroArkSpec::onchainTransactions);
       prototype.registerHybridMethod("onchainAddress", &HybridNitroArkSpec::onchainAddress);
       prototype.registerHybridMethod("onchainSend", &HybridNitroArkSpec::onchainSend);
       prototype.registerHybridMethod("onchainDrain", &HybridNitroArkSpec::onchainDrain);

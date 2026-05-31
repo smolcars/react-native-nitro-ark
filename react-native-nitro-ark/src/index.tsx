@@ -8,6 +8,7 @@ import type {
   ArkoorPaymentResult,
   BarkFeeEstimate,
   BarkFeeRates,
+  OnchainTransactionInfo,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
   ExitStatusResult as NitroExitStatusResult,
@@ -692,6 +693,14 @@ export function onchainFeeRates(): Promise<BarkFeeRates> {
 }
 
 /**
+ * Gets BDK onchain wallet transaction history.
+ * @returns A promise resolving to onchain transaction entries.
+ */
+export function onchainTransactions(): Promise<OnchainTransactionInfo[]> {
+  return NitroArkHybridObject.onchainTransactions();
+}
+
+/**
  * Gets a fresh onchain address for the loaded wallet.
  * @returns A promise resolving to the Bitcoin address string.
  */
@@ -1007,6 +1016,7 @@ export type {
   ArkoorPaymentResult,
   BarkFeeEstimate,
   BarkFeeRates,
+  OnchainTransactionInfo,
   LightningPaymentResult,
   OnchainPaymentResult,
   OffchainBalanceResult,

@@ -43,6 +43,8 @@ namespace margelo::nitro::nitroark { struct BarkVtxo; }
 namespace margelo::nitro::nitroark { struct OnchainBalanceResult; }
 // Forward declaration of `BarkFeeRates` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkFeeRates; }
+// Forward declaration of `OnchainTransactionInfo` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct OnchainTransactionInfo; }
 // Forward declaration of `OnchainPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OnchainPaymentResult; }
 // Forward declaration of `BarkSendManyOutput` to properly resolve imports.
@@ -81,6 +83,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BarkVtxo.hpp"
 #include "OnchainBalanceResult.hpp"
 #include "BarkFeeRates.hpp"
+#include "OnchainTransactionInfo.hpp"
 #include "OnchainPaymentResult.hpp"
 #include "BarkSendManyOutput.hpp"
 #include "BoardResult.hpp"
@@ -173,6 +176,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> onchainListUnspent() = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainUtxos() = 0;
       virtual std::shared_ptr<Promise<BarkFeeRates>> onchainFeeRates() = 0;
+      virtual std::shared_ptr<Promise<std::vector<OnchainTransactionInfo>>> onchainTransactions() = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainAddress() = 0;
       virtual std::shared_ptr<Promise<OnchainPaymentResult>> onchainSend(const std::string& destination, double amountSat, std::optional<double> feeRate) = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainDrain(const std::string& destination, std::optional<double> feeRate) = 0;

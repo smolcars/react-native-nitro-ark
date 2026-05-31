@@ -1,6 +1,6 @@
 use crate::cxx::ffi::{
     ArkoorPaymentResult, BarkFeeEstimate, BarkFeeRates, BarkMovement, BarkVtxo,
-    OnchainPaymentResult,
+    OnchainPaymentResult, OnchainTransactionInfo,
 };
 pub use crate::subscriptions::NotificationSubscription;
 use crate::{TOKIO_RUNTIME, utils};
@@ -92,6 +92,17 @@ pub(crate) mod ffi {
         txid: String,
         amount_sat: u64,
         destination_address: String,
+    }
+
+    pub struct OnchainTransactionInfo {
+        txid: String,
+        tx_hex: String,
+        has_onchain_fee: bool,
+        onchain_fee_sat: u64,
+        balance_change_sat: i64,
+        has_confirmation: bool,
+        confirmation_height: u32,
+        confirmation_hash: String,
     }
 
     pub struct ExitBlockRefResult {
@@ -447,6 +458,7 @@ pub(crate) mod ffi {
         fn onchain_list_unspent() -> Result<String>;
         fn onchain_utxos() -> Result<String>;
         fn onchain_fee_rates() -> Result<BarkFeeRates>;
+        fn onchain_transactions() -> Result<Vec<OnchainTransactionInfo>>;
         fn onchain_address() -> Result<String>;
         unsafe fn onchain_send(
             destination: &str,
@@ -1621,6 +1633,33 @@ pub(crate) fn onchain_fee_rates() -> anyhow::Result<BarkFeeRates> {
         regular: fee_rate_to_sat_per_vbyte(fee_rates.regular),
         slow: fee_rate_to_sat_per_vbyte(fee_rates.slow),
     })
+}
+
+pub(crate) fn onchain_transactions() -> anyhow::Result<Vec<OnchainTransactionInfo>> {
+    let transactions =
+        crate::TOKIO_RUNTIME.block_on(async { crate::onchain::transaction_infos().await })?;
+
+    Ok(transactions
+        .into_iter()
+        .map(|tx_info| {
+            let (has_confirmation, confirmation_height, confirmation_hash) =
+                match tx_info.confirmation {
+                    Some(block) => (true, block.height, block.hash.to_string()),
+                    None => (false, 0, String::new()),
+                };
+
+            OnchainTransactionInfo {
+                txid: tx_info.txid.to_string(),
+                tx_hex: bitcoin::consensus::encode::serialize_hex(tx_info.tx.as_ref()),
+                has_onchain_fee: tx_info.onchain_fees.is_some(),
+                onchain_fee_sat: tx_info.onchain_fees.map(|fee| fee.to_sat()).unwrap_or(0),
+                balance_change_sat: tx_info.balance_change.to_sat(),
+                has_confirmation,
+                confirmation_height,
+                confirmation_hash,
+            }
+        })
+        .collect())
 }
 
 pub(crate) fn onchain_send(

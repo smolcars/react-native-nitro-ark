@@ -1,5 +1,5 @@
 use bark::chain::FeeRates;
-use bark::onchain::{ChainSync, GetAddress, Utxo};
+use bark::onchain::{ChainSync, GetAddress, Utxo, WalletTxInfo};
 use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;
@@ -36,6 +36,12 @@ pub async fn fee_rates() -> anyhow::Result<FeeRates> {
     manager
         .with_context_async(|ctx| async { Ok(ctx.wallet.chain().fee_rates().await) })
         .await
+}
+
+/// Get onchain wallet transaction history
+pub async fn transaction_infos() -> anyhow::Result<Vec<WalletTxInfo>> {
+    let manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context_ref(|ctx| ctx.onchain_wallet.list_transaction_infos())
 }
 
 /// Send onchain transaction

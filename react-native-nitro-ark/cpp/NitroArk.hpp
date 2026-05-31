@@ -1055,6 +1055,35 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::vector<OnchainTransactionInfo>>> onchainTransactions() override {
+    return Promise<std::vector<OnchainTransactionInfo>>::async([]() {
+      try {
+        rust::Vec<bark_cxx::OnchainTransactionInfo> rust_results = bark_cxx::onchain_transactions();
+
+        std::vector<OnchainTransactionInfo> results;
+        results.reserve(rust_results.size());
+
+        for (const auto& rust_result : rust_results) {
+          OnchainTransactionInfo result;
+          result.txid = std::string(rust_result.txid.data(), rust_result.txid.length());
+          result.tx_hex = std::string(rust_result.tx_hex.data(), rust_result.tx_hex.length());
+          result.has_onchain_fee = rust_result.has_onchain_fee;
+          result.onchain_fee_sat = static_cast<double>(rust_result.onchain_fee_sat);
+          result.balance_change_sat = static_cast<double>(rust_result.balance_change_sat);
+          result.has_confirmation = rust_result.has_confirmation;
+          result.confirmation_height = static_cast<double>(rust_result.confirmation_height);
+          result.confirmation_hash =
+              std::string(rust_result.confirmation_hash.data(), rust_result.confirmation_hash.length());
+          results.push_back(std::move(result));
+        }
+
+        return results;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> onchainAddress() override {
     return Promise<std::string>::async([]() {
       try {

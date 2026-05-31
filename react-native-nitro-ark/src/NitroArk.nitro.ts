@@ -89,6 +89,17 @@ export interface BarkFeeRates {
   slow: number; // sat/vB
 }
 
+export interface OnchainTransactionInfo {
+  txid: string;
+  tx_hex: string;
+  has_onchain_fee: boolean;
+  onchain_fee_sat: number; // u64
+  balance_change_sat: number; // i64
+  has_confirmation: boolean;
+  confirmation_height: number; // u32
+  confirmation_hash: string;
+}
+
 export interface ExitBlockRefResult {
   height: number;
   hash: string;
@@ -356,6 +367,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   onchainListUnspent(): Promise<string>; // Returns JSON string
   onchainUtxos(): Promise<string>; // Returns JSON string
   onchainFeeRates(): Promise<BarkFeeRates>; // Returns fast/regular/slow fee rates in sat/vB
+  onchainTransactions(): Promise<OnchainTransactionInfo[]>; // Returns BDK onchain wallet transactions
   onchainAddress(): Promise<string>; // Returns address string
   onchainSend(
     destination: string,
