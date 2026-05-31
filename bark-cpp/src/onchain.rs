@@ -1,3 +1,4 @@
+use bark::chain::FeeRates;
 use bark::onchain::{ChainSync, GetAddress, Utxo};
 use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
@@ -27,6 +28,14 @@ pub async fn list_unspent() -> anyhow::Result<Vec<bdk_wallet::LocalOutput>> {
 pub async fn utxos() -> anyhow::Result<Vec<Utxo>> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.utxos()))
+}
+
+/// Get recommended onchain fee rates from the configured chain source
+pub async fn fee_rates() -> anyhow::Result<FeeRates> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { Ok(ctx.wallet.chain().fee_rates().await) })
+        .await
 }
 
 /// Send onchain transaction

@@ -1,5 +1,6 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkFeeEstimate, BarkMovement, BarkVtxo, OnchainPaymentResult,
+    ArkoorPaymentResult, BarkFeeEstimate, BarkFeeRates, BarkMovement, BarkVtxo,
+    OnchainPaymentResult,
 };
 pub use crate::subscriptions::NotificationSubscription;
 use crate::{TOKIO_RUNTIME, utils};
@@ -14,6 +15,10 @@ use logger::log::{self, info};
 
 use std::path::Path;
 use std::str::FromStr;
+
+fn fee_rate_to_sat_per_vbyte(fee_rate: FeeRate) -> f64 {
+    fee_rate.to_sat_per_kwu() as f64 / 250.0
+}
 
 fn full_ffi_error(context: &str, err: anyhow::Error) -> anyhow::Error {
     let message = utils::format_error_chain(&err);
@@ -75,6 +80,12 @@ pub(crate) mod ffi {
         fee_sat: u64,
         net_amount_sat: u64,
         vtxos_spent: Vec<String>,
+    }
+
+    pub struct BarkFeeRates {
+        fast: f64,
+        regular: f64,
+        slow: f64,
     }
 
     pub struct OnchainPaymentResult {
@@ -435,6 +446,7 @@ pub(crate) mod ffi {
         fn onchain_sync() -> Result<()>;
         fn onchain_list_unspent() -> Result<String>;
         fn onchain_utxos() -> Result<String>;
+        fn onchain_fee_rates() -> Result<BarkFeeRates>;
         fn onchain_address() -> Result<String>;
         unsafe fn onchain_send(
             destination: &str,
@@ -1599,6 +1611,16 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
         .collect::<Vec<_>>();
 
     serde_json::to_string(&res).map_err(Into::into)
+}
+
+pub(crate) fn onchain_fee_rates() -> anyhow::Result<BarkFeeRates> {
+    let fee_rates = crate::TOKIO_RUNTIME.block_on(async { crate::onchain::fee_rates().await })?;
+
+    Ok(BarkFeeRates {
+        fast: fee_rate_to_sat_per_vbyte(fee_rates.fast),
+        regular: fee_rate_to_sat_per_vbyte(fee_rates.regular),
+        slow: fee_rate_to_sat_per_vbyte(fee_rates.slow),
+    })
 }
 
 pub(crate) fn onchain_send(

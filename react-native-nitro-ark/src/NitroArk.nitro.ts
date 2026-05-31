@@ -83,6 +83,12 @@ export interface BarkFeeEstimate {
   vtxos_spent: string[];
 }
 
+export interface BarkFeeRates {
+  fast: number; // sat/vB
+  regular: number; // sat/vB
+  slow: number; // sat/vB
+}
+
 export interface ExitBlockRefResult {
   height: number;
   hash: string;
@@ -349,6 +355,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   onchainSync(): Promise<void>;
   onchainListUnspent(): Promise<string>; // Returns JSON string
   onchainUtxos(): Promise<string>; // Returns JSON string
+  onchainFeeRates(): Promise<BarkFeeRates>; // Returns fast/regular/slow fee rates in sat/vB
   onchainAddress(): Promise<string>; // Returns address string
   onchainSend(
     destination: string,

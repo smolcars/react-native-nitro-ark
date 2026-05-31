@@ -7,6 +7,7 @@ import type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,
+  BarkFeeRates,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
   ExitVtxoResult as NitroExitVtxoResult,
   ExitStatusResult as NitroExitStatusResult,
@@ -683,6 +684,14 @@ export function onchainUtxos(): Promise<string> {
 }
 
 /**
+ * Gets recommended onchain fee rates in sat/vB for the loaded wallet.
+ * @returns A promise resolving to fast, regular, and slow fee rates.
+ */
+export function onchainFeeRates(): Promise<BarkFeeRates> {
+  return NitroArkHybridObject.onchainFeeRates();
+}
+
+/**
  * Gets a fresh onchain address for the loaded wallet.
  * @returns A promise resolving to the Bitcoin address string.
  */
@@ -997,6 +1006,7 @@ export type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,
+  BarkFeeRates,
   LightningPaymentResult,
   OnchainPaymentResult,
   OffchainBalanceResult,

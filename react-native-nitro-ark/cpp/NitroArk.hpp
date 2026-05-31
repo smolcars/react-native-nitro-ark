@@ -1038,6 +1038,23 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<BarkFeeRates>> onchainFeeRates() override {
+    return Promise<BarkFeeRates>::async([]() {
+      try {
+        bark_cxx::BarkFeeRates rust_result = bark_cxx::onchain_fee_rates();
+
+        BarkFeeRates result;
+        result.fast = rust_result.fast;
+        result.regular = rust_result.regular;
+        result.slow = rust_result.slow;
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> onchainAddress() override {
     return Promise<std::string>::async([]() {
       try {

@@ -973,6 +973,7 @@ namespace bark_cxx {
   struct LightningPaymentResult;
   struct ArkoorPaymentResult;
   struct BarkFeeEstimate;
+  struct BarkFeeRates;
   struct OnchainPaymentResult;
   struct ExitBlockRefResult;
   struct ExitTxOriginResult;
@@ -1088,6 +1089,17 @@ struct BarkFeeEstimate final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeRates
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeRates
+struct BarkFeeRates final {
+  double fast CXX_DEFAULT_VALUE(0);
+  double regular CXX_DEFAULT_VALUE(0);
+  double slow CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeRates
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
@@ -1600,6 +1612,8 @@ void onchain_sync();
 ::rust::String onchain_list_unspent();
 
 ::rust::String onchain_utxos();
+
+::bark_cxx::BarkFeeRates onchain_fee_rates();
 
 ::rust::String onchain_address();
 
