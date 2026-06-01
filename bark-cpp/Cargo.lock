@@ -119,7 +119,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 [[package]]
 name = "ark-lib"
 version = "0.2.1"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#e727464d250ec4780b49831177f6fdf1f1019a60"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#881597efab9b1408a073271bfed9207e5af61b8a"
 dependencies = [
  "async-trait",
  "bark-bitcoin-ext",
@@ -174,7 +174,7 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.2.1"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#e727464d250ec4780b49831177f6fdf1f1019a60"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#881597efab9b1408a073271bfed9207e5af61b8a"
 dependencies = [
  "bdk_bitcoind_rpc",
  "bdk_wallet",
@@ -213,7 +213,7 @@ dependencies = [
 [[package]]
 name = "bark-server-rpc"
 version = "0.2.1"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#e727464d250ec4780b49831177f6fdf1f1019a60"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#881597efab9b1408a073271bfed9207e5af61b8a"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -231,7 +231,7 @@ dependencies = [
 [[package]]
 name = "bark-wallet"
 version = "0.2.1"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#e727464d250ec4780b49831177f6fdf1f1019a60"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#881597efab9b1408a073271bfed9207e5af61b8a"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -366,7 +366,7 @@ checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
 [[package]]
 name = "bip321"
 version = "0.1.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#e727464d250ec4780b49831177f6fdf1f1019a60"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#881597efab9b1408a073271bfed9207e5af61b8a"
 dependencies = [
  "bitcoin",
  "lightning",
