@@ -384,6 +384,7 @@ pub(crate) mod ffi {
         fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
         fn estimate_arkoor_payment_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
+        fn estimate_board_offchain_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn estimate_lightning_send_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         unsafe fn pay_lightning_invoice(
             destination: &str,
@@ -832,6 +833,22 @@ pub(crate) fn send_arkoor_payment(
 pub(crate) fn estimate_arkoor_payment_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_arkoor_payment_fee(amount))?;
+
+    Ok(BarkFeeEstimate {
+        gross_amount_sat: estimate.gross_amount.to_sat(),
+        fee_sat: estimate.fee.to_sat(),
+        net_amount_sat: estimate.net_amount.to_sat(),
+        vtxos_spent: estimate
+            .vtxos_spent
+            .into_iter()
+            .map(|vtxo_id| vtxo_id.to_string())
+            .collect(),
+    })
+}
+
+pub(crate) fn estimate_board_offchain_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_board_offchain_fee(amount))?;
 
     Ok(BarkFeeEstimate {
         gross_amount_sat: estimate.gross_amount.to_sat(),

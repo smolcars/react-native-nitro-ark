@@ -731,6 +731,21 @@ pub async fn estimate_arkoor_payment_fee(amount: Amount) -> anyhow::Result<FeeEs
         .await
 }
 
+pub async fn estimate_board_offchain_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let estimate = ctx.wallet.estimate_board_offchain_fee(amount).await?;
+            Ok(FeeEstimateResult {
+                gross_amount: estimate.gross_amount,
+                fee: estimate.fee,
+                net_amount: estimate.net_amount,
+                vtxos_spent: estimate.vtxos_spent,
+            })
+        })
+        .await
+}
+
 pub async fn estimate_lightning_send_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager

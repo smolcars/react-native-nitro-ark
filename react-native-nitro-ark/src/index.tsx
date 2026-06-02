@@ -944,6 +944,18 @@ export function estimateArkoorPaymentFee(
 }
 
 /**
+ * Estimates the Ark protocol fee for boarding an amount into Ark.
+ * This does not include the onchain transaction fee for the board anchor transaction.
+ * @param amountSat The amount in satoshis to board.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateBoardOffchainFee(
+  amountSat: number
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateBoardOffchainFee(amountSat);
+}
+
+/**
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.

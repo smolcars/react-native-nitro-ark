@@ -1447,6 +1447,31 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateBoardOffchainFee(double amountSat) override {
+    return Promise<BarkFeeEstimate>::async([amountSat]() {
+      try {
+        bark_cxx::BarkFeeEstimate rust_result =
+            bark_cxx::estimate_board_offchain_fee(static_cast<uint64_t>(amountSat));
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) override {
     return Promise<std::string>::async([destination, amountSat]() {
       try {
