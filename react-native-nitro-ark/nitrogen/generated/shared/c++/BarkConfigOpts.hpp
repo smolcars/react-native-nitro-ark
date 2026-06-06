@@ -40,22 +40,22 @@ namespace margelo::nitro::nitroark {
    */
   struct BarkConfigOpts final {
   public:
-    std::optional<std::string> ark     SWIFT_PRIVATE;
+    std::string ark     SWIFT_PRIVATE;
     std::optional<std::string> server_access_token     SWIFT_PRIVATE;
     std::optional<std::string> esplora     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind_cookie     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind_user     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind_pass     SWIFT_PRIVATE;
-    std::optional<double> vtxo_refresh_expiry_threshold     SWIFT_PRIVATE;
-    std::optional<double> fallback_fee_rate     SWIFT_PRIVATE;
+    double vtxo_refresh_expiry_threshold     SWIFT_PRIVATE;
+    double fallback_fee_rate     SWIFT_PRIVATE;
     double htlc_recv_claim_delta     SWIFT_PRIVATE;
     double vtxo_exit_margin     SWIFT_PRIVATE;
     double round_tx_required_confirmations     SWIFT_PRIVATE;
 
   public:
     BarkConfigOpts() = default;
-    explicit BarkConfigOpts(std::optional<std::string> ark, std::optional<std::string> server_access_token, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, std::optional<double> vtxo_refresh_expiry_threshold, std::optional<double> fallback_fee_rate, double htlc_recv_claim_delta, double vtxo_exit_margin, double round_tx_required_confirmations): ark(ark), server_access_token(server_access_token), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), fallback_fee_rate(fallback_fee_rate), htlc_recv_claim_delta(htlc_recv_claim_delta), vtxo_exit_margin(vtxo_exit_margin), round_tx_required_confirmations(round_tx_required_confirmations) {}
+    explicit BarkConfigOpts(std::string ark, std::optional<std::string> server_access_token, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, double vtxo_refresh_expiry_threshold, double fallback_fee_rate, double htlc_recv_claim_delta, double vtxo_exit_margin, double round_tx_required_confirmations): ark(ark), server_access_token(server_access_token), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), fallback_fee_rate(fallback_fee_rate), htlc_recv_claim_delta(htlc_recv_claim_delta), vtxo_exit_margin(vtxo_exit_margin), round_tx_required_confirmations(round_tx_required_confirmations) {}
 
   public:
     friend bool operator==(const BarkConfigOpts& lhs, const BarkConfigOpts& rhs) = default;
@@ -71,15 +71,15 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroark::BarkConfigOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkConfigOpts(
-        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ark"))),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ark"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "server_access_token"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "esplora"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_cookie"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "round_tx_required_confirmations")))
@@ -87,15 +87,15 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkConfigOpts& arg) {
       jsi::Object obj(runtime);
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "ark"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.ark));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "ark"), JSIConverter<std::string>::toJSI(runtime, arg.ark));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "server_access_token"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.server_access_token));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "esplora"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.esplora));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_cookie"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_cookie));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_user));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_pass));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.vtxo_refresh_expiry_threshold));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.fallback_fee_rate));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"), JSIConverter<double>::toJSI(runtime, arg.vtxo_refresh_expiry_threshold));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"), JSIConverter<double>::toJSI(runtime, arg.fallback_fee_rate));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta"), JSIConverter<double>::toJSI(runtime, arg.htlc_recv_claim_delta));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin"), JSIConverter<double>::toJSI(runtime, arg.vtxo_exit_margin));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "round_tx_required_confirmations"), JSIConverter<double>::toJSI(runtime, arg.round_tx_required_confirmations));
@@ -109,15 +109,15 @@ namespace margelo::nitro {
       if (!nitro::isPlainObject(runtime, obj)) {
         return false;
       }
-      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ark")))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ark")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "server_access_token")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "esplora")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_cookie")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "round_tx_required_confirmations")))) return false;

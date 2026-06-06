@@ -304,7 +304,12 @@ export const SendTab = ({
       'payLightningAddress',
       async () => {
         await showLightningSendFeeEstimate(amount);
-        return NitroArk.payLightningAddress(arkDestination, amount, arkComment, false);
+        return NitroArk.payLightningAddress(
+          arkDestination,
+          amount,
+          arkComment,
+          false
+        );
       },
       'lightning'
     );

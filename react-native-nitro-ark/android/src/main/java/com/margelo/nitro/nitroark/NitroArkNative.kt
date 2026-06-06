@@ -8,15 +8,15 @@ import android.util.Log
  */
 object NitroArkNative {
   data class AndroidBarkConfig(
-      val ark: String? = null,
+      val ark: String,
+      val vtxoRefreshExpiryThreshold: Int,
+      val fallbackFeeRate: Long,
       val serverAccessToken: String? = null,
       val esplora: String? = null,
       val bitcoind: String? = null,
       val bitcoindCookie: String? = null,
       val bitcoindUser: String? = null,
       val bitcoindPass: String? = null,
-      val vtxoRefreshExpiryThreshold: Int? = null,
-      val fallbackFeeRate: Long? = null,
       val htlcRecvClaimDelta: Int? = null,
       val vtxoExitMargin: Int? = null,
       val roundTxRequiredConfirmations: Int? = null,
@@ -28,7 +28,7 @@ object NitroArkNative {
   }
 
   /**
-   * Load an existing wallet using optional chain/config overrides.
+   * Load an existing wallet using explicit chain/config values.
    */
   fun loadWallet(
       datadir: String,
@@ -37,7 +37,7 @@ object NitroArkNative {
       signet: Boolean = false,
       bitcoin: Boolean = true,
       birthdayHeight: Int? = null,
-      config: AndroidBarkConfig? = null
+      config: AndroidBarkConfig
   ) {
     Log.i("NitroArkNative", "loadWallet(datadir=$datadir regtest=$regtest signet=$signet bitcoin=$bitcoin)")
     loadWalletNative(
@@ -47,18 +47,18 @@ object NitroArkNative {
         signet,
         bitcoin,
         birthdayHeight,
-        config?.ark,
-        config?.serverAccessToken,
-        config?.esplora,
-        config?.bitcoind,
-        config?.bitcoindCookie,
-        config?.bitcoindUser,
-        config?.bitcoindPass,
-        config?.vtxoRefreshExpiryThreshold,
-        config?.fallbackFeeRate,
-        config?.htlcRecvClaimDelta,
-        config?.vtxoExitMargin,
-        config?.roundTxRequiredConfirmations)
+        config.ark,
+        config.serverAccessToken,
+        config.esplora,
+        config.bitcoind,
+        config.bitcoindCookie,
+        config.bitcoindUser,
+        config.bitcoindPass,
+        config.vtxoRefreshExpiryThreshold,
+        config.fallbackFeeRate,
+        config.htlcRecvClaimDelta,
+        config.vtxoExitMargin,
+        config.roundTxRequiredConfirmations)
   }
 
   external fun isWalletLoaded(): Boolean
@@ -72,15 +72,15 @@ object NitroArkNative {
       signet: Boolean,
       bitcoin: Boolean,
       birthdayHeight: Int?,
-      ark: String?,
+      ark: String,
       serverAccessToken: String?,
       esplora: String?,
       bitcoind: String?,
       bitcoindCookie: String?,
       bitcoindUser: String?,
       bitcoindPass: String?,
-      vtxoRefreshExpiryThreshold: Int?,
-      fallbackFeeRate: Long?,
+      vtxoRefreshExpiryThreshold: Int,
+      fallbackFeeRate: Long,
       htlcRecvClaimDelta: Int?,
       vtxoExitMargin: Int?,
       roundTxRequiredConfirmations: Int?,

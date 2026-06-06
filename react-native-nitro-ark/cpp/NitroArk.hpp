@@ -266,7 +266,7 @@ private:
   static bark_cxx::ConfigOpts createConfigOpts(const std::optional<BarkConfigOpts>& config) {
     bark_cxx::ConfigOpts config_opts;
     if (config.has_value()) {
-      config_opts.ark = config->ark.value_or("");
+      config_opts.ark = config->ark;
       config_opts.server_access_token = config->server_access_token.value_or("");
       config_opts.esplora = config->esplora.value_or("");
       config_opts.bitcoind = config->bitcoind.value_or("");
@@ -274,8 +274,8 @@ private:
       config_opts.bitcoind_user = config->bitcoind_user.value_or("");
       config_opts.bitcoind_pass = config->bitcoind_pass.value_or("");
       config_opts.vtxo_refresh_expiry_threshold =
-          static_cast<uint32_t>(config->vtxo_refresh_expiry_threshold.value_or(0));
-      config_opts.fallback_fee_rate = static_cast<uint64_t>(config->fallback_fee_rate.value_or(0));
+          static_cast<uint32_t>(config->vtxo_refresh_expiry_threshold);
+      config_opts.fallback_fee_rate = static_cast<uint64_t>(config->fallback_fee_rate);
       config_opts.htlc_recv_claim_delta = static_cast<uint32_t>(config->htlc_recv_claim_delta);
       config_opts.vtxo_exit_margin = static_cast<uint32_t>(config->vtxo_exit_margin);
       config_opts.round_tx_required_confirmations = static_cast<uint32_t>(config->round_tx_required_confirmations);

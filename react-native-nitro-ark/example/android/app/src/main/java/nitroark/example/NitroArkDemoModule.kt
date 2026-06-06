@@ -25,17 +25,17 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
         Log.i(NAME, "loadWallet nested config: $nestedConfig")
       }
 
-      val parsedConfig = nestedConfig?.let { map ->
+      val parsedConfig = requireNotNull(nestedConfig) { "Missing required wallet config." }.let { map ->
         NitroArkNative.AndroidBarkConfig(
-            ark = map.getStringOrNull("ark"),
+            ark = map.getRequiredString("ark"),
             serverAccessToken = map.getStringOrNull("server_access_token"),
             esplora = map.getStringOrNull("esplora"),
             bitcoind = map.getStringOrNull("bitcoind"),
             bitcoindCookie = map.getStringOrNull("bitcoind_cookie"),
             bitcoindUser = map.getStringOrNull("bitcoind_user"),
             bitcoindPass = map.getStringOrNull("bitcoind_pass"),
-            vtxoRefreshExpiryThreshold = map.getIntOrNull("vtxo_refresh_expiry_threshold"),
-            fallbackFeeRate = map.getLongOrNull("fallback_fee_rate"),
+            vtxoRefreshExpiryThreshold = map.getRequiredInt("vtxo_refresh_expiry_threshold"),
+            fallbackFeeRate = map.getRequiredLong("fallback_fee_rate"),
             htlcRecvClaimDelta = map.getIntOrNull("htlc_recv_claim_delta"),
             vtxoExitMargin = map.getIntOrNull("vtxo_exit_margin"),
             roundTxRequiredConfirmations = map.getIntOrNull("round_tx_required_confirmations"),
@@ -173,11 +173,20 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
 private fun ReadableMap.getStringOrNull(key: String): String? =
     if (hasKey(key) && !isNull(key)) getString(key) else null
 
+private fun ReadableMap.getRequiredString(key: String): String =
+    requireNotNull(getStringOrNull(key)) { "Missing required config value '$key'." }
+
 private fun ReadableMap.getIntOrNull(key: String): Int? =
     if (hasKey(key) && !isNull(key)) getInt(key) else null
 
+private fun ReadableMap.getRequiredInt(key: String): Int =
+    requireNotNull(getIntOrNull(key)) { "Missing required config value '$key'." }
+
 private fun ReadableMap.getLongOrNull(key: String): Long? =
     if (hasKey(key) && !isNull(key)) getDouble(key).toLong() else null
+
+private fun ReadableMap.getRequiredLong(key: String): Long =
+    requireNotNull(getLongOrNull(key)) { "Missing required config value '$key'." }
 
 private fun ReadableMap.getBooleanOrDefault(key: String, defaultValue: Boolean): Boolean =
     if (hasKey(key) && !isNull(key)) getBoolean(key) else defaultValue
