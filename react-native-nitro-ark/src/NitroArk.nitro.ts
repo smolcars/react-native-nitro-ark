@@ -5,15 +5,15 @@ import type { HybridObject } from 'react-native-nitro-modules';
 // Note: BarkError is handled via Promise rejection, not exposed directly.
 
 export interface BarkConfigOpts {
-  ark?: string;
+  ark: string;
   server_access_token?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;
   bitcoind_user?: string;
   bitcoind_pass?: string;
-  vtxo_refresh_expiry_threshold?: number;
-  fallback_fee_rate?: number;
+  vtxo_refresh_expiry_threshold: number;
+  fallback_fee_rate: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;
   round_tx_required_confirmations: number;

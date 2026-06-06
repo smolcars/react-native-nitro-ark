@@ -124,6 +124,9 @@ impl ConfigOpts {
         if let Some(v) = self.bitcoind_pass {
             cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v) };
         }
+        cfg.htlc_recv_claim_delta = self.htlc_recv_claim_delta;
+        cfg.vtxo_exit_margin = self.vtxo_exit_margin;
+        cfg.round_tx_required_confirmations = self.round_tx_required_confirmations;
         cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
         cfg.fallback_fee_rate = self.fallback_fee_rate.map(FeeRate::from_sat_per_kvb_ceil);
 
@@ -294,9 +297,6 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
     };
 
     let mut config = Config::network_default(net);
-    config.htlc_recv_claim_delta = opts.config.htlc_recv_claim_delta;
-    config.vtxo_exit_margin = opts.config.vtxo_exit_margin;
-    config.round_tx_required_confirmations = opts.config.round_tx_required_confirmations;
     opts.config
         .clone()
         .merge_into(&mut config)

@@ -228,7 +228,7 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
     JNIEnv* env, jobject /*thiz*/, jstring jDatadir, jstring jMnemonic, jboolean jRegtest, jboolean jSignet,
     jboolean jBitcoin, jobject jBirthdayHeight, jstring jArk, jstring jServerAccessToken, jstring jEsplora,
     jstring jBitcoind, jstring jBitcoindCookie, jstring jBitcoindUser, jstring jBitcoindPass,
-    jobject jVtxoRefreshExpiryThreshold, jobject jFallbackFeeRate, jobject jHtlcRecvClaimDelta, jobject jVtxoExitMargin,
+    jint jVtxoRefreshExpiryThreshold, jlong jFallbackFeeRate, jobject jHtlcRecvClaimDelta, jobject jVtxoExitMargin,
     jobject jRoundTxRequiredConfirmations) {
   try {
     const std::string datadir = JStringToString(env, jDatadir);
@@ -258,9 +258,8 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
     config.bitcoind_user = JStringToString(env, jBitcoindUser);
     config.bitcoind_pass = JStringToString(env, jBitcoindPass);
 
-    config.vtxo_refresh_expiry_threshold =
-        static_cast<uint32_t>(GetOptionalInt(env, jVtxoRefreshExpiryThreshold).value_or(0));
-    config.fallback_fee_rate = static_cast<uint64_t>(GetOptionalLong(env, jFallbackFeeRate).value_or(0));
+    config.vtxo_refresh_expiry_threshold = static_cast<uint32_t>(jVtxoRefreshExpiryThreshold);
+    config.fallback_fee_rate = static_cast<uint64_t>(jFallbackFeeRate);
     config.htlc_recv_claim_delta = static_cast<uint16_t>(GetOptionalInt(env, jHtlcRecvClaimDelta).value_or(0));
     config.vtxo_exit_margin = static_cast<uint16_t>(GetOptionalInt(env, jVtxoExitMargin).value_or(0));
     config.round_tx_required_confirmations =
