@@ -114,7 +114,11 @@ export type BarkNotificationEvent = Omit<
   movement?: BarkMovement;
 };
 
-export type LightningPaymentState = 'unknown' | 'in_progress' | 'paid';
+export type LightningPaymentState =
+  | 'unknown'
+  | 'in_progress'
+  | 'paid'
+  | 'revocation_stuck';
 
 export type LightningPayment = Omit<LightningPaymentResult, 'state'> & {
   state: LightningPaymentState;

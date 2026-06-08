@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.2.2", features = [
+bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", branch = "master", features = [
   "native",
   "tls-webpki-roots",
   "onchain-bdk",
@@ -12,7 +12,7 @@ bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.2
   "sqlite",
 ], default-features = false }
 
-bark-bitcoin-ext = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.2.2", default-features = false }
+bark-bitcoin-ext = { git = "https://gitlab.com/ark-bitcoin/bark.git", branch = "master", default-features = false }
 bdk_wallet = { version = "3.0.0" }
 bdk_bitcoind_rpc = { version = "0.22.0" }
 chrono = { version = "0.4", features = ["serde"] }

@@ -79,6 +79,14 @@ pub(crate) async fn lightning_payment_result_from_state(
                 Some(htlcs.movement_id.0),
                 None,
             ),
+            Progress::RevocationStuck { htlcs, .. } => (
+                "revocation_stuck",
+                Some(send.invoice),
+                Some(send.payment_amount),
+                htlcs.vtxo_ids,
+                Some(htlcs.movement_id.0),
+                None,
+            ),
         },
     };
 

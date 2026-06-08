@@ -3,7 +3,7 @@ PODS:
   - hermes-engine (250829098.0.10):
     - hermes-engine/Pre-built (= 250829098.0.10)
   - hermes-engine/Pre-built (250829098.0.10)
-  - NitroArk (0.0.120):
+  - NitroArk (0.0.121):
     - hermes-engine
     - NitroModules
     - RCTRequired
@@ -2122,7 +2122,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   FBLazyVector: 24e62c765683b8d89006a88a2c8f5cf019f0074d
   hermes-engine: b9bc07e8e3778c44d446d1bfa9788de105e5c157
-  NitroArk: c21050b0ca711182b4c3949f5b02f330fc84c5fb
+  NitroArk: 0b05ea5828b2df9833529dd475053076da7168cf
   NitroModules: ba9ddd723ffde85412ec774827d4a80ad9864b89
   RCTDeprecation: a4c521821fab57cbb125b36effe84d897d0dfa12
   RCTRequired: 9f3a7e5645d4bc3f551593de7550bb66ab6e42bc
