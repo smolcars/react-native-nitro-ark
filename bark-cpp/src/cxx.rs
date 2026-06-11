@@ -26,6 +26,13 @@ fn full_ffi_error(context: &str, err: anyhow::Error) -> anyhow::Error {
     anyhow::anyhow!(message)
 }
 
+fn ffi_boundary<T>(
+    context: &'static str,
+    f: impl FnOnce() -> anyhow::Result<T>,
+) -> anyhow::Result<T> {
+    f().map_err(|err| full_ffi_error(context, err))
+}
+
 #[cxx::bridge(namespace = "bark_cxx")]
 pub(crate) mod ffi {
 
@@ -479,7 +486,7 @@ pub(crate) fn init_logger() {
 }
 
 pub(crate) fn create_mnemonic() -> anyhow::Result<String> {
-    crate::create_mnemonic()
+    ffi_boundary("create_mnemonic", crate::create_mnemonic)
 }
 
 pub(crate) fn is_wallet_loaded() -> bool {
@@ -487,95 +494,117 @@ pub(crate) fn is_wallet_loaded() -> bool {
 }
 
 pub(crate) fn close_wallet() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
+    ffi_boundary("close_wallet", || {
+        crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
+    })
 }
 
 pub(crate) fn subscribe_notifications() -> anyhow::Result<Box<NotificationSubscription>> {
-    crate::TOKIO_RUNTIME.block_on(crate::subscribe_notifications())
+    ffi_boundary("subscribe_notifications", || {
+        crate::TOKIO_RUNTIME.block_on(crate::subscribe_notifications())
+    })
 }
 
 pub(crate) fn subscribe_arkoor_address_movements(
     address: &str,
 ) -> anyhow::Result<Box<NotificationSubscription>> {
-    crate::TOKIO_RUNTIME.block_on(crate::subscribe_arkoor_address_movements(address))
+    ffi_boundary("subscribe_arkoor_address_movements", || {
+        crate::TOKIO_RUNTIME.block_on(crate::subscribe_arkoor_address_movements(address))
+    })
 }
 
 pub(crate) fn subscribe_lightning_payment_movements(
     payment_hash: &str,
 ) -> anyhow::Result<Box<NotificationSubscription>> {
-    crate::TOKIO_RUNTIME.block_on(crate::subscribe_lightning_payment_movements(payment_hash))
+    ffi_boundary("subscribe_lightning_payment_movements", || {
+        crate::TOKIO_RUNTIME.block_on(crate::subscribe_lightning_payment_movements(payment_hash))
+    })
 }
 
 pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
-    let info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
-    Ok(ffi::CxxArkInfo {
-        network: info.network.to_string(),
-        server_pubkey: info.server_pubkey.to_string(),
-        mailbox_pubkey: info.mailbox_pubkey.to_string(),
-        round_interval: info.round_interval.as_secs(),
-        nb_round_nonces: info.nb_round_nonces as u16,
-        vtxo_exit_delta: info.vtxo_exit_delta,
-        vtxo_expiry_delta: info.vtxo_expiry_delta,
-        htlc_send_expiry_delta: info.htlc_send_expiry_delta,
-        max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
-        required_board_confirmations: info.required_board_confirmations as u8,
-        min_board_amount: info.min_board_amount.to_sat(),
-        ln_receive_anti_dos_required: info.ln_receive_anti_dos_required,
+    ffi_boundary("get_ark_info", || {
+        let info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        Ok(ffi::CxxArkInfo {
+            network: info.network.to_string(),
+            server_pubkey: info.server_pubkey.to_string(),
+            mailbox_pubkey: info.mailbox_pubkey.to_string(),
+            round_interval: info.round_interval.as_secs(),
+            nb_round_nonces: info.nb_round_nonces as u16,
+            vtxo_exit_delta: info.vtxo_exit_delta,
+            vtxo_expiry_delta: info.vtxo_expiry_delta,
+            htlc_send_expiry_delta: info.htlc_send_expiry_delta,
+            max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
+            required_board_confirmations: info.required_board_confirmations as u8,
+            min_board_amount: info.min_board_amount.to_sat(),
+            ln_receive_anti_dos_required: info.ln_receive_anti_dos_required,
+        })
     })
 }
 
 pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
-    let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
-    Ok(ffi::OffchainBalance {
-        spendable: balance.spendable.to_sat(),
-        claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
-        pending_lightning_send: balance.pending_lightning_send.to_sat(),
+    ffi_boundary("offchain_balance", || {
+        let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
+        Ok(ffi::OffchainBalance {
+            spendable: balance.spendable.to_sat(),
+            claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
+            pending_lightning_send: balance.pending_lightning_send.to_sat(),
 
-        pending_in_round: balance.pending_in_round.to_sat(),
-        pending_exit: balance.pending_exit.map_or(0, |a| a.to_sat()),
-        pending_board: balance.pending_board.to_sat(),
+            pending_in_round: balance.pending_in_round.to_sat(),
+            pending_exit: balance.pending_exit.map_or(0, |a| a.to_sat()),
+            pending_board: balance.pending_board.to_sat(),
+        })
     })
 }
 
 pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> {
-    let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
-    Ok(ffi::KeyPairResult {
-        public_key: keypair.public_key().to_string(),
-        secret_key: keypair.secret_key().display_secret().to_string(),
+    ffi_boundary("derive_store_next_keypair", || {
+        let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
+        Ok(ffi::KeyPairResult {
+            public_key: keypair.public_key().to_string(),
+            secret_key: keypair.secret_key().display_secret().to_string(),
+        })
     })
 }
 
 pub(crate) fn peek_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
-    let keypair = crate::TOKIO_RUNTIME.block_on(crate::peek_keypair(index))?;
-    Ok(ffi::KeyPairResult {
-        public_key: keypair.public_key().to_string(),
-        secret_key: keypair.secret_key().display_secret().to_string(),
+    ffi_boundary("peek_keypair", || {
+        let keypair = crate::TOKIO_RUNTIME.block_on(crate::peek_keypair(index))?;
+        Ok(ffi::KeyPairResult {
+            public_key: keypair.public_key().to_string(),
+            secret_key: keypair.secret_key().display_secret().to_string(),
+        })
     })
 }
 
 pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
-    let address = crate::TOKIO_RUNTIME.block_on(crate::new_address())?;
-    Ok(ffi::NewAddressResult {
-        user_pubkey: address.policy().user_pubkey().to_string(),
-        ark_id: address.ark_id().to_string(),
-        address: address.to_string(),
+    ffi_boundary("new_address", || {
+        let address = crate::TOKIO_RUNTIME.block_on(crate::new_address())?;
+        Ok(ffi::NewAddressResult {
+            user_pubkey: address.policy().user_pubkey().to_string(),
+            ark_id: address.ark_id().to_string(),
+            address: address.to_string(),
+        })
     })
 }
 
 pub(crate) fn peek_address(index: u32) -> anyhow::Result<ffi::NewAddressResult> {
-    let address = crate::TOKIO_RUNTIME.block_on(crate::peek_address(index))?;
-    Ok(ffi::NewAddressResult {
-        user_pubkey: address.policy().user_pubkey().to_string(),
-        ark_id: address.ark_id().to_string(),
-        address: address.to_string(),
+    ffi_boundary("peek_address", || {
+        let address = crate::TOKIO_RUNTIME.block_on(crate::peek_address(index))?;
+        Ok(ffi::NewAddressResult {
+            user_pubkey: address.policy().user_pubkey().to_string(),
+            ark_id: address.ark_id().to_string(),
+            address: address.to_string(),
+        })
     })
 }
 
 pub(crate) fn sign_message(message: &str, index: u32) -> anyhow::Result<String> {
-    let message = crate::TOKIO_RUNTIME
-        .block_on(crate::sign_message(message, index))?
-        .to_string();
-    Ok(message)
+    ffi_boundary("sign_message", || {
+        let message = crate::TOKIO_RUNTIME
+            .block_on(crate::sign_message(message, index))?
+            .to_string();
+        Ok(message)
+    })
 }
 
 pub(crate) fn sign_messsage_with_mnemonic(
@@ -584,22 +613,24 @@ pub(crate) fn sign_messsage_with_mnemonic(
     network: &str,
     index: u32,
 ) -> anyhow::Result<String> {
-    let mnemonic = Mnemonic::from_str(mnemonic)
-        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+    ffi_boundary("sign_messsage_with_mnemonic", || {
+        let mnemonic = Mnemonic::from_str(mnemonic)
+            .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
 
-    let network = match network {
-        "mainnet" => network::Network::Bitcoin,
-        "regtest" => network::Network::Regtest,
-        "signet" => network::Network::Signet,
-        _ => bail!("Invalid network format: '{}'", network),
-    };
+        let network = match network {
+            "mainnet" => network::Network::Bitcoin,
+            "regtest" => network::Network::Regtest,
+            "signet" => network::Network::Signet,
+            _ => bail!("Invalid network format: '{}'", network),
+        };
 
-    let message = crate::TOKIO_RUNTIME
-        .block_on(crate::sign_messsage_with_mnemonic(
-            message, mnemonic, network, index,
-        ))?
-        .to_string();
-    Ok(message)
+        let message = crate::TOKIO_RUNTIME
+            .block_on(crate::sign_messsage_with_mnemonic(
+                message, mnemonic, network, index,
+            ))?
+            .to_string();
+        Ok(message)
+    })
 }
 
 pub(crate) fn derive_keypair_from_mnemonic(
@@ -607,22 +638,24 @@ pub(crate) fn derive_keypair_from_mnemonic(
     network: &str,
     index: u32,
 ) -> anyhow::Result<ffi::KeyPairResult> {
-    let mnemonic = bip39::Mnemonic::from_str(mnemonic)
-        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
-    let network = match network {
-        "mainnet" => network::Network::Bitcoin,
-        "regtest" => network::Network::Regtest,
-        "signet" => network::Network::Signet,
-        _ => bail!("Invalid network format: '{}'", network),
-    };
+    ffi_boundary("derive_keypair_from_mnemonic", || {
+        let mnemonic = bip39::Mnemonic::from_str(mnemonic)
+            .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+        let network = match network {
+            "mainnet" => network::Network::Bitcoin,
+            "regtest" => network::Network::Regtest,
+            "signet" => network::Network::Signet,
+            _ => bail!("Invalid network format: '{}'", network),
+        };
 
-    let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_keypair_from_mnemonic(
-        mnemonic, network, index,
-    ))?;
+        let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_keypair_from_mnemonic(
+            mnemonic, network, index,
+        ))?;
 
-    Ok(ffi::KeyPairResult {
-        public_key: keypair.public_key().to_string(),
-        secret_key: keypair.secret_key().display_secret().to_string(),
+        Ok(ffi::KeyPairResult {
+            public_key: keypair.public_key().to_string(),
+            secret_key: keypair.secret_key().display_secret().to_string(),
+        })
     })
 }
 
@@ -631,250 +664,292 @@ pub(crate) fn verify_message(
     signature: &str,
     public_key: &str,
 ) -> anyhow::Result<bool> {
-    let signature = bark::ark::bitcoin::secp256k1::ecdsa::Signature::from_str(signature)
-        .with_context(|| format!("Invalid signature format: '{}'", signature))?;
-    let public_key = bark::ark::bitcoin::secp256k1::PublicKey::from_str(public_key)
-        .with_context(|| format!("Invalid public key format: '{}'", public_key))?;
+    ffi_boundary("verify_message", || {
+        let signature = bark::ark::bitcoin::secp256k1::ecdsa::Signature::from_str(signature)
+            .with_context(|| format!("Invalid signature format: '{}'", signature))?;
+        let public_key = bark::ark::bitcoin::secp256k1::PublicKey::from_str(public_key)
+            .with_context(|| format!("Invalid public key format: '{}'", public_key))?;
 
-    crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
+        crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
+    })
 }
 
 pub(crate) fn history() -> anyhow::Result<Vec<BarkMovement>> {
-    let history = crate::TOKIO_RUNTIME.block_on(crate::history())?;
-    fn fun_name(m: &bark::movement::Movement) -> Result<BarkMovement, anyhow::Error> {
-        utils::movement_to_bark_movement(m)
-    }
+    ffi_boundary("history", || {
+        let history = crate::TOKIO_RUNTIME.block_on(crate::history())?;
+        fn fun_name(m: &bark::movement::Movement) -> Result<BarkMovement, anyhow::Error> {
+            utils::movement_to_bark_movement(m)
+        }
 
-    history.iter().map(fun_name).collect()
+        history.iter().map(fun_name).collect()
+    })
 }
 
 pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
-    let vtxos = crate::TOKIO_RUNTIME.block_on(crate::vtxos())?;
-    Ok(vtxos
-        .into_iter()
-        .map(utils::wallet_vtxo_to_bark_vtxo)
-        .collect())
+    ffi_boundary("vtxos", || {
+        let vtxos = crate::TOKIO_RUNTIME.block_on(crate::vtxos())?;
+        Ok(vtxos
+            .into_iter()
+            .map(utils::wallet_vtxo_to_bark_vtxo)
+            .collect())
+    })
 }
 
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
-    let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
-    Ok(expiring_vtxos
-        .into_iter()
-        .map(utils::wallet_vtxo_to_bark_vtxo)
-        .collect())
+    ffi_boundary("get_expiring_vtxos", || {
+        let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
+        Ok(expiring_vtxos
+            .into_iter()
+            .map(utils::wallet_vtxo_to_bark_vtxo)
+            .collect())
+    })
 }
 
 pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32> {
-    let blockheight = crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
-    match blockheight {
-        Some(height) => Ok(Box::into_raw(Box::new(height))),
-        None => Ok(std::ptr::null()),
-    }
+    ffi_boundary("get_first_expiring_vtxo_blockheight", || {
+        let blockheight =
+            crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
+        match blockheight {
+            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            None => Ok(std::ptr::null()),
+        }
+    })
 }
 
 pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u32> {
-    let blockheight =
-        crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
-    match blockheight {
-        Some(height) => Ok(Box::into_raw(Box::new(height))),
-        None => Ok(std::ptr::null()),
-    }
+    ffi_boundary("get_next_required_refresh_blockheight", || {
+        let blockheight =
+            crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
+        match blockheight {
+            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            None => Ok(std::ptr::null()),
+        }
+    })
 }
 
 pub(crate) fn bolt11_invoice(
     amount_msat: u64,
     description: *const String,
 ) -> anyhow::Result<ffi::Bolt11Invoice> {
-    let description_opt = unsafe { description.as_ref().map(|s| s.clone()) };
-    let invoice =
-        crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat, description_opt))?;
-    Ok(ffi::Bolt11Invoice {
-        bolt11_invoice: invoice.to_string(),
-        payment_secret: invoice.payment_secret().to_string(),
-        payment_hash: invoice.payment_hash().to_string(),
+    ffi_boundary("bolt11_invoice", || {
+        let description_opt = unsafe { description.as_ref().map(|s| s.clone()) };
+        let invoice =
+            crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat, description_opt))?;
+        Ok(ffi::Bolt11Invoice {
+            bolt11_invoice: invoice.to_string(),
+            payment_secret: invoice.payment_secret().to_string(),
+            payment_hash: invoice.payment_hash().to_string(),
+        })
     })
 }
 
 pub(crate) fn lightning_receive_status(
     payment_hash: String,
 ) -> anyhow::Result<*const ffi::LightningReceive> {
-    let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
-        .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
-    let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
+    ffi_boundary("lightning_receive_status", || {
+        let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
+            .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
+        let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
 
-    if status.is_none() {
-        return Ok(std::ptr::null());
-    }
+        if status.is_none() {
+            return Ok(std::ptr::null());
+        }
 
-    let status = status.unwrap();
-    let status = Box::new(ffi::LightningReceive {
-        payment_hash: status.payment_hash.to_string(),
-        payment_preimage: status.payment_preimage.to_string(),
-        invoice: status.invoice.to_string(),
-        preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
-            Box::into_raw(Box::new(v.timestamp() as u64))
-        }),
-        finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
-            Box::into_raw(Box::new(v.timestamp() as u64))
-        }),
-    });
-    Ok(Box::into_raw(status))
+        let status = status.unwrap();
+        let status = Box::new(ffi::LightningReceive {
+            payment_hash: status.payment_hash.to_string(),
+            payment_preimage: status.payment_preimage.to_string(),
+            invoice: status.invoice.to_string(),
+            preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
+                Box::into_raw(Box::new(v.timestamp() as u64))
+            }),
+            finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
+                Box::into_raw(Box::new(v.timestamp() as u64))
+            }),
+        });
+        Ok(Box::into_raw(status))
+    })
 }
 
 pub(crate) fn sync_pending_boards() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::sync_pending_boards())
+    ffi_boundary("sync_pending_boards", || {
+        crate::TOKIO_RUNTIME.block_on(crate::sync_pending_boards())
+    })
 }
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::maintenance())
+    ffi_boundary("maintenance", || {
+        crate::TOKIO_RUNTIME.block_on(crate::maintenance())
+    })
 }
 
 pub(crate) fn maintenance_delegated() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::maintenance_delegated())
+    ffi_boundary("maintenance_delegated", || {
+        crate::TOKIO_RUNTIME.block_on(crate::maintenance_delegated())
+    })
 }
 
 pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
+    ffi_boundary("maintenance_with_onchain", || {
+        crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
+    })
 }
 
 pub(crate) fn maintenance_with_onchain_delegated() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain_delegated())
+    ffi_boundary("maintenance_with_onchain_delegated", || {
+        crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain_delegated())
+    })
 }
 
 pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::maintenance_refresh())
+    ffi_boundary("maintenance_refresh", || {
+        crate::TOKIO_RUNTIME.block_on(crate::maintenance_refresh())
+    })
 }
 
 pub(crate) fn refresh_server() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::refresh_server())
+    ffi_boundary("refresh_server", || {
+        crate::TOKIO_RUNTIME.block_on(crate::refresh_server())
+    })
 }
 
 pub(crate) fn sync() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::sync())
+    ffi_boundary("sync", || crate::TOKIO_RUNTIME.block_on(crate::sync()))
 }
 
 pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
-    let create_opts = utils::ffi_config_to_config(opts)
-        .map_err(|err| full_ffi_error("create_wallet config", err))?;
+    ffi_boundary("create_wallet", || {
+        let create_opts = utils::ffi_config_to_config(opts)?;
 
-    log::info!("Creating wallet with options: {:?}", create_opts);
+        log::info!("Creating wallet with options: {:?}", create_opts);
 
-    crate::TOKIO_RUNTIME
-        .block_on(crate::create_wallet(Path::new(datadir), create_opts))
-        .map_err(|err| full_ffi_error("create_wallet", err))
+        crate::TOKIO_RUNTIME.block_on(crate::create_wallet(Path::new(datadir), create_opts))
+    })
 }
 
 pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Result<()> {
-    let mnemonic = bip39::Mnemonic::from_str(&config.mnemonic)
-        .with_context(|| format!("Invalid mnemonic format: '{}'", config.mnemonic))?;
+    ffi_boundary("load_wallet", || {
+        let mnemonic = bip39::Mnemonic::from_str(&config.mnemonic)
+            .with_context(|| format!("Invalid mnemonic format: '{}'", config.mnemonic))?;
 
-    log::info!("Loading wallet with datadir: {}", datadir);
+        log::info!("Loading wallet with datadir: {}", datadir);
 
-    let create_opts = utils::ffi_config_to_config(config)
-        .map_err(|err| full_ffi_error("load_wallet config", err))?;
+        let create_opts = utils::ffi_config_to_config(config)?;
 
-    let (config, _) = utils::merge_config_opts(create_opts)
-        .map_err(|err| full_ffi_error("load_wallet config", err))?;
+        let (config, _) = utils::merge_config_opts(create_opts)?;
 
-    crate::TOKIO_RUNTIME
-        .block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
-        .map_err(|err| full_ffi_error("load_wallet", err))
+        crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
+    })
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<ffi::BoardResult> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_amount(amount))?;
+    ffi_boundary("board_amount", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_amount(amount))?;
 
-    Ok(ffi::BoardResult {
-        vtxos: board_result
-            .vtxos
-            .iter()
-            .map(|vtxo| vtxo.to_string())
-            .collect(),
-        funding_txid: board_result.funding_tx.compute_txid().to_string(),
+        Ok(ffi::BoardResult {
+            vtxos: board_result
+                .vtxos
+                .iter()
+                .map(|vtxo| vtxo.to_string())
+                .collect(),
+            funding_txid: board_result.funding_tx.compute_txid().to_string(),
+        })
     })
 }
 
 pub(crate) fn board_all() -> anyhow::Result<ffi::BoardResult> {
-    let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_all())?;
+    ffi_boundary("board_all", || {
+        let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_all())?;
 
-    Ok(ffi::BoardResult {
-        vtxos: board_result
-            .vtxos
-            .iter()
-            .map(|vtxo| vtxo.to_string())
-            .collect(),
-        funding_txid: board_result.funding_tx.compute_txid().to_string(),
+        Ok(ffi::BoardResult {
+            vtxos: board_result
+                .vtxos
+                .iter()
+                .map(|vtxo| vtxo.to_string())
+                .collect(),
+            funding_txid: board_result.funding_tx.compute_txid().to_string(),
+        })
     })
 }
 
 pub(crate) fn validate_arkoor_address(address: &str) -> anyhow::Result<()> {
-    let address = bark::ark::Address::from_str(address)
-        .with_context(|| format!("Invalid address format: '{}'", address))?;
-    crate::TOKIO_RUNTIME.block_on(crate::validate_arkoor_address(address))
+    ffi_boundary("validate_arkoor_address", || {
+        let address = bark::ark::Address::from_str(address)
+            .with_context(|| format!("Invalid address format: '{}'", address))?;
+        crate::TOKIO_RUNTIME.block_on(crate::validate_arkoor_address(address))
+    })
 }
 
 pub(crate) fn send_arkoor_payment(
     destination: &str,
     amount_sat: u64,
 ) -> anyhow::Result<ArkoorPaymentResult> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let dest = bark::ark::Address::from_str(destination)
-        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
-    let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
+    ffi_boundary("send_arkoor_payment", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let dest = bark::ark::Address::from_str(destination)
+            .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+        let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
-    Ok(ArkoorPaymentResult {
-        vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
-        destination_pubkey: destination.to_string(),
-        amount_sat,
+        Ok(ArkoorPaymentResult {
+            vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
+            destination_pubkey: destination.to_string(),
+            amount_sat,
+        })
     })
 }
 
 pub(crate) fn estimate_arkoor_payment_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_arkoor_payment_fee(amount))?;
+    ffi_boundary("estimate_arkoor_payment_fee", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_arkoor_payment_fee(amount))?;
 
-    Ok(BarkFeeEstimate {
-        gross_amount_sat: estimate.gross_amount.to_sat(),
-        fee_sat: estimate.fee.to_sat(),
-        net_amount_sat: estimate.net_amount.to_sat(),
-        vtxos_spent: estimate
-            .vtxos_spent
-            .into_iter()
-            .map(|vtxo_id| vtxo_id.to_string())
-            .collect(),
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
     })
 }
 
 pub(crate) fn estimate_board_offchain_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_board_offchain_fee(amount))?;
+    ffi_boundary("estimate_board_offchain_fee", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_board_offchain_fee(amount))?;
 
-    Ok(BarkFeeEstimate {
-        gross_amount_sat: estimate.gross_amount.to_sat(),
-        fee_sat: estimate.fee.to_sat(),
-        net_amount_sat: estimate.net_amount.to_sat(),
-        vtxos_spent: estimate
-            .vtxos_spent
-            .into_iter()
-            .map(|vtxo_id| vtxo_id.to_string())
-            .collect(),
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
     })
 }
 
 pub(crate) fn estimate_lightning_send_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_lightning_send_fee(amount))?;
+    ffi_boundary("estimate_lightning_send_fee", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_lightning_send_fee(amount))?;
 
-    Ok(BarkFeeEstimate {
-        gross_amount_sat: estimate.gross_amount.to_sat(),
-        fee_sat: estimate.fee.to_sat(),
-        net_amount_sat: estimate.net_amount.to_sat(),
-        vtxos_spent: estimate
-            .vtxos_spent
-            .into_iter()
-            .map(|vtxo_id| vtxo_id.to_string())
-            .collect(),
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
     })
 }
 
@@ -908,15 +983,17 @@ pub(crate) fn pay_lightning_invoice(
     amount_sat: *const u64,
     wait: bool,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
-    let amount_opt =
-        unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
+    ffi_boundary("pay_lightning_invoice", || {
+        let amount_opt =
+            unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
-    let invoice = lightning::Invoice::from_str(destination)?;
+        let invoice = lightning::Invoice::from_str(destination)?;
 
-    let send_result =
-        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
+        let send_result = crate::TOKIO_RUNTIME
+            .block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
 
-    Ok(lightning_payment_result_to_ffi(send_result))
+        Ok(lightning_payment_result_to_ffi(send_result))
+    })
 }
 
 pub(crate) fn pay_lightning_offer(
@@ -924,19 +1001,21 @@ pub(crate) fn pay_lightning_offer(
     amount_sat: *const u64,
     wait: bool,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
-    let amount_opt =
-        unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
+    ffi_boundary("pay_lightning_offer", || {
+        let amount_opt =
+            unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
-    let offer = lightning::Offer::from_str(offer)
-        .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
+        let offer = lightning::Offer::from_str(offer)
+            .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
 
-    let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(
-        offer.clone(),
-        amount_opt,
-        wait,
-    ))?;
+        let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(
+            offer.clone(),
+            amount_opt,
+            wait,
+        ))?;
 
-    Ok(lightning_payment_result_to_ffi(send_result))
+        Ok(lightning_payment_result_to_ffi(send_result))
+    })
 }
 
 pub(crate) fn pay_lightning_address(
@@ -945,20 +1024,22 @@ pub(crate) fn pay_lightning_address(
     comment: &str,
     wait: bool,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let comment_opt = if comment.is_empty() {
-        None
-    } else {
-        Some(comment)
-    };
-    let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(
-        addr,
-        amount,
-        comment_opt,
-        wait,
-    ))?;
+    ffi_boundary("pay_lightning_address", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let comment_opt = if comment.is_empty() {
+            None
+        } else {
+            Some(comment)
+        };
+        let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(
+            addr,
+            amount,
+            comment_opt,
+            wait,
+        ))?;
 
-    Ok(lightning_payment_result_to_ffi(send_result))
+        Ok(lightning_payment_result_to_ffi(send_result))
+    })
 }
 
 fn empty_exit_block_ref() -> ffi::ExitBlockRefResult {
@@ -1163,39 +1244,45 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
 pub(crate) fn progress_exits(
     fee_rate_sat_per_kvb: *const u64,
 ) -> anyhow::Result<Vec<ffi::ExitProgressStatusResult>> {
-    let fee_rate = unsafe {
-        fee_rate_sat_per_kvb
-            .as_ref()
-            .copied()
-            .map(FeeRate::from_sat_per_kvb_ceil)
-    };
-    let statuses = TOKIO_RUNTIME.block_on(crate::progress_exits(fee_rate))?;
+    ffi_boundary("progress_exits", || {
+        let fee_rate = unsafe {
+            fee_rate_sat_per_kvb
+                .as_ref()
+                .copied()
+                .map(FeeRate::from_sat_per_kvb_ceil)
+        };
+        let statuses = TOKIO_RUNTIME.block_on(crate::progress_exits(fee_rate))?;
 
-    statuses
-        .into_iter()
-        .map(|status| {
-            Ok(ffi::ExitProgressStatusResult {
-                vtxo_id: status.vtxo_id.to_string(),
-                state: utils::exit_state_name(&status.state).to_string(),
-                state_details: exit_state_details_to_ffi(&status.state),
-                error: status
-                    .error
-                    .map_or(String::new(), |error| error.to_string()),
+        statuses
+            .into_iter()
+            .map(|status| {
+                Ok(ffi::ExitProgressStatusResult {
+                    vtxo_id: status.vtxo_id.to_string(),
+                    state: utils::exit_state_name(&status.state).to_string(),
+                    state_details: exit_state_details_to_ffi(&status.state),
+                    error: status.error.map_or(String::new(), |error| {
+                        utils::format_error_chain(&anyhow::Error::new(error))
+                    }),
+                })
             })
-        })
-        .collect()
+            .collect()
+    })
 }
 
 pub(crate) fn get_exit_vtxos() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
-    let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
+    ffi_boundary("get_exit_vtxos", || {
+        let exits = TOKIO_RUNTIME.block_on(crate::get_exit_vtxos())?;
 
-    exits.into_iter().map(exit_vtxo_to_ffi).collect()
+        exits.into_iter().map(exit_vtxo_to_ffi).collect()
+    })
 }
 
 pub(crate) fn list_claimable() -> anyhow::Result<Vec<ffi::ExitVtxoResult>> {
-    let exits = TOKIO_RUNTIME.block_on(crate::list_claimable())?;
+    ffi_boundary("list_claimable", || {
+        let exits = TOKIO_RUNTIME.block_on(crate::list_claimable())?;
 
-    exits.into_iter().map(exit_vtxo_to_ffi).collect()
+        exits.into_iter().map(exit_vtxo_to_ffi).collect()
+    })
 }
 
 fn exit_vtxo_to_ffi(exit: bark::exit::ExitVtxo) -> anyhow::Result<ffi::ExitVtxoResult> {
@@ -1252,53 +1339,61 @@ pub(crate) fn get_exit_status(
     include_history: bool,
     include_transactions: bool,
 ) -> anyhow::Result<*const ffi::ExitStatusResult> {
-    let status = TOKIO_RUNTIME.block_on(crate::get_exit_status(
-        vtxo_id.to_string(),
-        include_history,
-        include_transactions,
-    ))?;
+    ffi_boundary("get_exit_status", || {
+        let status = TOKIO_RUNTIME.block_on(crate::get_exit_status(
+            vtxo_id.to_string(),
+            include_history,
+            include_transactions,
+        ))?;
 
-    match status {
-        Some(status) => {
-            let history = status.history.unwrap_or_default();
-            let result = ffi::ExitStatusResult {
-                vtxo_id: status.vtxo_id.to_string(),
-                state: utils::exit_state_name(&status.state).to_string(),
-                state_details: exit_state_details_to_ffi(&status.state),
-                history: history
-                    .iter()
-                    .map(utils::exit_state_name)
-                    .map(str::to_string)
-                    .collect(),
-                history_details: history.iter().map(exit_state_details_to_ffi).collect(),
-                transactions: status
-                    .transactions
-                    .into_iter()
-                    .map(exit_transaction_package_to_ffi)
-                    .collect(),
-            };
-            Ok(Box::into_raw(Box::new(result)))
+        match status {
+            Some(status) => {
+                let history = status.history.unwrap_or_default();
+                let result = ffi::ExitStatusResult {
+                    vtxo_id: status.vtxo_id.to_string(),
+                    state: utils::exit_state_name(&status.state).to_string(),
+                    state_details: exit_state_details_to_ffi(&status.state),
+                    history: history
+                        .iter()
+                        .map(utils::exit_state_name)
+                        .map(str::to_string)
+                        .collect(),
+                    history_details: history.iter().map(exit_state_details_to_ffi).collect(),
+                    transactions: status
+                        .transactions
+                        .into_iter()
+                        .map(exit_transaction_package_to_ffi)
+                        .collect(),
+                };
+                Ok(Box::into_raw(Box::new(result)) as *const ffi::ExitStatusResult)
+            }
+            None => Ok(std::ptr::null()),
         }
-        None => Ok(std::ptr::null()),
-    }
+    })
 }
 
 pub(crate) fn has_pending_exits() -> anyhow::Result<bool> {
-    TOKIO_RUNTIME.block_on(crate::has_pending_exits())
+    ffi_boundary("has_pending_exits", || {
+        TOKIO_RUNTIME.block_on(crate::has_pending_exits())
+    })
 }
 
 pub(crate) fn pending_exit_total() -> anyhow::Result<u64> {
-    Ok(TOKIO_RUNTIME
-        .block_on(crate::pending_exit_total())?
-        .to_sat())
+    ffi_boundary("pending_exit_total", || {
+        Ok(TOKIO_RUNTIME
+            .block_on(crate::pending_exit_total())?
+            .to_sat())
+    })
 }
 
 pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
-    let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
-    match blockheight {
-        Some(height) => Ok(Box::into_raw(Box::new(height))),
-        None => Ok(std::ptr::null()),
-    }
+    ffi_boundary("all_claimable_at_height", || {
+        let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
+        match blockheight {
+            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            None => Ok(std::ptr::null()),
+        }
+    })
 }
 
 pub(crate) fn drain_exits(
@@ -1306,102 +1401,114 @@ pub(crate) fn drain_exits(
     destination_address: &str,
     fee_rate_sat_per_kvb: *const u64,
 ) -> anyhow::Result<String> {
-    let fee_rate = unsafe {
-        fee_rate_sat_per_kvb
-            .as_ref()
-            .copied()
-            .map(FeeRate::from_sat_per_kvb_ceil)
-    };
+    ffi_boundary("drain_exits", || {
+        let fee_rate = unsafe {
+            fee_rate_sat_per_kvb
+                .as_ref()
+                .copied()
+                .map(FeeRate::from_sat_per_kvb_ceil)
+        };
 
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt =
-        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+        let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
+            destination_address,
+        )
+        .with_context(|| {
             format!(
                 "Invalid destination address format: '{}'",
                 destination_address
             )
         })?;
-    let addr = destination_address_opt
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "Address '{}' is not valid for configured network {:?}",
-                destination_address, ark_info.network
-            )
-        })?;
+        let addr = destination_address_opt
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "Address '{}' is not valid for configured network {:?}",
+                    destination_address, ark_info.network
+                )
+            })?;
 
-    let psbt = TOKIO_RUNTIME.block_on(crate::drain_exits(vtxo_ids, addr, fee_rate))?;
-    Ok(psbt.to_string())
+        let psbt = TOKIO_RUNTIME.block_on(crate::drain_exits(vtxo_ids, addr, fee_rate))?;
+        Ok(psbt.to_string())
+    })
 }
 
 pub(crate) fn extract_transaction(psbt: &str) -> anyhow::Result<String> {
-    let psbt = bitcoin::Psbt::from_str(psbt)
-        .with_context(|| format!("Invalid PSBT format: '{}'", psbt))?;
-    let tx = TOKIO_RUNTIME.block_on(crate::onchain::extract_transaction(psbt))?;
-    Ok(bitcoin::consensus::encode::serialize_hex(&tx))
+    ffi_boundary("extract_transaction", || {
+        let psbt = bitcoin::Psbt::from_str(psbt)
+            .with_context(|| format!("Invalid PSBT format: '{}'", psbt))?;
+        let tx = TOKIO_RUNTIME.block_on(crate::onchain::extract_transaction(psbt))?;
+        Ok(bitcoin::consensus::encode::serialize_hex(&tx))
+    })
 }
 
 pub(crate) fn broadcast_transaction(tx_hex: &str) -> anyhow::Result<String> {
-    let tx = bitcoin::consensus::encode::deserialize_hex(tx_hex)
-        .with_context(|| format!("Invalid transaction hex format: '{}'", tx_hex))?;
-    let txid = TOKIO_RUNTIME.block_on(crate::onchain::broadcast_transaction(tx))?;
-    Ok(txid.to_string())
+    ffi_boundary("broadcast_transaction", || {
+        let tx = bitcoin::consensus::encode::deserialize_hex(tx_hex)
+            .with_context(|| format!("Invalid transaction hex format: '{}'", tx_hex))?;
+        let txid = TOKIO_RUNTIME.block_on(crate::onchain::broadcast_transaction(tx))?;
+        Ok(txid.to_string())
+    })
 }
 
 pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let address_unchecked = bitcoin::Address::from_str(destination)
-        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+    ffi_boundary("send_onchain", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let address_unchecked = bitcoin::Address::from_str(destination)
+            .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
 
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    // Now require the network to match the wallet's network
-    let destination_address = address_unchecked
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "address '{}' is not valid for configured network {}",
-                destination, ark_info.network
-            )
-        })?;
+        let destination_address = address_unchecked
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "address '{}' is not valid for configured network {}",
+                    destination, ark_info.network
+                )
+            })?;
 
-    let result = crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address, amount))?;
+        let result =
+            crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address, amount))?;
 
-    Ok(result.to_string())
+        Ok(result.to_string())
+    })
 }
 
 pub(crate) fn estimate_send_onchain(
     destination: &str,
     amount_sat: u64,
 ) -> anyhow::Result<BarkFeeEstimate> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let address_unchecked = bitcoin::Address::from_str(destination)
-        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+    ffi_boundary("estimate_send_onchain", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+        let address_unchecked = bitcoin::Address::from_str(destination)
+            .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
 
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address = address_unchecked
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "address '{}' is not valid for configured network {}",
-                destination, ark_info.network
-            )
-        })?;
+        let destination_address = address_unchecked
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "address '{}' is not valid for configured network {}",
+                    destination, ark_info.network
+                )
+            })?;
 
-    let estimate =
-        crate::TOKIO_RUNTIME.block_on(crate::estimate_send_onchain(destination_address, amount))?;
+        let estimate = crate::TOKIO_RUNTIME
+            .block_on(crate::estimate_send_onchain(destination_address, amount))?;
 
-    Ok(BarkFeeEstimate {
-        gross_amount_sat: estimate.gross_amount.to_sat(),
-        fee_sat: estimate.fee.to_sat(),
-        net_amount_sat: estimate.net_amount.to_sat(),
-        vtxos_spent: estimate
-            .vtxos_spent
-            .into_iter()
-            .map(|vtxo_id| vtxo_id.to_string())
-            .collect(),
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
     })
 }
 
@@ -1409,101 +1516,113 @@ pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
 ) -> anyhow::Result<String> {
-    let ids = vtxo_ids
-        .into_iter()
-        .map(|s| bark::ark::VtxoId::from_str(&s))
-        .collect::<Result<Vec<_>, _>>()?;
+    ffi_boundary("offboard_specific", || {
+        let ids = vtxo_ids
+            .into_iter()
+            .map(|s| bark::ark::VtxoId::from_str(&s))
+            .collect::<Result<Vec<_>, _>>()?;
 
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt =
-        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+        let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
+            destination_address,
+        )
+        .with_context(|| {
             format!(
                 "Invalid destination address format: '{}'",
                 destination_address
             )
         })?;
-    let addr = destination_address_opt
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "Address '{}' is not valid for configured network {:?}",
-                destination_address, ark_info.network
-            )
-        })?;
+        let addr = destination_address_opt
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "Address '{}' is not valid for configured network {:?}",
+                    destination_address, ark_info.network
+                )
+            })?;
 
-    if ids.is_empty() {
-        bail!("At least one VTXO ID must be provided for specific offboarding");
-    }
+        if ids.is_empty() {
+            bail!("At least one VTXO ID must be provided for specific offboarding");
+        }
 
-    info!(
-        "Attempting to offboard {} specific VTXOs to {:?}",
-        ids.len(),
-        addr
-    );
+        info!(
+            "Attempting to offboard {} specific VTXOs to {:?}",
+            ids.len(),
+            addr
+        );
 
-    let offboard_specific_result =
-        crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, addr))?;
+        let offboard_specific_result =
+            crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, addr))?;
 
-    Ok(offboard_specific_result.to_string())
+        Ok(offboard_specific_result.to_string())
+    })
 }
 
 pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> {
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+    ffi_boundary("offboard_all", || {
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt =
-        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+        let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
+            destination_address,
+        )
+        .with_context(|| {
             format!(
                 "Invalid destination address format: '{}'",
                 destination_address
             )
         })?;
-    let addr = destination_address_opt
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "Address '{}' is not valid for configured network {:?}",
-                destination_address, ark_info.network
-            )
-        })?;
+        let addr = destination_address_opt
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "Address '{}' is not valid for configured network {:?}",
+                    destination_address, ark_info.network
+                )
+            })?;
 
-    info!("Attempting to offboard all VTXOs to {:?}", addr);
+        info!("Attempting to offboard all VTXOs to {:?}", addr);
 
-    let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
+        let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
-    Ok(offboard_all_result.to_string())
+        Ok(offboard_all_result.to_string())
+    })
 }
 
 pub(crate) fn estimate_offboard_all(destination_address: &str) -> anyhow::Result<BarkFeeEstimate> {
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+    ffi_boundary("estimate_offboard_all", || {
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt =
-        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+        let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
+            destination_address,
+        )
+        .with_context(|| {
             format!(
                 "Invalid destination address format: '{}'",
                 destination_address
             )
         })?;
-    let addr = destination_address_opt
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "Address '{}' is not valid for configured network {:?}",
-                destination_address, ark_info.network
-            )
-        })?;
+        let addr = destination_address_opt
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "Address '{}' is not valid for configured network {:?}",
+                    destination_address, ark_info.network
+                )
+            })?;
 
-    let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_offboard_all(addr))?;
+        let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_offboard_all(addr))?;
 
-    Ok(BarkFeeEstimate {
-        gross_amount_sat: estimate.gross_amount.to_sat(),
-        fee_sat: estimate.fee.to_sat(),
-        net_amount_sat: estimate.net_amount.to_sat(),
-        vtxos_spent: estimate
-            .vtxos_spent
-            .into_iter()
-            .map(|vtxo_id| vtxo_id.to_string())
-            .collect(),
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
     })
 }
 
@@ -1512,171 +1631,202 @@ pub(crate) fn try_claim_lightning_receive(
     wait: bool,
     token: *const String,
 ) -> anyhow::Result<ffi::LightningReceive> {
-    let payment_hash = PaymentHash::from_str(&payment_hash)?;
-    let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
+    ffi_boundary("try_claim_lightning_receive", || {
+        let payment_hash = PaymentHash::from_str(&payment_hash)?;
+        let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
 
-    let status = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
-        payment_hash,
-        wait,
-        token_opt,
-    ))?;
+        let status = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
+            payment_hash,
+            wait,
+            token_opt,
+        ))?;
 
-    Ok(ffi::LightningReceive {
-        payment_hash: status.payment_hash.to_string(),
-        payment_preimage: status.payment_preimage.to_string(),
-        invoice: status.invoice.to_string(),
-        preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
-            Box::into_raw(Box::new(v.timestamp() as u64))
-        }),
-        finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
-            Box::into_raw(Box::new(v.timestamp() as u64))
-        }),
+        Ok(ffi::LightningReceive {
+            payment_hash: status.payment_hash.to_string(),
+            payment_preimage: status.payment_preimage.to_string(),
+            invoice: status.invoice.to_string(),
+            preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
+                Box::into_raw(Box::new(v.timestamp() as u64))
+            }),
+            finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
+                Box::into_raw(Box::new(v.timestamp() as u64))
+            }),
+        })
     })
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::try_claim_all_lightning_receives(wait))?;
-    Ok(())
+    ffi_boundary("try_claim_all_lightning_receives", || {
+        crate::TOKIO_RUNTIME.block_on(crate::try_claim_all_lightning_receives(wait))?;
+        Ok(())
+    })
 }
 
 pub(crate) fn check_lightning_payment(
     payment_hash: String,
     wait: bool,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
-    let payment_hash = PaymentHash::from_str(&payment_hash)?;
-    let result =
-        crate::TOKIO_RUNTIME.block_on(crate::check_lightning_payment(payment_hash, wait))?;
-    Ok(lightning_payment_result_to_ffi(result))
+    ffi_boundary("check_lightning_payment", || {
+        let payment_hash = PaymentHash::from_str(&payment_hash)?;
+        let result =
+            crate::TOKIO_RUNTIME.block_on(crate::check_lightning_payment(payment_hash, wait))?;
+        Ok(lightning_payment_result_to_ffi(result))
+    })
 }
 
 pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
+    ffi_boundary("start_exit_for_entire_wallet", || {
+        TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
+    })
 }
 
 pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(vtxo_ids))
+    ffi_boundary("start_exit_for_vtxos", || {
+        TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(vtxo_ids))
+    })
 }
 
 pub(crate) fn sync_exit() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::sync_exit())
+    ffi_boundary("sync_exit", || TOKIO_RUNTIME.block_on(crate::sync_exit()))
 }
 
 pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
+    ffi_boundary("sync_pending_rounds", || {
+        TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
+    })
 }
 
 pub(crate) fn mailbox_keypair() -> anyhow::Result<ffi::KeyPairResult> {
-    let keypair = crate::TOKIO_RUNTIME.block_on(crate::mailbox_keypair())?;
-    Ok(ffi::KeyPairResult {
-        public_key: keypair.public_key().to_string(),
-        secret_key: keypair.secret_key().display_secret().to_string(),
+    ffi_boundary("mailbox_keypair", || {
+        let keypair = crate::TOKIO_RUNTIME.block_on(crate::mailbox_keypair())?;
+        Ok(ffi::KeyPairResult {
+            public_key: keypair.public_key().to_string(),
+            secret_key: keypair.secret_key().display_secret().to_string(),
+        })
     })
 }
 
 pub(crate) fn mailbox_authorization(
     authorization_expiry: i64,
 ) -> anyhow::Result<ffi::MailboxAuthorizationResult> {
-    let expiry = chrono::DateTime::from_timestamp(authorization_expiry, 0)
-        .ok_or_else(|| anyhow::anyhow!("Invalid timestamp"))?
-        .with_timezone(&chrono::Local);
-    let auth = crate::TOKIO_RUNTIME.block_on(crate::mailbox_authorization(expiry))?;
+    ffi_boundary("mailbox_authorization", || {
+        let expiry = chrono::DateTime::from_timestamp(authorization_expiry, 0)
+            .ok_or_else(|| anyhow::anyhow!("Invalid timestamp"))?
+            .with_timezone(&chrono::Local);
+        let auth = crate::TOKIO_RUNTIME.block_on(crate::mailbox_authorization(expiry))?;
 
-    // Encode the full authorization using ProtocolEncoding
-    use bark::ark::ProtocolEncoding;
-    let mut encoded_bytes = Vec::new();
-    auth.encode(&mut encoded_bytes)
-        .context("Failed to encode mailbox authorization")?;
+        // Encode the full authorization using ProtocolEncoding
+        use bark::ark::ProtocolEncoding;
+        let mut encoded_bytes = Vec::new();
+        auth.encode(&mut encoded_bytes)
+            .context("Failed to encode mailbox authorization")?;
 
-    Ok(ffi::MailboxAuthorizationResult {
-        mailbox_id: auth.mailbox().to_string(),
-        expiry: auth.expiry().timestamp(),
-        encoded: hex::encode(&encoded_bytes),
+        Ok(ffi::MailboxAuthorizationResult {
+            mailbox_id: auth.mailbox().to_string(),
+            expiry: auth.expiry().timestamp(),
+            encoded: hex::encode(&encoded_bytes),
+        })
     })
 }
 
 // Onchain methods
 
 pub(crate) fn onchain_list_unspent() -> anyhow::Result<String> {
-    let unspent = TOKIO_RUNTIME.block_on(crate::onchain::list_unspent())?;
-    serde_json::to_string(&unspent).map_err(Into::into)
+    ffi_boundary("onchain_list_unspent", || {
+        let unspent = TOKIO_RUNTIME.block_on(crate::onchain::list_unspent())?;
+        serde_json::to_string(&unspent).map_err(Into::into)
+    })
 }
 
 pub(crate) fn onchain_sync() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::onchain::sync())?;
-    Ok(())
+    ffi_boundary("onchain_sync", || {
+        crate::TOKIO_RUNTIME.block_on(crate::onchain::sync())?;
+        Ok(())
+    })
 }
 
 pub(crate) fn onchain_address() -> anyhow::Result<String> {
-    let address = crate::TOKIO_RUNTIME.block_on(crate::onchain::address())?;
-    Ok(address.to_string())
+    ffi_boundary("onchain_address", || {
+        let address = crate::TOKIO_RUNTIME.block_on(crate::onchain::address())?;
+        Ok(address.to_string())
+    })
 }
 
 pub(crate) fn onchain_balance() -> anyhow::Result<ffi::OnChainBalance> {
-    let balance = crate::TOKIO_RUNTIME.block_on(crate::onchain::onchain_balance())?;
-    Ok(ffi::OnChainBalance {
-        immature: balance.immature.to_sat(),
-        trusted_pending: balance.trusted_pending.to_sat(),
-        untrusted_pending: balance.untrusted_pending.to_sat(),
-        confirmed: balance.confirmed.to_sat(),
+    ffi_boundary("onchain_balance", || {
+        let balance = crate::TOKIO_RUNTIME.block_on(crate::onchain::onchain_balance())?;
+        Ok(ffi::OnChainBalance {
+            immature: balance.immature.to_sat(),
+            trusted_pending: balance.trusted_pending.to_sat(),
+            untrusted_pending: balance.untrusted_pending.to_sat(),
+            confirmed: balance.confirmed.to_sat(),
+        })
     })
 }
 
 pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
-    let utxos = crate::TOKIO_RUNTIME.block_on(async { crate::onchain::utxos().await })?;
+    ffi_boundary("onchain_utxos", || {
+        let utxos = crate::TOKIO_RUNTIME.block_on(async { crate::onchain::utxos().await })?;
 
-    let res = utxos
-        .iter()
-        .map(|utxo| match utxo {
-            bark::onchain::Utxo::Local(local) => serde_json::json!({
-                "outpoint": format!("{}:{}", local.outpoint.txid, local.outpoint.vout),
-                "amount": local.amount.to_sat(),
-                "confirmation_height": local.confirmation_height.map_or(0, |_h| 0),
-            }),
-            bark::onchain::Utxo::Exit(exit) => serde_json::json!({
-                "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
-                "height": exit.height
-            }),
-        })
-        .collect::<Vec<_>>();
+        let res = utxos
+            .iter()
+            .map(|utxo| match utxo {
+                bark::onchain::Utxo::Local(local) => serde_json::json!({
+                    "outpoint": format!("{}:{}", local.outpoint.txid, local.outpoint.vout),
+                    "amount": local.amount.to_sat(),
+                    "confirmation_height": local.confirmation_height.map_or(0, |_h| 0),
+                }),
+                bark::onchain::Utxo::Exit(exit) => serde_json::json!({
+                    "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
+                    "height": exit.height
+                }),
+            })
+            .collect::<Vec<_>>();
 
-    serde_json::to_string(&res).map_err(Into::into)
+        serde_json::to_string(&res).map_err(Into::into)
+    })
 }
 
 pub(crate) fn onchain_fee_rates() -> anyhow::Result<BarkFeeRates> {
-    let fee_rates = crate::TOKIO_RUNTIME.block_on(async { crate::onchain::fee_rates().await })?;
+    ffi_boundary("onchain_fee_rates", || {
+        let fee_rates =
+            crate::TOKIO_RUNTIME.block_on(async { crate::onchain::fee_rates().await })?;
 
-    Ok(BarkFeeRates {
-        fast: fee_rate_to_sat_per_vbyte(fee_rates.fast),
-        regular: fee_rate_to_sat_per_vbyte(fee_rates.regular),
-        slow: fee_rate_to_sat_per_vbyte(fee_rates.slow),
+        Ok(BarkFeeRates {
+            fast: fee_rate_to_sat_per_vbyte(fee_rates.fast),
+            regular: fee_rate_to_sat_per_vbyte(fee_rates.regular),
+            slow: fee_rate_to_sat_per_vbyte(fee_rates.slow),
+        })
     })
 }
 
 pub(crate) fn onchain_transactions() -> anyhow::Result<Vec<OnchainTransactionInfo>> {
-    let transactions =
-        crate::TOKIO_RUNTIME.block_on(async { crate::onchain::transaction_infos().await })?;
+    ffi_boundary("onchain_transactions", || {
+        let transactions =
+            crate::TOKIO_RUNTIME.block_on(async { crate::onchain::transaction_infos().await })?;
 
-    Ok(transactions
-        .into_iter()
-        .map(|tx_info| {
-            let (has_confirmation, confirmation_height, confirmation_hash) =
-                match tx_info.confirmation {
-                    Some(block) => (true, block.height, block.hash.to_string()),
-                    None => (false, 0, String::new()),
-                };
+        Ok(transactions
+            .into_iter()
+            .map(|tx_info| {
+                let (has_confirmation, confirmation_height, confirmation_hash) =
+                    match tx_info.confirmation {
+                        Some(block) => (true, block.height, block.hash.to_string()),
+                        None => (false, 0, String::new()),
+                    };
 
-            OnchainTransactionInfo {
-                txid: tx_info.txid.to_string(),
-                tx_hex: bitcoin::consensus::encode::serialize_hex(tx_info.tx.as_ref()),
-                has_onchain_fee: tx_info.onchain_fees.is_some(),
-                onchain_fee_sat: tx_info.onchain_fees.map(|fee| fee.to_sat()).unwrap_or(0),
-                balance_change_sat: tx_info.balance_change.to_sat(),
-                has_confirmation,
-                confirmation_height,
-                confirmation_hash,
-            }
-        })
-        .collect())
+                OnchainTransactionInfo {
+                    txid: tx_info.txid.to_string(),
+                    tx_hex: bitcoin::consensus::encode::serialize_hex(tx_info.tx.as_ref()),
+                    has_onchain_fee: tx_info.onchain_fees.is_some(),
+                    onchain_fee_sat: tx_info.onchain_fees.map(|fee| fee.to_sat()).unwrap_or(0),
+                    balance_change_sat: tx_info.balance_change.to_sat(),
+                    has_confirmation,
+                    confirmation_height,
+                    confirmation_hash,
+                }
+            })
+            .collect())
+    })
 }
 
 pub(crate) fn onchain_send(
@@ -1684,100 +1834,105 @@ pub(crate) fn onchain_send(
     amount_sat: u64,
     fee_rate: *const u64,
 ) -> anyhow::Result<OnchainPaymentResult> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    ffi_boundary("onchain_send", || {
+        let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
 
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+        let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    // Validate optional address string
-    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination)
-        .with_context(|| format!("invalid destination address format: '{}'", destination))?;
+        let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination)
+            .with_context(|| format!("invalid destination address format: '{}'", destination))?;
 
-    // Now require the network to match the wallet's network
-    let destination_address = address_unchecked
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "address '{}' is not valid for configured network {}",
-                destination, ark_info.network
-            )
+        let destination_address = address_unchecked
+            .require_network(ark_info.network)
+            .with_context(|| {
+                format!(
+                    "address '{}' is not valid for configured network {}",
+                    destination, ark_info.network
+                )
+            })?;
+
+        let txid = crate::TOKIO_RUNTIME.block_on(async {
+            let fee_rate = if fee_rate.is_null() {
+                let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
+                manager
+                    .with_context_async(|ctx| async {
+                        Ok(ctx.wallet.chain().fee_rates().await.regular)
+                    })
+                    .await?
+            } else {
+                FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
+            };
+
+            crate::onchain::send(destination_address.clone(), amount, fee_rate).await
         })?;
 
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let fee_rate = if fee_rate.is_null() {
-            let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-            manager
-                .with_context_async(|ctx| async {
-                    Ok(ctx.wallet.chain().fee_rates().await.regular)
-                })
-                .await?
-        } else {
-            FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
-        };
-
-        crate::onchain::send(destination_address.clone(), amount, fee_rate).await
-    })?;
-
-    Ok(OnchainPaymentResult {
-        txid: txid.to_string(),
-        amount_sat,
-        destination_address: destination_address.to_string(),
+        Ok(OnchainPaymentResult {
+            txid: txid.to_string(),
+            amount_sat,
+            destination_address: destination_address.to_string(),
+        })
     })
 }
 
 pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        let (address, fee_rate) = manager
-            .with_context_async(|ctx| async {
-                let net = ctx.wallet.properties().await?.network;
-                let address = Address::from_str(destination)?
-                    .require_network(net)
-                    .context("Address on wrong network")?;
-                let fee_rate = if fee_rate.is_null() {
-                    ctx.wallet.chain().fee_rates().await.regular
-                } else {
-                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
-                };
-                Ok((address, fee_rate))
-            })
-            .await?;
-
-        crate::onchain::drain(address, fee_rate).await
-    })?;
-    Ok(txid.to_string())
-}
-
-pub(crate) fn onchain_send_many(
-    outputs: Vec<ffi::SendManyOutput>,
-    fee_rate: *const u64,
-) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        let (destinations, fee_rate): (Vec<(Address, bark::ark::bitcoin::Amount)>, FeeRate) =
-            manager
+    ffi_boundary("onchain_drain", || {
+        let txid = crate::TOKIO_RUNTIME.block_on(async {
+            let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
+            let (address, fee_rate) = manager
                 .with_context_async(|ctx| async {
-                    let mut destinations = Vec::new();
                     let net = ctx.wallet.properties().await?.network;
-                    for output in outputs {
-                        let address = Address::from_str(&output.destination)
-                            .context("Invalid address format")?
-                            .require_network(net)
-                            .context("Address on wrong network")?;
-                        let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
-                        destinations.push((address, amount));
-                    }
-
+                    let address = Address::from_str(destination)?
+                        .require_network(net)
+                        .context("Address on wrong network")?;
                     let fee_rate = if fee_rate.is_null() {
                         ctx.wallet.chain().fee_rates().await.regular
                     } else {
                         FeeRate::from_sat_per_vb(unsafe { *fee_rate })
                             .context("Invalid fee rate")?
                     };
-                    Ok((destinations, fee_rate))
+                    Ok((address, fee_rate))
                 })
                 .await?;
 
-        crate::onchain::send_many(&destinations, fee_rate).await
-    })?;
-    Ok(txid.to_string())
+            crate::onchain::drain(address, fee_rate).await
+        })?;
+        Ok(txid.to_string())
+    })
+}
+
+pub(crate) fn onchain_send_many(
+    outputs: Vec<ffi::SendManyOutput>,
+    fee_rate: *const u64,
+) -> anyhow::Result<String> {
+    ffi_boundary("onchain_send_many", || {
+        let txid = crate::TOKIO_RUNTIME.block_on(async {
+            let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
+            let (destinations, fee_rate): (Vec<(Address, bark::ark::bitcoin::Amount)>, FeeRate) =
+                manager
+                    .with_context_async(|ctx| async {
+                        let mut destinations = Vec::new();
+                        let net = ctx.wallet.properties().await?.network;
+                        for output in outputs {
+                            let address = Address::from_str(&output.destination)
+                                .context("Invalid address format")?
+                                .require_network(net)
+                                .context("Address on wrong network")?;
+                            let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
+                            destinations.push((address, amount));
+                        }
+
+                        let fee_rate = if fee_rate.is_null() {
+                            ctx.wallet.chain().fee_rates().await.regular
+                        } else {
+                            FeeRate::from_sat_per_vb(unsafe { *fee_rate })
+                                .context("Invalid fee rate")?
+                        };
+                        Ok((destinations, fee_rate))
+                    })
+                    .await?;
+
+            crate::onchain::send_many(&destinations, fee_rate).await
+        })?;
+        Ok(txid.to_string())
+    })
 }
