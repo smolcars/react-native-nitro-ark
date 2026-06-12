@@ -21,6 +21,8 @@ namespace margelo::nitro::nitroark { struct ExitProgressStatusResult; }
 namespace margelo::nitro::nitroark { struct ExitVtxoResult; }
 // Forward declaration of `ExitStatusResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ExitStatusResult; }
+// Forward declaration of `PendingRoundStatus` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct PendingRoundStatus; }
 // Forward declaration of `BarkArkInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `OffchainBalanceResult` to properly resolve imports.
@@ -70,6 +72,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <optional>
 #include "ExitVtxoResult.hpp"
 #include "ExitStatusResult.hpp"
+#include "PendingRoundStatus.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
 #include "KeyPairResult.hpp"
@@ -150,7 +153,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> drainExits(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress, std::optional<double> feeRateSatPerKvb) = 0;
       virtual std::shared_ptr<Promise<std::string>> extractTransaction(const std::string& psbt) = 0;
       virtual std::shared_ptr<Promise<std::string>> broadcastTransaction(const std::string& txHex) = 0;
-      virtual std::shared_ptr<Promise<void>> syncPendingRounds() = 0;
+      virtual std::shared_ptr<Promise<std::vector<PendingRoundStatus>>> syncPendingRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;

@@ -327,7 +327,8 @@ pub(crate) mod ffi {
         pub completed_at: String,
     }
 
-    pub struct RoundStatus {
+    pub struct PendingRoundStatus {
+        pub round_id: u32,
         pub status: String,
         pub funding_txid: String,
         pub unsigned_funding_txids: Vec<String>,
@@ -443,7 +444,7 @@ pub(crate) mod ffi {
         fn start_exit_for_entire_wallet() -> Result<()>;
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
         fn sync_exit() -> Result<()>;
-        fn sync_pending_rounds() -> Result<()>;
+        fn sync_pending_rounds() -> Result<Vec<PendingRoundStatus>>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
         fn mailbox_authorization(authorization_expiry: i64) -> Result<MailboxAuthorizationResult>;
         fn subscribe_notifications() -> Result<Box<NotificationSubscription>>;
@@ -1690,9 +1691,24 @@ pub(crate) fn sync_exit() -> anyhow::Result<()> {
     ffi_boundary("sync_exit", || TOKIO_RUNTIME.block_on(crate::sync_exit()))
 }
 
-pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {
+pub(crate) fn sync_pending_rounds() -> anyhow::Result<Vec<ffi::PendingRoundStatus>> {
     ffi_boundary("sync_pending_rounds", || {
-        TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
+        let statuses = TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())?;
+        Ok(statuses
+            .into_iter()
+            .map(|status| {
+                let round_status = utils::round_status_to_fields(status.status);
+                ffi::PendingRoundStatus {
+                    round_id: status.round_id.0,
+                    status: round_status.status,
+                    funding_txid: round_status.funding_txid,
+                    unsigned_funding_txids: round_status.unsigned_funding_txids,
+                    error: round_status.error,
+                    is_final: round_status.is_final,
+                    is_success: round_status.is_success,
+                }
+            })
+            .collect())
     })
 }
 

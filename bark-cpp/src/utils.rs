@@ -491,7 +491,16 @@ pub fn movement_to_bark_movement(
     })
 }
 
-pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus {
+pub(crate) struct RoundStatusFields {
+    pub status: String,
+    pub funding_txid: String,
+    pub unsigned_funding_txids: Vec<String>,
+    pub error: String,
+    pub is_final: bool,
+    pub is_success: bool,
+}
+
+pub(crate) fn round_status_to_fields(status: RoundStatus) -> RoundStatusFields {
     let is_final = status.is_final();
     let is_success = status.is_success();
 
@@ -528,7 +537,7 @@ pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus 
         ),
     };
 
-    crate::cxx::ffi::RoundStatus {
+    RoundStatusFields {
         status: status_str,
         funding_txid,
         unsigned_funding_txids,

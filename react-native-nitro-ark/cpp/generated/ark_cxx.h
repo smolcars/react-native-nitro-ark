@@ -999,7 +999,7 @@ namespace bark_cxx {
   struct NotificationPollResult;
   struct BarkMovementDestination;
   struct BarkMovement;
-  struct RoundStatus;
+  struct PendingRoundStatus;
   struct NotificationSubscription;
 }
 
@@ -1457,9 +1457,10 @@ struct BarkMovementDestination final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
-#define CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
-struct RoundStatus final {
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$PendingRoundStatus
+#define CXXBRIDGE1_STRUCT_bark_cxx$PendingRoundStatus
+struct PendingRoundStatus final {
+  ::std::uint32_t round_id CXX_DEFAULT_VALUE(0);
   ::rust::String status;
   ::rust::String funding_txid;
   ::rust::Vec<::rust::String> unsigned_funding_txids;
@@ -1469,7 +1470,7 @@ struct RoundStatus final {
 
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$PendingRoundStatus
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$NotificationSubscription
 #define CXXBRIDGE1_STRUCT_bark_cxx$NotificationSubscription
@@ -1612,7 +1613,7 @@ void start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
 void sync_exit();
 
-void sync_pending_rounds();
+::rust::Vec<::bark_cxx::PendingRoundStatus> sync_pending_rounds();
 
 ::bark_cxx::KeyPairResult mailbox_keypair();
 

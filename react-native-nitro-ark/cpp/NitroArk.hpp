@@ -35,6 +35,21 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
   return vtxos;
 }
 
+inline PendingRoundStatus convertRustPendingRoundStatus(const bark_cxx::PendingRoundStatus& status_rs) {
+  PendingRoundStatus status;
+  status.round_id = static_cast<double>(status_rs.round_id);
+  status.status = std::string(status_rs.status.data(), status_rs.status.length());
+  status.funding_txid = std::string(status_rs.funding_txid.data(), status_rs.funding_txid.length());
+  status.unsigned_funding_txids.reserve(status_rs.unsigned_funding_txids.size());
+  for (const auto& txid : status_rs.unsigned_funding_txids) {
+    status.unsigned_funding_txids.emplace_back(std::string(txid.data(), txid.length()));
+  }
+  status.error = std::string(status_rs.error.data(), status_rs.error.length());
+  status.is_final = status_rs.is_final;
+  status.is_success = status_rs.is_success;
+  return status;
+}
+
 inline LightningPaymentResult convertRustLightningPaymentResult(const bark_cxx::LightningPaymentResult& rust_result) {
   LightningPaymentResult result;
   result.state = std::string(rust_result.state.data(), rust_result.state.length());
@@ -676,10 +691,16 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> syncPendingRounds() override {
-    return Promise<void>::async([]() {
+  std::shared_ptr<Promise<std::vector<PendingRoundStatus>>> syncPendingRounds() override {
+    return Promise<std::vector<PendingRoundStatus>>::async([]() {
       try {
-        bark_cxx::sync_pending_rounds();
+        rust::Vec<bark_cxx::PendingRoundStatus> statuses_rs = bark_cxx::sync_pending_rounds();
+        std::vector<PendingRoundStatus> statuses;
+        statuses.reserve(statuses_rs.size());
+        for (const auto& status_rs : statuses_rs) {
+          statuses.push_back(convertRustPendingRoundStatus(status_rs));
+        }
+        return statuses;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

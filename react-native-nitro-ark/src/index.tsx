@@ -31,6 +31,7 @@ import type {
   BarkMovement as NitroBarkMovement,
   BarkMovementDestination as NitroBarkMovementDestination,
   BoardResult,
+  PendingRoundStatus as NitroPendingRoundStatus,
 } from './NitroArk.nitro';
 
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'unknown';
@@ -99,6 +100,17 @@ export type BarkMovement = NitroBarkMovement & {
   status: MovementStatus;
   sent_to: BarkMovementDestination[];
   received_on: BarkMovementDestination[];
+};
+
+export type RoundStatus =
+  | 'pending'
+  | 'unconfirmed'
+  | 'confirmed'
+  | 'failed'
+  | 'canceled';
+
+export type PendingRoundStatus = Omit<NitroPendingRoundStatus, 'status'> & {
+  status: RoundStatus;
 };
 
 export type BarkNotificationKind =
@@ -416,10 +428,12 @@ export function broadcastTransaction(txHex: string): Promise<string> {
 
 /**
  * Synchronizes pending rounds.
- * @returns A promise that resolves on success.
+ * @returns A promise resolving to the statuses returned by Bark for synced pending rounds.
  */
-export function syncPendingRounds(): Promise<void> {
-  return NitroArkHybridObject.syncPendingRounds();
+export function syncPendingRounds(): Promise<PendingRoundStatus[]> {
+  return NitroArkHybridObject.syncPendingRounds() as Promise<
+    PendingRoundStatus[]
+  >;
 }
 
 // --- Wallet Info ---

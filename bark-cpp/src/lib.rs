@@ -21,7 +21,7 @@ use bark::lock_manager::memory::MemoryLockManager;
 use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
-use bark::persist::models::{LightningReceive, PendingBoard};
+use bark::persist::models::{LightningReceive, PendingBoard, RoundStateId};
 use bark::persist::sqlite::SqliteClient;
 use bark::round::RoundStatus;
 use bdk_wallet::bitcoin::key::Keypair;
@@ -68,6 +68,11 @@ pub struct FeeEstimateResult {
     pub fee: Amount,
     pub net_amount: Amount,
     pub vtxos_spent: Vec<VtxoId>,
+}
+
+pub struct PendingRoundStatus {
+    pub round_id: RoundStateId,
+    pub status: RoundStatus,
 }
 
 pub struct LightningPaymentResult {
@@ -900,15 +905,20 @@ pub async fn estimate_offboard_all(address: Address) -> anyhow::Result<FeeEstima
         .await
 }
 
-pub async fn sync_pending_rounds() -> anyhow::Result<()> {
+pub async fn sync_pending_rounds() -> anyhow::Result<Vec<PendingRoundStatus>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet
+            let mut statuses = ctx
+                .wallet
                 .sync_pending_rounds()
                 .await
-                .context("Failed to sync pending rounds")?;
-            Ok(())
+                .context("Failed to sync pending rounds")?
+                .into_iter()
+                .map(|(round_id, status)| PendingRoundStatus { round_id, status })
+                .collect::<Vec<_>>();
+            statuses.sort_by_key(|status| status.round_id.0);
+            Ok(statuses)
         })
         .await
 }

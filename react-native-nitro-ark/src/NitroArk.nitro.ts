@@ -263,6 +263,16 @@ export interface BarkMovement {
   completed_at?: string;
 }
 
+export interface PendingRoundStatus {
+  round_id: number; // u32
+  status: string; // 'pending' | 'unconfirmed' | 'confirmed' | 'failed' | 'canceled'
+  funding_txid: string;
+  unsigned_funding_txids: string[];
+  error: string;
+  is_final: boolean;
+  is_success: boolean;
+}
+
 export interface BarkNotificationEvent {
   kind: string; // 'movementCreated' | 'movementUpdated' | 'channelLagging'
   movement?: BarkMovement;
@@ -314,7 +324,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<string>;
   extractTransaction(psbt: string): Promise<string>;
   broadcastTransaction(txHex: string): Promise<string>;
-  syncPendingRounds(): Promise<void>;
+  syncPendingRounds(): Promise<PendingRoundStatus[]>;
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
