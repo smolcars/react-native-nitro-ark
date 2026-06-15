@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RNFSTurbo from 'react-native-fs-turbo';
 import * as NitroArk from 'react-native-nitro-ark';
@@ -43,6 +43,7 @@ export const WalletTab = ({
   const [messageToSign, setMessageToSign] = useState('hello world');
   const [signature, setSignature] = useState('');
   const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
+  const [vtxoIdToDrop, setVtxoIdToDrop] = useState('');
 
   const canUseWallet = !!mnemonic;
   const walletOpsDisabled = isLoading || !canUseWallet;
@@ -324,6 +325,37 @@ export const WalletTab = ({
 
   const handleGetVtxos = () => {
     runOperation('vtxos', () => NitroArk.vtxos(), 'info');
+  };
+
+  const handleDangerousDropVtxo = () => {
+    const vtxoId = vtxoIdToDrop.trim();
+    if (!vtxoId) {
+      setError((prev) => ({ ...prev, info: 'VTXO ID required' }));
+      return;
+    }
+
+    Alert.alert(
+      'Drop VTXO?',
+      'This removes the VTXO from the local wallet database and can cause loss of funds.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Drop',
+          style: 'destructive',
+          onPress: () =>
+            runOperation(
+              'dangerousDropVtxo',
+              () => NitroArk.dangerousDropVtxo(vtxoId),
+              'info',
+              () =>
+                setResults((prev) => ({
+                  ...prev,
+                  info: `Dropped VTXO:\n${vtxoId}`,
+                }))
+            ),
+        },
+      ]
+    );
   };
 
   const handleGetOnchainUtxos = () => {
@@ -734,6 +766,20 @@ export const WalletTab = ({
             title="History"
             onPress={handleGetHistory}
             disabled={walletOpsDisabled}
+          />
+        </ButtonGrid>
+        <InputField
+          label="VTXO ID to Drop"
+          value={vtxoIdToDrop}
+          onChangeText={setVtxoIdToDrop}
+          placeholder="Use the id from Get VTXOs"
+        />
+        <ButtonGrid>
+          <CustomButton
+            title="Dangerous Drop VTXO"
+            onPress={handleDangerousDropVtxo}
+            disabled={walletOpsDisabled}
+            color={COLORS.danger}
           />
         </ButtonGrid>
       </Section>

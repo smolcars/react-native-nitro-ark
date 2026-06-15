@@ -37,6 +37,7 @@ import type {
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'unknown';
 
 export type BarkVtxo = {
+  id: string;
   amount: number; // u64
   expiry_height: number; // u32
   server_pubkey: string;
@@ -636,6 +637,16 @@ export function history(): Promise<BarkMovement[]> {
  */
 export function vtxos(): Promise<BarkVtxo[]> {
   return NitroArkHybridObject.vtxos() as Promise<BarkVtxo[]>;
+}
+
+/**
+ * Destructively removes a VTXO from the local wallet database.
+ * This can cause loss of funds if used incorrectly.
+ * @param vtxoId VTXO ID to remove.
+ * @returns A promise that resolves on success.
+ */
+export function dangerousDropVtxo(vtxoId: string): Promise<void> {
+  return NitroArkHybridObject.dangerousDropVtxo(vtxoId);
 }
 
 /**

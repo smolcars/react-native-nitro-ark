@@ -619,6 +619,18 @@ pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
         .await
 }
 
+pub async fn dangerous_drop_vtxo(vtxo_id: VtxoId) -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .dangerous_drop_vtxo(vtxo_id)
+                .await
+                .context("Failed to drop vtxo")
+        })
+        .await
+}
+
 pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
 

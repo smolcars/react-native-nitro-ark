@@ -50,6 +50,7 @@ export interface BarkSendManyOutput {
 }
 
 interface BarkVtxo {
+  id: string;
   amount: number; // u64
   expiry_height: number; // u32
   server_pubkey: string;
@@ -367,6 +368,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): BarkNotificationSubscription;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
+  dangerousDropVtxo(vtxoId: string): Promise<void>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
   getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;

@@ -38,6 +38,7 @@ pub(crate) mod ffi {
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct BarkVtxo {
+        id: String,
         amount: u64,
         expiry_height: u32,
         server_pubkey: String,
@@ -365,6 +366,7 @@ pub(crate) mod ffi {
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn history() -> Result<Vec<BarkMovement>>;
         fn vtxos() -> Result<Vec<BarkVtxo>>;
+        fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
@@ -693,6 +695,14 @@ pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
             .into_iter()
             .map(utils::wallet_vtxo_to_bark_vtxo)
             .collect())
+    })
+}
+
+pub(crate) fn dangerous_drop_vtxo(vtxo_id: &str) -> anyhow::Result<()> {
+    ffi_boundary("dangerous_drop_vtxo", || {
+        let vtxo_id = bark::ark::VtxoId::from_str(vtxo_id)
+            .with_context(|| format!("Invalid VTXO ID: {vtxo_id}"))?;
+        crate::TOKIO_RUNTIME.block_on(crate::dangerous_drop_vtxo(vtxo_id))
     })
 }
 

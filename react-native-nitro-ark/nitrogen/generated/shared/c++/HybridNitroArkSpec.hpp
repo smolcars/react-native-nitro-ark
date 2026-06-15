@@ -171,6 +171,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<HybridBarkNotificationSubscriptionSpec> subscribeLightningPaymentMovements(const std::string& paymentHash, const std::function<void(const BarkNotificationEvent& /* event */)>& onEvent) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> history() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() = 0;
+      virtual std::shared_ptr<Promise<void>> dangerousDropVtxo(const std::string& vtxoId) = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;

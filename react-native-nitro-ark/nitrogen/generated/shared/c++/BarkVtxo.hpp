@@ -39,6 +39,7 @@ namespace margelo::nitro::nitroark {
    */
   struct BarkVtxo final {
   public:
+    std::string id     SWIFT_PRIVATE;
     double amount     SWIFT_PRIVATE;
     double expiry_height     SWIFT_PRIVATE;
     std::string server_pubkey     SWIFT_PRIVATE;
@@ -49,7 +50,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkVtxo() = default;
-    explicit BarkVtxo(double amount, double expiry_height, std::string server_pubkey, double exit_delta, std::string anchor_point, std::string point, std::string state): amount(amount), expiry_height(expiry_height), server_pubkey(server_pubkey), exit_delta(exit_delta), anchor_point(anchor_point), point(point), state(state) {}
+    explicit BarkVtxo(std::string id, double amount, double expiry_height, std::string server_pubkey, double exit_delta, std::string anchor_point, std::string point, std::string state): id(id), amount(amount), expiry_height(expiry_height), server_pubkey(server_pubkey), exit_delta(exit_delta), anchor_point(anchor_point), point(point), state(state) {}
 
   public:
     friend bool operator==(const BarkVtxo& lhs, const BarkVtxo& rhs) = default;
@@ -65,6 +66,7 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroark::BarkVtxo fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkVtxo(
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "expiry_height"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "server_pubkey"))),
@@ -76,6 +78,7 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkVtxo& arg) {
       jsi::Object obj(runtime);
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "id"), JSIConverter<std::string>::toJSI(runtime, arg.id));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "amount"), JSIConverter<double>::toJSI(runtime, arg.amount));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "expiry_height"), JSIConverter<double>::toJSI(runtime, arg.expiry_height));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "server_pubkey"), JSIConverter<std::string>::toJSI(runtime, arg.server_pubkey));
@@ -93,6 +96,7 @@ namespace margelo::nitro {
       if (!nitro::isPlainObject(runtime, obj)) {
         return false;
       }
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "expiry_height")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "server_pubkey")))) return false;

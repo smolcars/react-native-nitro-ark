@@ -347,6 +347,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
 
 pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::BarkVtxo {
     crate::cxx::ffi::BarkVtxo {
+        id: wallet_vtxo.vtxo.id().to_string(),
         amount: wallet_vtxo.vtxo.amount().to_sat(),
         expiry_height: wallet_vtxo.vtxo.expiry_height(),
         server_pubkey: wallet_vtxo.vtxo.server_pubkey().to_string(),
@@ -367,6 +368,7 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
 
 pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     crate::cxx::ffi::BarkVtxo {
+        id: vtxo.id().to_string(),
         amount: vtxo.amount().to_sat(),
         expiry_height: vtxo.expiry_height(),
         server_pubkey: vtxo.server_pubkey().to_string(),

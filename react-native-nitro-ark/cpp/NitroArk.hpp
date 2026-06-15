@@ -22,6 +22,7 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
 
   for (const auto& vtxo_rs : rust_vtxos) {
     BarkVtxo vtxo;
+    vtxo.id = std::string(vtxo_rs.id.data(), vtxo_rs.id.length());
     vtxo.amount = static_cast<double>(vtxo_rs.amount);
     vtxo.expiry_height = static_cast<double>(vtxo_rs.expiry_height);
     vtxo.server_pubkey = std::string(vtxo_rs.server_pubkey.data(), vtxo_rs.server_pubkey.length());
@@ -960,6 +961,16 @@ public:
       try {
         rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::vtxos();
         return convertRustVtxosToVector(rust_vtxos);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> dangerousDropVtxo(const std::string& vtxoId) override {
+    return Promise<void>::async([vtxoId]() {
+      try {
+        bark_cxx::dangerous_drop_vtxo(vtxoId);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
