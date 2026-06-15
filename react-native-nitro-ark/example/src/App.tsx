@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
 import RNFSTurbo from 'react-native-fs-turbo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type {
-  BarkArkInfo,
-  OnchainBalanceResult,
-  OffchainBalanceResult,
+import {
+  getWalletDbGeneration,
+  type BarkArkInfo,
+  type OnchainBalanceResult,
+  type OffchainBalanceResult,
 } from 'react-native-nitro-ark';
 
 import { WalletTab } from './tabs/WalletTab';
@@ -40,6 +41,10 @@ export default function App() {
 
   // Wallet loaded state
   const [isWalletLoaded, setIsWalletLoaded] = useState(false);
+  const [walletDbGeneration, setWalletDbGeneration] = useState<
+    number | undefined
+  >();
+  const lastLoggedWalletDbGenerationRef = useRef<number | undefined>(undefined);
 
   // UI state
   const [results, setResults] = useState<{ [key: string]: string }>({});
@@ -78,6 +83,46 @@ export default function App() {
       }
     };
     loadSavedMnemonic();
+  }, []);
+
+  // Poll the native wallet DB generation counter so the example app logs
+  // whenever Bark commits wallet SQLite changes.
+  useEffect(() => {
+    let isActive = true;
+
+    const pollWalletDbGeneration = async () => {
+      try {
+        const generation = await getWalletDbGeneration();
+        if (!isActive) {
+          return;
+        }
+
+        setWalletDbGeneration(generation);
+
+        const previous = lastLoggedWalletDbGenerationRef.current;
+        if (previous === undefined) {
+          console.log('[wallet-db] initial generation:', generation);
+        } else if (generation !== previous) {
+          console.log('[wallet-db] generation changed:', {
+            previous,
+            generation,
+          });
+        }
+        lastLoggedWalletDbGenerationRef.current = generation;
+      } catch (err) {
+        console.error('Error polling wallet DB generation:', err);
+      }
+    };
+
+    void pollWalletDbGeneration();
+    const interval = setInterval(() => {
+      void pollWalletDbGeneration();
+    }, 1000);
+
+    return () => {
+      isActive = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Generic operation runner
@@ -169,6 +214,19 @@ export default function App() {
             />
             <Text style={styles.statusLabel}>
               {isWalletLoaded ? 'Wallet Loaded' : 'Not Loaded'}
+            </Text>
+          </View>
+          <View style={styles.headerStatusRow}>
+            <View
+              style={[
+                styles.statusDot,
+                walletDbGeneration !== undefined
+                  ? styles.statusActive
+                  : styles.statusInactive,
+              ]}
+            />
+            <Text style={styles.statusLabel}>
+              DB Gen {walletDbGeneration ?? '-'}
             </Text>
           </View>
         </View>

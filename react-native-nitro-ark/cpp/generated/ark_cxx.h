@@ -1496,6 +1496,8 @@ void init_logger() noexcept;
 
 bool is_wallet_loaded() noexcept;
 
+::std::uint64_t get_wallet_db_generation() noexcept;
+
 void close_wallet();
 
 ::bark_cxx::CxxArkInfo get_ark_info();

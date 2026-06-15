@@ -400,6 +400,10 @@ public:
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }
 
+  std::shared_ptr<Promise<double>> getWalletDbGeneration() override {
+    return Promise<double>::async([]() { return static_cast<double>(bark_cxx::get_wallet_db_generation()); });
+  }
+
   std::shared_ptr<Promise<void>> syncPendingBoards() override {
     return Promise<void>::async([]() {
       try {

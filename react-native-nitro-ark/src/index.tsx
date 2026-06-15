@@ -230,6 +230,13 @@ export function isWalletLoaded(): Promise<boolean> {
 }
 
 /**
+ * Returns the number of wallet SQLite commits observed in the current native process.
+ */
+export function getWalletDbGeneration(): Promise<number> {
+  return NitroArkHybridObject.getWalletDbGeneration();
+}
+
+/**
  * Registers all confirmed boards with the server.
  * @returns A promise that resolves on success.
  */

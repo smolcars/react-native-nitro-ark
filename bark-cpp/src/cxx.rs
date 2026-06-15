@@ -344,6 +344,7 @@ pub(crate) mod ffi {
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
         fn is_wallet_loaded() -> bool;
+        fn get_wallet_db_generation() -> u64;
         fn close_wallet() -> Result<()>;
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
@@ -494,6 +495,10 @@ pub(crate) fn create_mnemonic() -> anyhow::Result<String> {
 
 pub(crate) fn is_wallet_loaded() -> bool {
     crate::TOKIO_RUNTIME.block_on(crate::is_wallet_loaded())
+}
+
+pub(crate) fn get_wallet_db_generation() -> u64 {
+    crate::get_wallet_db_generation()
 }
 
 pub(crate) fn close_wallet() -> anyhow::Result<()> {

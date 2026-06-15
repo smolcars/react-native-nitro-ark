@@ -302,6 +302,10 @@ pub async fn is_wallet_loaded() -> bool {
     manager.is_loaded()
 }
 
+pub fn get_wallet_db_generation() -> u64 {
+    bark::persist::sqlite::wallet_db_generation()
+}
+
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
