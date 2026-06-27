@@ -34,7 +34,7 @@ import type {
   PendingRoundStatus as NitroPendingRoundStatus,
 } from './NitroArk.nitro';
 
-export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'unknown';
+export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'Exited' | 'unknown';
 
 export type BarkVtxo = {
   id: string;
@@ -55,7 +55,8 @@ export type ExitProgressState =
   | 'AwaitingDelta'
   | 'Claimable'
   | 'ClaimInProgress'
-  | 'Claimed';
+  | 'Claimed'
+  | 'VtxoAlreadySpent';
 
 export type BlockRef = NitroExitBlockRefResult;
 export type ExitTxOrigin = NitroExitTxOriginResult;
@@ -94,6 +95,7 @@ export type BarkMovementDestination = NitroBarkMovementDestination & {
     | 'invoice'
     | 'offer'
     | 'lightning-address'
+    | 'lnurl'
     | 'custom';
 };
 

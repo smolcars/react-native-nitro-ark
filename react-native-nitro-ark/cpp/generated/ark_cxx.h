@@ -1074,7 +1074,6 @@ struct LightningPaymentResult final {
 struct ArkoorPaymentResult final {
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
   ::rust::String destination_pubkey;
-  ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
 
   using IsRelocatable = ::std::true_type;
 };

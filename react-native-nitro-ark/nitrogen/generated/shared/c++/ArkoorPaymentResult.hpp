@@ -28,12 +28,9 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `BarkVtxo` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkVtxo; }
+
 
 #include <string>
-#include "BarkVtxo.hpp"
-#include <vector>
 
 namespace margelo::nitro::nitroark {
 
@@ -44,11 +41,10 @@ namespace margelo::nitro::nitroark {
   public:
     double amount_sat     SWIFT_PRIVATE;
     std::string destination_pubkey     SWIFT_PRIVATE;
-    std::vector<BarkVtxo> vtxos     SWIFT_PRIVATE;
 
   public:
     ArkoorPaymentResult() = default;
-    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, std::vector<BarkVtxo> vtxos): amount_sat(amount_sat), destination_pubkey(destination_pubkey), vtxos(vtxos) {}
+    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey): amount_sat(amount_sat), destination_pubkey(destination_pubkey) {}
 
   public:
     friend bool operator==(const ArkoorPaymentResult& lhs, const ArkoorPaymentResult& rhs) = default;
@@ -65,15 +61,13 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::ArkoorPaymentResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"))),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey"))),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxos")))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::ArkoorPaymentResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"), JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey"), JSIConverter<std::string>::toJSI(runtime, arg.destination_pubkey));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxos"), JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.vtxos));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -86,7 +80,6 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey")))) return false;
-      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxos")))) return false;
       return true;
     }
   };

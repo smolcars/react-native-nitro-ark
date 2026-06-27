@@ -1446,8 +1446,6 @@ public:
         result.destination_pubkey =
             std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
 
-        result.vtxos = convertRustVtxosToVector(rust_result.vtxos);
-
         return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
