@@ -2,7 +2,7 @@ use std::{path::Path, str::FromStr, sync::Arc};
 
 use anyhow::{self, Context, bail};
 use bark::{
-    Config, OpenWalletArgs, Wallet as BarkWallet, WalletSeed, WalletVtxo,
+    Config, Wallet as BarkWallet, WalletSeed, WalletVtxo,
     actions::lightning::pay::{LightningSendState, Progress},
     ark::{
         Vtxo, VtxoId,
@@ -251,33 +251,10 @@ pub(crate) async fn try_create_wallet(
     let lock_manager = Box::new(MemoryLockManager::new());
     debug!("Creating bark wallet with exit support");
     let wallet_seed = WalletSeed::new_from_mnemonic(net, &mnemonic);
-    let create_result = async {
-        BarkWallet::create(net, &wallet_seed, &config, &*db, &*lock_manager, false)
-            .await
-            .context("error creating wallet")?;
-
-        // Bark 0.3 split create/open: create initializes wallet properties, while open builds
-        // and validates the chain source. Keep createWallet fail-fast without starting a daemon.
-        let _validated_wallet = BarkWallet::open(
-            net,
-            wallet_seed,
-            config,
-            OpenWalletArgs {
-                run_daemon: false,
-                persister: Some(db),
-                lock_manager: Some(lock_manager),
-                create_if_not_exists: false,
-                ..Default::default()
-            },
-        )
+    match BarkWallet::create(net, &wallet_seed, &config, &*db, &*lock_manager, false)
         .await
-        .context("error validating created wallet")?;
-
-        Ok(())
-    }
-    .await;
-
-    match create_result {
+        .context("error creating wallet")
+    {
         Ok(_) => {
             info!("Created bark wallet successfully");
             Ok(())

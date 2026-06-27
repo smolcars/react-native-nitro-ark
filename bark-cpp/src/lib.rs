@@ -150,6 +150,9 @@ impl WalletManager {
         let (config, net) = merge_config_opts(opts.clone())?;
 
         try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
+        // Bark 0.3 split create/open: create initializes wallet properties, while open builds
+        // and validates the chain source. Keep createWallet fail-fast without loading a context.
+        let _validated_wallet = self.open_wallet(datadir, opts.mnemonic, config).await?;
 
         Ok(())
     }
