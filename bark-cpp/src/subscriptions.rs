@@ -344,6 +344,9 @@ fn format_destinations(movement: &Movement) -> String {
             PaymentMethod::LightningAddress(address) => {
                 format!("lnaddr:{}:{}sat", address, destination.amount)
             }
+            PaymentMethod::Lnurl(lnurl) => {
+                format!("lnurl:{}:{}sat", lnurl, destination.amount)
+            }
             PaymentMethod::OutputScript(script) => {
                 format!("script:{}:{}sat", script, destination.amount)
             }

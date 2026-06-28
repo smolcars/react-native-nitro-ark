@@ -80,7 +80,6 @@ pub(crate) mod ffi {
     pub struct ArkoorPaymentResult {
         amount_sat: u64,
         destination_pubkey: String,
-        vtxos: Vec<BarkVtxo>,
     }
 
     pub struct BarkFeeEstimate {
@@ -900,10 +899,9 @@ pub(crate) fn send_arkoor_payment(
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let dest = bark::ark::Address::from_str(destination)
             .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
-        let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
+        crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
         Ok(ArkoorPaymentResult {
-            vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
             destination_pubkey: destination.to_string(),
             amount_sat,
         })
@@ -1248,6 +1246,10 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
                 block: exit_block_ref_to_ffi(*block),
                 ..empty_exit_state_details("claimed", *tip_height)
             }
+        }
+        bark::exit::ExitState::VtxoAlreadySpent(state) => {
+            let bark::exit::ExitVtxoAlreadySpentState { tip_height } = state;
+            empty_exit_state_details("vtxo-already-spent", *tip_height)
         }
     }
 }

@@ -24,6 +24,7 @@ use bark::persist::BarkPersister;
 use bark::persist::models::{LightningReceive, PendingBoard, RoundStateId};
 use bark::persist::sqlite::SqliteClient;
 use bark::round::RoundStatus;
+use bark::{OpenWalletArgs, WalletSeed};
 use bdk_wallet::bitcoin::key::Keypair;
 use bdk_wallet::bitcoin::{Txid, bip32};
 use bitcoin_ext::BlockHeight;
@@ -148,7 +149,7 @@ impl WalletManager {
 
         let (config, net) = merge_config_opts(opts.clone())?;
 
-        try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
+        try_create_wallet(datadir, net, config, Some(opts.mnemonic.clone())).await?;
 
         Ok(())
     }
@@ -255,7 +256,20 @@ impl WalletManager {
             OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())
                 .await?;
         let lock_manager = Box::new(MemoryLockManager::new());
-        let wallet = Wallet::open_with_exits(&mnemonic, db.clone(), config, lock_manager).await?;
+        let seed = WalletSeed::new_from_mnemonic(properties.network, &mnemonic);
+        let wallet = Wallet::open(
+            properties.network,
+            seed,
+            config,
+            OpenWalletArgs {
+                run_daemon: false,
+                persister: Some(db.clone()),
+                lock_manager: Some(lock_manager),
+                create_if_not_exists: false,
+                ..Default::default()
+            },
+        )
+        .await?;
 
         Ok((wallet, onchain_wallet))
     }
@@ -716,7 +730,7 @@ pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Res
 pub async fn send_arkoor_payment(
     destination: bark::ark::Address,
     amount_sat: Amount,
-) -> anyhow::Result<Vec<Vtxo>> {
+) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -724,11 +738,9 @@ pub async fn send_arkoor_payment(
                 "Attempting to send OOR payment of {} to pubkey {:?}",
                 amount_sat, destination
             );
-            let oor_result = ctx
-                .wallet
+            ctx.wallet
                 .send_arkoor_payment(&destination, amount_sat)
-                .await?;
-            Ok(oor_result)
+                .await
         })
         .await
 }

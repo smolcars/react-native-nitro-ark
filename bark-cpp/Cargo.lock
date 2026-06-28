@@ -118,8 +118,8 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "ark-lib"
-version = "0.2.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=b9040f1dbf1a99634d20b18fc1c5890de0582942#b9040f1dbf1a99634d20b18fc1c5890de0582942"
+version = "0.3.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
 dependencies = [
  "async-trait",
  "bark-bitcoin-ext",
@@ -173,8 +173,8 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bark-bitcoin-ext"
-version = "0.2.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=b9040f1dbf1a99634d20b18fc1c5890de0582942#b9040f1dbf1a99634d20b18fc1c5890de0582942"
+version = "0.3.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
 dependencies = [
  "bdk_bitcoind_rpc",
  "bdk_wallet",
@@ -212,8 +212,8 @@ dependencies = [
 
 [[package]]
 name = "bark-server-rpc"
-version = "0.2.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=b9040f1dbf1a99634d20b18fc1c5890de0582942#b9040f1dbf1a99634d20b18fc1c5890de0582942"
+version = "0.3.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -230,8 +230,8 @@ dependencies = [
 
 [[package]]
 name = "bark-wallet"
-version = "0.2.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=b9040f1dbf1a99634d20b18fc1c5890de0582942#b9040f1dbf1a99634d20b18fc1c5890de0582942"
+version = "0.3.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -366,7 +366,7 @@ checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
 [[package]]
 name = "bip321"
 version = "0.1.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=b9040f1dbf1a99634d20b18fc1c5890de0582942#b9040f1dbf1a99634d20b18fc1c5890de0582942"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
 dependencies = [
  "bitcoin",
  "lightning",
@@ -1722,9 +1722,9 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
 name = "lnurl-rs"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41eacdd87b675792f7752f3dd0937a00241a504c3956c47f72986490662e1db4"
+checksum = "73a989342d2e9381c85d381898c3a925bad930958acd480fe0221f680c7856eb"
 dependencies = [
  "aes",
  "anyhow",

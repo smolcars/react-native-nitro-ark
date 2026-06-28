@@ -74,7 +74,6 @@ export interface Bolt11Invoice {
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
-  vtxos: BarkVtxo[];
 }
 
 export interface BarkFeeEstimate {
