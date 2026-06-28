@@ -9,6 +9,7 @@ use bark::{
         bitcoin::{FeeRate, Network, secp256k1::PublicKey},
         lightning::PaymentHash,
     },
+    chain::ChainSource,
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
     lock_manager::memory::MemoryLockManager,
@@ -28,6 +29,19 @@ use crate::cxx::ffi;
 use crate::{LightningPaymentResult, WalletContext};
 
 pub(crate) const DB_FILE: &str = "db.sqlite";
+
+pub(crate) async fn check_chain_source(config: &Config, net: Network) -> anyhow::Result<()> {
+    let chain_source = config
+        .chain_source()
+        .context("failed to build chain source config")?;
+    let chain = ChainSource::new(chain_source, net, config.fallback_fee_rate)
+        .await
+        .context("failed to connect to chain source")?;
+    chain
+        .require_version()
+        .await
+        .context("chain source version check failed")
+}
 
 pub(crate) fn format_error_chain(error: &anyhow::Error) -> String {
     error
@@ -148,24 +162,22 @@ impl ConfigOpts {
 
 /// Parse the URL and add `https` scheme if no scheme is given.
 pub fn https_default_scheme(url: String) -> anyhow::Result<String> {
-    // default scheme to https if unset
-    let mut uri_parts = Uri::from_str(&url).context("invalid url")?.into_parts();
-    if uri_parts.authority.is_none() {
+    let has_scheme = Uri::from_str(&url)
+        .ok()
+        .and_then(|uri| uri.scheme().cloned())
+        .is_some();
+    let normalized = if has_scheme {
+        url.clone()
+    } else {
+        format!("https://{url}")
+    };
+
+    let uri = Uri::from_str(&normalized).context("invalid url")?;
+    if uri.authority().is_none() {
         bail!("invalid url '{}': missing authority", url);
     }
-    if uri_parts.scheme.is_none() {
-        uri_parts.scheme = Some("https".parse().unwrap());
-        // because from_parts errors for missing PathAndQuery, set it
-        uri_parts.path_and_query = Some(
-            uri_parts
-                .path_and_query
-                .unwrap_or_else(|| "".parse().unwrap()),
-        );
-        let new = Uri::from_parts(uri_parts).unwrap();
-        Ok(new.to_string())
-    } else {
-        Ok(url)
-    }
+
+    Ok(normalized)
 }
 
 #[derive(Debug, Clone)]
@@ -231,6 +243,9 @@ pub(crate) async fn try_create_wallet(
     debug!("try_create_wallet datadir {:?} ", datadir);
     debug!("try_create_walletnetwork {:?}", net);
     debug!("try_create_wallet config {:?}", config);
+
+    // Check whether chain source (Esplora etc) is operational and valid
+    check_chain_source(&config, net).await?;
 
     // open db
     // generate seed
