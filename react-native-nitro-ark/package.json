@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.126",
+  "version": "0.0.127",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
@@ -87,7 +87,7 @@
     "nitrogen": "^0.35.6",
     "prettier": "^3.0.3",
     "react": "19.2.3",
-    "react-native": "0.85.3",
+    "react-native": "0.86.0",
     "react-native-builder-bob": "^0.40.13",
     "react-native-nitro-modules": "^0.35.6",
     "release-it": "^17.10.0",
