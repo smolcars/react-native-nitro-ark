@@ -367,6 +367,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): BarkNotificationSubscription;
   history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
+  decodeVtxoHex(vtxoHex: string): Promise<BarkVtxo>;
+  importVtxo(vtxoHex: string): Promise<BarkVtxo>;
   dangerousDropVtxo(vtxoId: string): Promise<void>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;

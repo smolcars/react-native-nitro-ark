@@ -58,6 +58,8 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("subscribeLightningPaymentMovements", &HybridNitroArkSpec::subscribeLightningPaymentMovements);
       prototype.registerHybridMethod("history", &HybridNitroArkSpec::history);
       prototype.registerHybridMethod("vtxos", &HybridNitroArkSpec::vtxos);
+      prototype.registerHybridMethod("decodeVtxoHex", &HybridNitroArkSpec::decodeVtxoHex);
+      prototype.registerHybridMethod("importVtxo", &HybridNitroArkSpec::importVtxo);
       prototype.registerHybridMethod("dangerousDropVtxo", &HybridNitroArkSpec::dangerousDropVtxo);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);
       prototype.registerHybridMethod("getNextRequiredRefreshBlockheight", &HybridNitroArkSpec::getNextRequiredRefreshBlockheight);

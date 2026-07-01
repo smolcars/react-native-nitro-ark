@@ -642,6 +642,25 @@ export function vtxos(): Promise<BarkVtxo[]> {
 }
 
 /**
+ * Decodes a serialized VTXO hex string into a BarkVtxo-like object.
+ * The decoded VTXO is not loaded from the wallet, so state is "unknown".
+ * @param vtxoHex Hex-encoded serialized VTXO.
+ * @returns A promise resolving BarkVtxo.
+ */
+export function decodeVtxoHex(vtxoHex: string): Promise<BarkVtxo> {
+  return NitroArkHybridObject.decodeVtxoHex(vtxoHex) as Promise<BarkVtxo>;
+}
+
+/**
+ * Imports a serialized VTXO hex string into the loaded wallet.
+ * @param vtxoHex Hex-encoded serialized VTXO.
+ * @returns A promise resolving the imported wallet VTXO.
+ */
+export function importVtxo(vtxoHex: string): Promise<BarkVtxo> {
+  return NitroArkHybridObject.importVtxo(vtxoHex) as Promise<BarkVtxo>;
+}
+
+/**
  * Destructively removes a VTXO from the local wallet database.
  * This can cause loss of funds if used incorrectly.
  * @param vtxoId VTXO ID to remove.

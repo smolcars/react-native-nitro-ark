@@ -365,6 +365,8 @@ pub(crate) mod ffi {
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn history() -> Result<Vec<BarkMovement>>;
         fn vtxos() -> Result<Vec<BarkVtxo>>;
+        fn decode_vtxo_hex(vtxo_hex: &str) -> Result<BarkVtxo>;
+        fn import_vtxo(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
@@ -694,6 +696,21 @@ pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
             .into_iter()
             .map(utils::wallet_vtxo_to_bark_vtxo)
             .collect())
+    })
+}
+
+pub(crate) fn decode_vtxo_hex(vtxo_hex: &str) -> anyhow::Result<BarkVtxo> {
+    ffi_boundary("decode_vtxo_hex", || {
+        let vtxo = crate::decode_vtxo_hex(vtxo_hex)?;
+        Ok(utils::vtxo_to_bark_vtxo(&vtxo))
+    })
+}
+
+pub(crate) fn import_vtxo(vtxo_hex: &str) -> anyhow::Result<BarkVtxo> {
+    ffi_boundary("import_vtxo", || {
+        let vtxo = crate::decode_vtxo_hex(vtxo_hex)?;
+        let wallet_vtxo = crate::TOKIO_RUNTIME.block_on(crate::import_vtxo(vtxo))?;
+        Ok(utils::wallet_vtxo_to_bark_vtxo(wallet_vtxo))
     })
 }
 

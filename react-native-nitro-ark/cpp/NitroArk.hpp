@@ -15,22 +15,26 @@
 namespace margelo::nitro::nitroark {
 
 using namespace margelo::nitro;
-// Helper function to convert rust vtxos vector to C++ vector
+// Helper functions to convert rust vtxos to C++ values
+inline BarkVtxo convertRustVtxo(const bark_cxx::BarkVtxo& vtxo_rs) {
+  BarkVtxo vtxo;
+  vtxo.id = std::string(vtxo_rs.id.data(), vtxo_rs.id.length());
+  vtxo.amount = static_cast<double>(vtxo_rs.amount);
+  vtxo.expiry_height = static_cast<double>(vtxo_rs.expiry_height);
+  vtxo.server_pubkey = std::string(vtxo_rs.server_pubkey.data(), vtxo_rs.server_pubkey.length());
+  vtxo.exit_delta = static_cast<double>(vtxo_rs.exit_delta);
+  vtxo.anchor_point = std::string(vtxo_rs.anchor_point.data(), vtxo_rs.anchor_point.length());
+  vtxo.point = std::string(vtxo_rs.point.data(), vtxo_rs.point.length());
+  vtxo.state = std::string(vtxo_rs.state.data(), vtxo_rs.state.length());
+  return vtxo;
+}
+
 inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::BarkVtxo>& rust_vtxos) {
   std::vector<BarkVtxo> vtxos;
   vtxos.reserve(rust_vtxos.size());
 
   for (const auto& vtxo_rs : rust_vtxos) {
-    BarkVtxo vtxo;
-    vtxo.id = std::string(vtxo_rs.id.data(), vtxo_rs.id.length());
-    vtxo.amount = static_cast<double>(vtxo_rs.amount);
-    vtxo.expiry_height = static_cast<double>(vtxo_rs.expiry_height);
-    vtxo.server_pubkey = std::string(vtxo_rs.server_pubkey.data(), vtxo_rs.server_pubkey.length());
-    vtxo.exit_delta = static_cast<double>(vtxo_rs.exit_delta);
-    vtxo.anchor_point = std::string(vtxo_rs.anchor_point.data(), vtxo_rs.anchor_point.length());
-    vtxo.point = std::string(vtxo_rs.point.data(), vtxo_rs.point.length());
-    vtxo.state = std::string(vtxo_rs.state.data(), vtxo_rs.state.length());
-    vtxos.push_back(std::move(vtxo));
+    vtxos.push_back(convertRustVtxo(vtxo_rs));
   }
 
   return vtxos;
@@ -961,6 +965,28 @@ public:
       try {
         rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::vtxos();
         return convertRustVtxosToVector(rust_vtxos);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<BarkVtxo>> decodeVtxoHex(const std::string& vtxoHex) override {
+    return Promise<BarkVtxo>::async([vtxoHex]() {
+      try {
+        bark_cxx::BarkVtxo rust_vtxo = bark_cxx::decode_vtxo_hex(vtxoHex);
+        return convertRustVtxo(rust_vtxo);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<BarkVtxo>> importVtxo(const std::string& vtxoHex) override {
+    return Promise<BarkVtxo>::async([vtxoHex]() {
+      try {
+        bark_cxx::BarkVtxo rust_vtxo = bark_cxx::import_vtxo(vtxoHex);
+        return convertRustVtxo(rust_vtxo);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

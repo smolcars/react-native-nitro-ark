@@ -1521,6 +1521,10 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
+::bark_cxx::BarkVtxo decode_vtxo_hex(::rust::Str vtxo_hex);
+
+::bark_cxx::BarkVtxo import_vtxo(::rust::Str vtxo_hex);
+
 void dangerous_drop_vtxo(::rust::Str vtxo_id);
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);

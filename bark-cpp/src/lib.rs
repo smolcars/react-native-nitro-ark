@@ -10,6 +10,7 @@ use bark::Config;
 use bark::Wallet;
 use bark::WalletVtxo;
 use bark::ark::ArkInfo;
+use bark::ark::ProtocolEncoding;
 use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::ark::lightning::Offer;
@@ -630,6 +631,27 @@ pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.vtxos().await })
+        .await
+}
+
+pub fn decode_vtxo_hex(vtxo_hex: &str) -> anyhow::Result<Vtxo> {
+    Vtxo::deserialize_hex(vtxo_hex).context("Invalid VTXO hex")
+}
+
+pub async fn import_vtxo(vtxo: Vtxo) -> anyhow::Result<WalletVtxo> {
+    let vtxo_id = vtxo.id();
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .import_vtxo(&vtxo)
+                .await
+                .with_context(|| format!("Failed to import vtxo {vtxo_id}"))?;
+            ctx.wallet
+                .get_vtxo_by_id(vtxo_id)
+                .await
+                .with_context(|| format!("Failed to get imported vtxo {vtxo_id}"))
+        })
         .await
 }
 
