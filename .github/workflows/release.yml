@@ -47,7 +47,7 @@ jobs:
         shell: bash
 
       - name: Upload Android binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jniLibs-android-zip
           path: bark-cpp/target/jniLibs.zip
@@ -73,7 +73,7 @@ jobs:
         shell: bash
 
       - name: Upload iOS binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Ark.xcframework-zip
           path: bark-cpp/target/Ark.xcframework.zip
@@ -83,7 +83,7 @@ jobs:
         shell: bash
 
       - name: Upload iOS Rust cxx bridge binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ArkCxxBridge.xcframework-zip
           path: bark-cpp/target/ArkCxxBridge.xcframework.zip
@@ -112,19 +112,19 @@ jobs:
         run: mkdir -p release_assets
 
       - name: Download Android binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jniLibs-android-zip
           path: release_assets/
 
       - name: Download iOS binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: Ark.xcframework-zip
           path: release_assets/
 
       - name: Download iOS Rust cxx bridge binary artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: ArkCxxBridge.xcframework-zip
           path: release_assets/
