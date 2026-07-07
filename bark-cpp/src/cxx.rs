@@ -337,6 +337,11 @@ pub(crate) mod ffi {
         pub is_success: bool,
     }
 
+    pub struct DelegatedRoundState {
+        pub has_round: bool,
+        pub round_id: u32,
+    }
+
     extern "Rust" {
         type NotificationSubscription;
 
@@ -369,6 +374,7 @@ pub(crate) mod ffi {
         fn import_vtxo(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
+        fn refresh_vtxos_delegated(vtxo_ids: Vec<String>) -> Result<DelegatedRoundState>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         unsafe fn bolt11_invoice(
@@ -396,6 +402,7 @@ pub(crate) mod ffi {
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
         fn estimate_arkoor_payment_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn estimate_board_offchain_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
+        fn estimate_refresh_fee(vtxo_ids: Vec<String>) -> Result<BarkFeeEstimate>;
         fn estimate_lightning_send_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         unsafe fn pay_lightning_invoice(
             destination: &str,
@@ -732,6 +739,31 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
     })
 }
 
+pub(crate) fn refresh_vtxos_delegated(
+    vtxo_ids: Vec<String>,
+) -> anyhow::Result<ffi::DelegatedRoundState> {
+    ffi_boundary("refresh_vtxos_delegated", || {
+        let ids = vtxo_ids
+            .into_iter()
+            .map(|id| {
+                bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        let round_id = crate::TOKIO_RUNTIME.block_on(crate::refresh_vtxos_delegated(ids))?;
+        Ok(match round_id {
+            Some(id) => ffi::DelegatedRoundState {
+                has_round: true,
+                round_id: id.0,
+            },
+            None => ffi::DelegatedRoundState {
+                has_round: false,
+                round_id: 0,
+            },
+        })
+    })
+}
+
 pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32> {
     ffi_boundary("get_first_expiring_vtxo_blockheight", || {
         let blockheight =
@@ -947,6 +979,55 @@ pub(crate) fn estimate_board_offchain_fee(amount_sat: u64) -> anyhow::Result<Bar
     ffi_boundary("estimate_board_offchain_fee", || {
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let estimate = crate::TOKIO_RUNTIME.block_on(crate::estimate_board_offchain_fee(amount))?;
+
+        Ok(BarkFeeEstimate {
+            gross_amount_sat: estimate.gross_amount.to_sat(),
+            fee_sat: estimate.fee.to_sat(),
+            net_amount_sat: estimate.net_amount.to_sat(),
+            vtxos_spent: estimate
+                .vtxos_spent
+                .into_iter()
+                .map(|vtxo_id| vtxo_id.to_string())
+                .collect(),
+        })
+    })
+}
+
+pub(crate) fn estimate_refresh_fee(vtxo_ids: Vec<String>) -> anyhow::Result<BarkFeeEstimate> {
+    ffi_boundary("estimate_refresh_fee", || {
+        let ids = vtxo_ids
+            .into_iter()
+            .map(|id| {
+                bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        let estimate = crate::TOKIO_RUNTIME.block_on(async {
+            let vtxos = {
+                let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
+                manager
+                    .with_context_async(|ctx| async {
+                        let mut seen_vtxo_ids = Vec::with_capacity(ids.len());
+                        let mut vtxos = Vec::with_capacity(ids.len());
+                        for vtxo_id in ids {
+                            if seen_vtxo_ids.contains(&vtxo_id) {
+                                bail!("duplicate VTXO id: {}", vtxo_id);
+                            }
+                            seen_vtxo_ids.push(vtxo_id);
+
+                            let vtxo = ctx
+                                .wallet
+                                .get_vtxo_by_id(vtxo_id)
+                                .await
+                                .with_context(|| format!("Failed to get vtxo {vtxo_id}"))?;
+                            vtxos.push(vtxo);
+                        }
+                        Ok(vtxos)
+                    })
+                    .await?
+            };
+
+            crate::estimate_refresh_fee(&vtxos).await
+        })?;
 
         Ok(BarkFeeEstimate {
             gross_amount_sat: estimate.gross_amount.to_sat(),

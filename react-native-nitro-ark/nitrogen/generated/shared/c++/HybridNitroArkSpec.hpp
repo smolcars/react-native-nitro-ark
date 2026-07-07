@@ -41,6 +41,8 @@ namespace margelo::nitro::nitroark { struct BarkNotificationEvent; }
 namespace margelo::nitro::nitroark { struct BarkMovement; }
 // Forward declaration of `BarkVtxo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkVtxo; }
+// Forward declaration of `DelegatedRoundState` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct DelegatedRoundState; }
 // Forward declaration of `OnchainBalanceResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OnchainBalanceResult; }
 // Forward declaration of `BarkFeeRates` to properly resolve imports.
@@ -84,6 +86,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <functional>
 #include "BarkMovement.hpp"
 #include "BarkVtxo.hpp"
+#include "DelegatedRoundState.hpp"
 #include "OnchainBalanceResult.hpp"
 #include "BarkFeeRates.hpp"
 #include "OnchainTransactionInfo.hpp"
@@ -174,6 +177,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BarkVtxo>> decodeVtxoHex(const std::string& vtxoHex) = 0;
       virtual std::shared_ptr<Promise<BarkVtxo>> importVtxo(const std::string& vtxoHex) = 0;
       virtual std::shared_ptr<Promise<void>> dangerousDropVtxo(const std::string& vtxoId) = 0;
+      virtual std::shared_ptr<Promise<std::optional<DelegatedRoundState>>> refreshVtxosDelegated(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
@@ -193,6 +197,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateBoardOffchainFee(double amountSat) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateRefreshFee(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningInvoice(const std::string& destination, bool wait, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningOffer(const std::string& offer, bool wait, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment, bool wait) = 0;

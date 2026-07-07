@@ -692,6 +692,22 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundStatu
         .await
 }
 
+pub async fn refresh_vtxos_delegated(
+    vtxo_ids: Vec<VtxoId>,
+) -> anyhow::Result<Option<RoundStateId>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx
+                .wallet
+                .refresh_vtxos_delegated(vtxo_ids)
+                .await
+                .context("Failed to refresh vtxos delegated")?
+                .map(|state| state.id()))
+        })
+        .await
+}
+
 /// Returns the block height at which the first VTXO will expire
 pub async fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<Option<BlockHeight>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
@@ -794,6 +810,15 @@ pub async fn estimate_board_offchain_fee(amount: Amount) -> anyhow::Result<FeeEs
                 vtxos_spent: estimate.vtxos_spent,
             })
         })
+        .await
+}
+
+pub async fn estimate_refresh_fee<G>(
+    vtxos: impl IntoIterator<Item = impl AsRef<Vtxo<G>>>,
+) -> anyhow::Result<bark::FeeEstimate> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move { ctx.wallet.estimate_refresh_fee(vtxos).await })
         .await
 }
 

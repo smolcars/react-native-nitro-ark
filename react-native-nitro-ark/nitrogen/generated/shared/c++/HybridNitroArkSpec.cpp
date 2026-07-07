@@ -61,6 +61,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("decodeVtxoHex", &HybridNitroArkSpec::decodeVtxoHex);
       prototype.registerHybridMethod("importVtxo", &HybridNitroArkSpec::importVtxo);
       prototype.registerHybridMethod("dangerousDropVtxo", &HybridNitroArkSpec::dangerousDropVtxo);
+      prototype.registerHybridMethod("refreshVtxosDelegated", &HybridNitroArkSpec::refreshVtxosDelegated);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);
       prototype.registerHybridMethod("getNextRequiredRefreshBlockheight", &HybridNitroArkSpec::getNextRequiredRefreshBlockheight);
       prototype.registerHybridMethod("getExpiringVtxos", &HybridNitroArkSpec::getExpiringVtxos);
@@ -80,6 +81,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("sendArkoorPayment", &HybridNitroArkSpec::sendArkoorPayment);
       prototype.registerHybridMethod("estimateArkoorPaymentFee", &HybridNitroArkSpec::estimateArkoorPaymentFee);
       prototype.registerHybridMethod("estimateBoardOffchainFee", &HybridNitroArkSpec::estimateBoardOffchainFee);
+      prototype.registerHybridMethod("estimateRefreshFee", &HybridNitroArkSpec::estimateRefreshFee);
       prototype.registerHybridMethod("payLightningInvoice", &HybridNitroArkSpec::payLightningInvoice);
       prototype.registerHybridMethod("payLightningOffer", &HybridNitroArkSpec::payLightningOffer);
       prototype.registerHybridMethod("payLightningAddress", &HybridNitroArkSpec::payLightningAddress);

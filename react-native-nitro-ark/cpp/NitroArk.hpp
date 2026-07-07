@@ -55,6 +55,16 @@ inline PendingRoundStatus convertRustPendingRoundStatus(const bark_cxx::PendingR
   return status;
 }
 
+inline std::optional<DelegatedRoundState>
+convertRustDelegatedRoundState(const bark_cxx::DelegatedRoundState& state_rs) {
+  if (!state_rs.has_round) {
+    return std::nullopt;
+  }
+  DelegatedRoundState state;
+  state.round_id = static_cast<double>(state_rs.round_id);
+  return state;
+}
+
 inline LightningPaymentResult convertRustLightningPaymentResult(const bark_cxx::LightningPaymentResult& rust_result) {
   LightningPaymentResult result;
   result.state = std::string(rust_result.state.data(), rust_result.state.length());
@@ -1014,6 +1024,23 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<DelegatedRoundState>>>
+  refreshVtxosDelegated(const std::vector<std::string>& vtxoIds) override {
+    return Promise<std::optional<DelegatedRoundState>>::async([vtxoIds]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+        bark_cxx::DelegatedRoundState state = bark_cxx::refresh_vtxos_delegated(std::move(rust_vtxo_ids));
+        return convertRustDelegatedRoundState(state);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() override {
     return Promise<std::optional<double>>::async([]() {
       try {
@@ -1508,6 +1535,35 @@ public:
       try {
         bark_cxx::BarkFeeEstimate rust_result =
             bark_cxx::estimate_board_offchain_fee(static_cast<uint64_t>(amountSat));
+
+        BarkFeeEstimate result;
+        result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);
+        result.fee_sat = static_cast<double>(rust_result.fee_sat);
+        result.net_amount_sat = static_cast<double>(rust_result.net_amount_sat);
+
+        std::vector<std::string> vtxos_spent;
+        vtxos_spent.reserve(rust_result.vtxos_spent.size());
+        for (const auto& vtxo_id : rust_result.vtxos_spent) {
+          vtxos_spent.push_back(std::string(vtxo_id.data(), vtxo_id.length()));
+        }
+        result.vtxos_spent = vtxos_spent;
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<BarkFeeEstimate>> estimateRefreshFee(const std::vector<std::string>& vtxoIds) override {
+    return Promise<BarkFeeEstimate>::async([vtxoIds]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+        bark_cxx::BarkFeeEstimate rust_result = bark_cxx::estimate_refresh_fee(std::move(rust_vtxo_ids));
 
         BarkFeeEstimate result;
         result.gross_amount_sat = static_cast<double>(rust_result.gross_amount_sat);

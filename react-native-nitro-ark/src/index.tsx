@@ -32,6 +32,7 @@ import type {
   BarkMovementDestination as NitroBarkMovementDestination,
   BoardResult,
   PendingRoundStatus as NitroPendingRoundStatus,
+  DelegatedRoundState,
 } from './NitroArk.nitro';
 
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'Exited' | 'unknown';
@@ -281,6 +282,17 @@ export function maintenanceWithOnchainDelegated(): Promise<void> {
  */
 export function maintenanceRefresh(): Promise<void> {
   return NitroArkHybridObject.maintenanceRefresh();
+}
+
+/**
+ * Refreshes the provided VTXOs in delegated mode.
+ * @param vtxoIds Array of VTXO ID strings to refresh.
+ * @returns A pending round state reference, or undefined if no VTXOs needed refresh.
+ */
+export function refreshVtxosDelegated(
+  vtxoIds: string[]
+): Promise<DelegatedRoundState | undefined> {
+  return NitroArkHybridObject.refreshVtxosDelegated(vtxoIds);
 }
 
 /**
@@ -1006,6 +1018,17 @@ export function estimateBoardOffchainFee(
 }
 
 /**
+ * Estimates the Ark protocol fee for refreshing the provided VTXOs.
+ * @param vtxoIds Array of VTXO ID strings to refresh.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateRefreshFee(
+  vtxoIds: string[]
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateRefreshFee(vtxoIds);
+}
+
+/**
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
@@ -1074,6 +1097,7 @@ export type {
   BarkArkInfo,
   Bolt11Invoice,
   BoardResult,
+  DelegatedRoundState,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,

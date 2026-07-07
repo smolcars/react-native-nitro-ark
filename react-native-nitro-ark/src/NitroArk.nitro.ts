@@ -273,6 +273,10 @@ export interface PendingRoundStatus {
   is_success: boolean;
 }
 
+export interface DelegatedRoundState {
+  round_id: number; // u32
+}
+
 export interface BarkNotificationEvent {
   kind: string; // 'movementCreated' | 'movementUpdated' | 'channelLagging'
   movement?: BarkMovement;
@@ -370,6 +374,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   decodeVtxoHex(vtxoHex: string): Promise<BarkVtxo>;
   importVtxo(vtxoHex: string): Promise<BarkVtxo>;
   dangerousDropVtxo(vtxoId: string): Promise<void>;
+  refreshVtxosDelegated(
+    vtxoIds: string[]
+  ): Promise<DelegatedRoundState | undefined>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
   getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;
@@ -409,6 +416,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<ArkoorPaymentResult>;
   estimateArkoorPaymentFee(amountSat: number): Promise<BarkFeeEstimate>;
   estimateBoardOffchainFee(amountSat: number): Promise<BarkFeeEstimate>;
+  estimateRefreshFee(vtxoIds: string[]): Promise<BarkFeeEstimate>;
   payLightningInvoice(
     destination: string,
     wait: boolean,
