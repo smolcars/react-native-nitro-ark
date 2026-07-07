@@ -337,6 +337,11 @@ pub(crate) mod ffi {
         pub is_success: bool,
     }
 
+    pub struct DelegatedRoundState {
+        pub has_round: bool,
+        pub round_id: u32,
+    }
+
     extern "Rust" {
         type NotificationSubscription;
 
@@ -369,6 +374,7 @@ pub(crate) mod ffi {
         fn import_vtxo(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
+        fn refresh_vtxos_delegated(vtxo_ids: Vec<String>) -> Result<DelegatedRoundState>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         unsafe fn bolt11_invoice(
@@ -729,6 +735,31 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
             .into_iter()
             .map(utils::wallet_vtxo_to_bark_vtxo)
             .collect())
+    })
+}
+
+pub(crate) fn refresh_vtxos_delegated(
+    vtxo_ids: Vec<String>,
+) -> anyhow::Result<ffi::DelegatedRoundState> {
+    ffi_boundary("refresh_vtxos_delegated", || {
+        let ids = vtxo_ids
+            .into_iter()
+            .map(|id| {
+                bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        let round_id = crate::TOKIO_RUNTIME.block_on(crate::refresh_vtxos_delegated(ids))?;
+        Ok(match round_id {
+            Some(id) => ffi::DelegatedRoundState {
+                has_round: true,
+                round_id: id.0,
+            },
+            None => ffi::DelegatedRoundState {
+                has_round: false,
+                round_id: 0,
+            },
+        })
     })
 }
 

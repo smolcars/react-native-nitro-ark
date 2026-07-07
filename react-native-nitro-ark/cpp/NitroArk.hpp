@@ -55,6 +55,16 @@ inline PendingRoundStatus convertRustPendingRoundStatus(const bark_cxx::PendingR
   return status;
 }
 
+inline std::optional<DelegatedRoundState>
+convertRustDelegatedRoundState(const bark_cxx::DelegatedRoundState& state_rs) {
+  if (!state_rs.has_round) {
+    return std::nullopt;
+  }
+  DelegatedRoundState state;
+  state.round_id = static_cast<double>(state_rs.round_id);
+  return state;
+}
+
 inline LightningPaymentResult convertRustLightningPaymentResult(const bark_cxx::LightningPaymentResult& rust_result) {
   LightningPaymentResult result;
   result.state = std::string(rust_result.state.data(), rust_result.state.length());
@@ -1008,6 +1018,23 @@ public:
       try {
         rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::get_expiring_vtxos(static_cast<uint32_t>(threshold));
         return convertRustVtxosToVector(rust_vtxos);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::optional<DelegatedRoundState>>>
+  refreshVtxosDelegated(const std::vector<std::string>& vtxoIds) override {
+    return Promise<std::optional<DelegatedRoundState>>::async([vtxoIds]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+        bark_cxx::DelegatedRoundState state = bark_cxx::refresh_vtxos_delegated(std::move(rust_vtxo_ids));
+        return convertRustDelegatedRoundState(state);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

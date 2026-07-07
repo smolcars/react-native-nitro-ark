@@ -1000,6 +1000,7 @@ namespace bark_cxx {
   struct BarkMovementDestination;
   struct BarkMovement;
   struct PendingRoundStatus;
+  struct DelegatedRoundState;
   struct NotificationSubscription;
 }
 
@@ -1472,6 +1473,16 @@ struct PendingRoundStatus final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$PendingRoundStatus
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$DelegatedRoundState
+#define CXXBRIDGE1_STRUCT_bark_cxx$DelegatedRoundState
+struct DelegatedRoundState final {
+  bool has_round CXX_DEFAULT_VALUE(false);
+  ::std::uint32_t round_id CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$DelegatedRoundState
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$NotificationSubscription
 #define CXXBRIDGE1_STRUCT_bark_cxx$NotificationSubscription
 struct NotificationSubscription final : public ::rust::Opaque {
@@ -1528,6 +1539,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 void dangerous_drop_vtxo(::rust::Str vtxo_id);
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
+
+::bark_cxx::DelegatedRoundState refresh_vtxos_delegated(::rust::Vec<::rust::String> vtxo_ids);
 
 ::std::uint32_t const *get_first_expiring_vtxo_blockheight();
 

@@ -32,6 +32,7 @@ import type {
   BarkMovementDestination as NitroBarkMovementDestination,
   BoardResult,
   PendingRoundStatus as NitroPendingRoundStatus,
+  DelegatedRoundState,
 } from './NitroArk.nitro';
 
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'Exited' | 'unknown';
@@ -281,6 +282,17 @@ export function maintenanceWithOnchainDelegated(): Promise<void> {
  */
 export function maintenanceRefresh(): Promise<void> {
   return NitroArkHybridObject.maintenanceRefresh();
+}
+
+/**
+ * Refreshes the provided VTXOs in delegated mode.
+ * @param vtxoIds Array of VTXO ID strings to refresh.
+ * @returns A pending round state reference, or undefined if no VTXOs needed refresh.
+ */
+export function refreshVtxosDelegated(
+  vtxoIds: string[]
+): Promise<DelegatedRoundState | undefined> {
+  return NitroArkHybridObject.refreshVtxosDelegated(vtxoIds);
 }
 
 /**
@@ -1074,6 +1086,7 @@ export type {
   BarkArkInfo,
   Bolt11Invoice,
   BoardResult,
+  DelegatedRoundState,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,

@@ -61,6 +61,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("decodeVtxoHex", &HybridNitroArkSpec::decodeVtxoHex);
       prototype.registerHybridMethod("importVtxo", &HybridNitroArkSpec::importVtxo);
       prototype.registerHybridMethod("dangerousDropVtxo", &HybridNitroArkSpec::dangerousDropVtxo);
+      prototype.registerHybridMethod("refreshVtxosDelegated", &HybridNitroArkSpec::refreshVtxosDelegated);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);
       prototype.registerHybridMethod("getNextRequiredRefreshBlockheight", &HybridNitroArkSpec::getNextRequiredRefreshBlockheight);
       prototype.registerHybridMethod("getExpiringVtxos", &HybridNitroArkSpec::getExpiringVtxos);
