@@ -1018,6 +1018,17 @@ export function estimateBoardOffchainFee(
 }
 
 /**
+ * Estimates the Ark protocol fee for refreshing the provided VTXOs.
+ * @param vtxoIds Array of VTXO ID strings to refresh.
+ * @returns A promise resolving to the fee estimate.
+ */
+export function estimateRefreshFee(
+  vtxoIds: string[]
+): Promise<BarkFeeEstimate> {
+  return NitroArkHybridObject.estimateRefreshFee(vtxoIds);
+}
+
+/**
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.

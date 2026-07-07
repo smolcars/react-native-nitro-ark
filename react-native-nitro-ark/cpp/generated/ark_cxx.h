@@ -1584,6 +1584,8 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::BarkFeeEstimate estimate_board_offchain_fee(::std::uint64_t amount_sat);
 
+::bark_cxx::BarkFeeEstimate estimate_refresh_fee(::rust::Vec<::rust::String> vtxo_ids);
+
 ::bark_cxx::BarkFeeEstimate estimate_lightning_send_fee(::std::uint64_t amount_sat);
 
 ::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, bool wait);

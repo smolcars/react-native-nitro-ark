@@ -813,6 +813,15 @@ pub async fn estimate_board_offchain_fee(amount: Amount) -> anyhow::Result<FeeEs
         .await
 }
 
+pub async fn estimate_refresh_fee<G>(
+    vtxos: impl IntoIterator<Item = impl AsRef<Vtxo<G>>>,
+) -> anyhow::Result<bark::FeeEstimate> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move { ctx.wallet.estimate_refresh_fee(vtxos).await })
+        .await
+}
+
 pub async fn estimate_lightning_send_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager

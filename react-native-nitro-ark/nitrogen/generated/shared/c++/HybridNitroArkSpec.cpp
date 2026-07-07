@@ -81,6 +81,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("sendArkoorPayment", &HybridNitroArkSpec::sendArkoorPayment);
       prototype.registerHybridMethod("estimateArkoorPaymentFee", &HybridNitroArkSpec::estimateArkoorPaymentFee);
       prototype.registerHybridMethod("estimateBoardOffchainFee", &HybridNitroArkSpec::estimateBoardOffchainFee);
+      prototype.registerHybridMethod("estimateRefreshFee", &HybridNitroArkSpec::estimateRefreshFee);
       prototype.registerHybridMethod("payLightningInvoice", &HybridNitroArkSpec::payLightningInvoice);
       prototype.registerHybridMethod("payLightningOffer", &HybridNitroArkSpec::payLightningOffer);
       prototype.registerHybridMethod("payLightningAddress", &HybridNitroArkSpec::payLightningAddress);

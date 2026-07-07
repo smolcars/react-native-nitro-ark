@@ -416,6 +416,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<ArkoorPaymentResult>;
   estimateArkoorPaymentFee(amountSat: number): Promise<BarkFeeEstimate>;
   estimateBoardOffchainFee(amountSat: number): Promise<BarkFeeEstimate>;
+  estimateRefreshFee(vtxoIds: string[]): Promise<BarkFeeEstimate>;
   payLightningInvoice(
     destination: string,
     wait: boolean,

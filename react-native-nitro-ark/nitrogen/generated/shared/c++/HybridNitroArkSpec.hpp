@@ -197,6 +197,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateBoardOffchainFee(double amountSat) = 0;
+      virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateRefreshFee(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningInvoice(const std::string& destination, bool wait, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningOffer(const std::string& offer, bool wait, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment, bool wait) = 0;
