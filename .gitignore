@@ -2,3 +2,4 @@
 __cmake_systeminformation
 .DS_Store
 target
+.build/

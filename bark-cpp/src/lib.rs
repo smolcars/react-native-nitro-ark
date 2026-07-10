@@ -32,23 +32,28 @@ use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
+mod backup;
 mod cxx;
 mod exit;
 mod mailbox;
 mod onchain;
+mod state_changes;
 mod subscriptions;
 mod utils;
 
 use bip39::Mnemonic;
 use logger::log::{debug, info};
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Once;
 use utils::DB_FILE;
 use utils::try_create_wallet;
 
+pub use backup::*;
 pub use exit::*;
+pub use state_changes::*;
 pub use subscriptions::*;
 pub use utils::*;
 
@@ -95,12 +100,13 @@ static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
 pub struct WalletContext {
     pub wallet: Arc<Wallet>,
     pub onchain_wallet: OnchainWallet,
+    pub db_path: PathBuf,
     pub mailbox_sync_task: Option<tokio::task::JoinHandle<()>>,
     pub mailbox_sync_shutdown: Option<CancellationToken>,
 }
 
 impl WalletContext {
-    fn new(wallet: Wallet, onchain_wallet: OnchainWallet) -> Self {
+    fn new(wallet: Wallet, onchain_wallet: OnchainWallet, db_path: PathBuf) -> Self {
         let wallet = Arc::new(wallet);
         let mailbox_sync_shutdown = CancellationToken::new();
         let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(
@@ -111,6 +117,7 @@ impl WalletContext {
         Self {
             wallet,
             onchain_wallet,
+            db_path,
             mailbox_sync_task,
             mailbox_sync_shutdown: Some(mailbox_sync_shutdown),
         }
@@ -174,7 +181,11 @@ impl WalletManager {
         info!("Attempting to open wallet...");
         let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic, config).await?;
 
-        self.context = Some(WalletContext::new(wallet, onchain_wallet));
+        self.context = Some(WalletContext::new(
+            wallet,
+            onchain_wallet,
+            datadir.join(DB_FILE),
+        ));
 
         Ok(())
     }

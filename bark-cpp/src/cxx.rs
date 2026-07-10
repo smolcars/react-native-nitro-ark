@@ -2,6 +2,7 @@ use crate::cxx::ffi::{
     ArkoorPaymentResult, BarkFeeEstimate, BarkFeeRates, BarkMovement, BarkVtxo,
     OnchainPaymentResult, OnchainTransactionInfo,
 };
+pub use crate::state_changes::StateChangeSubscription;
 pub use crate::subscriptions::NotificationSubscription;
 use crate::{TOKIO_RUNTIME, utils};
 use anyhow::{Context, Ok, bail};
@@ -302,6 +303,37 @@ pub(crate) mod ffi {
         pub event: NotificationEvent,
     }
 
+    pub struct WalletSnapshotInfo {
+        pub path: String,
+        pub size_bytes: u64,
+        pub sha256: String,
+        pub network: String,
+        pub wallet_fingerprint: String,
+        pub server_pubkey: String,
+        pub mailbox_pubkey: String,
+        pub schema_version: u32,
+    }
+
+    pub struct WalletSnapshotExpectation {
+        pub has_network: bool,
+        pub network: String,
+        pub has_wallet_fingerprint: bool,
+        pub wallet_fingerprint: String,
+        pub has_server_pubkey: bool,
+        pub server_pubkey: String,
+    }
+
+    pub struct StateChangeEvent {
+        pub sequence: u64,
+        pub reason: String,
+    }
+
+    pub struct StateChangePollResult {
+        pub has_event: bool,
+        pub is_active: bool,
+        pub event: StateChangeEvent,
+    }
+
     pub struct BarkMovementDestination {
         pub destination: String,
         pub payment_method: String,
@@ -344,11 +376,17 @@ pub(crate) mod ffi {
 
     extern "Rust" {
         type NotificationSubscription;
+        type StateChangeSubscription;
 
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
         fn is_wallet_loaded() -> bool;
         fn close_wallet() -> Result<()>;
+        fn create_wallet_snapshot(destination_path: &str) -> Result<WalletSnapshotInfo>;
+        fn validate_wallet_snapshot(
+            path: &str,
+            expected: WalletSnapshotExpectation,
+        ) -> Result<WalletSnapshotInfo>;
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
@@ -470,6 +508,13 @@ pub(crate) mod ffi {
             self: Pin<&mut NotificationSubscription>,
             timeout_ms: u32,
         ) -> Result<NotificationPollResult>;
+        fn subscribe_wallet_state_changes() -> Result<Box<StateChangeSubscription>>;
+        fn stop(self: Pin<&mut StateChangeSubscription>) -> Result<()>;
+        fn is_active(self: &StateChangeSubscription) -> bool;
+        fn wait_next(
+            self: Pin<&mut StateChangeSubscription>,
+            timeout_ms: u32,
+        ) -> Result<StateChangePollResult>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -507,6 +552,57 @@ pub(crate) fn is_wallet_loaded() -> bool {
 pub(crate) fn close_wallet() -> anyhow::Result<()> {
     ffi_boundary("close_wallet", || {
         crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
+    })
+}
+
+fn wallet_snapshot_info_to_ffi(info: crate::WalletSnapshotInfo) -> ffi::WalletSnapshotInfo {
+    ffi::WalletSnapshotInfo {
+        path: info.path,
+        size_bytes: info.size_bytes,
+        sha256: info.sha256,
+        network: info.network,
+        wallet_fingerprint: info.wallet_fingerprint,
+        server_pubkey: info.server_pubkey.unwrap_or_default(),
+        mailbox_pubkey: info.mailbox_pubkey.unwrap_or_default(),
+        schema_version: info.schema_version,
+    }
+}
+
+pub(crate) fn create_wallet_snapshot(
+    destination_path: &str,
+) -> anyhow::Result<ffi::WalletSnapshotInfo> {
+    ffi_boundary("create_wallet_snapshot", || {
+        let info = crate::TOKIO_RUNTIME
+            .block_on(crate::create_wallet_snapshot(Path::new(destination_path)))?;
+        Ok(wallet_snapshot_info_to_ffi(info))
+    })
+}
+
+pub(crate) fn validate_wallet_snapshot(
+    path: &str,
+    expected: ffi::WalletSnapshotExpectation,
+) -> anyhow::Result<ffi::WalletSnapshotInfo> {
+    ffi_boundary("validate_wallet_snapshot", || {
+        let expected = crate::WalletSnapshotExpectation {
+            network: expected.has_network.then_some(expected.network),
+            wallet_fingerprint: expected
+                .has_wallet_fingerprint
+                .then_some(expected.wallet_fingerprint),
+            server_pubkey: expected.has_server_pubkey.then_some(expected.server_pubkey),
+        };
+        let expected = (expected.network.is_some()
+            || expected.wallet_fingerprint.is_some()
+            || expected.server_pubkey.is_some())
+        .then_some(expected);
+        let info = crate::TOKIO_RUNTIME
+            .block_on(crate::validate_wallet_snapshot(Path::new(path), expected))?;
+        Ok(wallet_snapshot_info_to_ffi(info))
+    })
+}
+
+pub(crate) fn subscribe_wallet_state_changes() -> anyhow::Result<Box<StateChangeSubscription>> {
+    ffi_boundary("subscribe_wallet_state_changes", || {
+        crate::TOKIO_RUNTIME.block_on(crate::subscribe_wallet_state_changes())
     })
 }
 

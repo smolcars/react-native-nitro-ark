@@ -997,11 +997,16 @@ namespace bark_cxx {
   struct MailboxAuthorizationResult;
   struct NotificationEvent;
   struct NotificationPollResult;
+  struct WalletSnapshotInfo;
+  struct WalletSnapshotExpectation;
+  struct StateChangeEvent;
+  struct StateChangePollResult;
   struct BarkMovementDestination;
   struct BarkMovement;
   struct PendingRoundStatus;
   struct DelegatedRoundState;
   struct NotificationSubscription;
+  struct StateChangeSubscription;
 }
 
 namespace bark_cxx {
@@ -1447,6 +1452,57 @@ struct NotificationPollResult final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$NotificationPollResult
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotInfo
+struct WalletSnapshotInfo final {
+  ::rust::String path;
+  ::std::uint64_t size_bytes CXX_DEFAULT_VALUE(0);
+  ::rust::String sha256;
+  ::rust::String network;
+  ::rust::String wallet_fingerprint;
+  ::rust::String server_pubkey;
+  ::rust::String mailbox_pubkey;
+  ::std::uint32_t schema_version CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotInfo
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotExpectation
+#define CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotExpectation
+struct WalletSnapshotExpectation final {
+  bool has_network CXX_DEFAULT_VALUE(false);
+  ::rust::String network;
+  bool has_wallet_fingerprint CXX_DEFAULT_VALUE(false);
+  ::rust::String wallet_fingerprint;
+  bool has_server_pubkey CXX_DEFAULT_VALUE(false);
+  ::rust::String server_pubkey;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$WalletSnapshotExpectation
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$StateChangeEvent
+#define CXXBRIDGE1_STRUCT_bark_cxx$StateChangeEvent
+struct StateChangeEvent final {
+  ::std::uint64_t sequence CXX_DEFAULT_VALUE(0);
+  ::rust::String reason;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$StateChangeEvent
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$StateChangePollResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$StateChangePollResult
+struct StateChangePollResult final {
+  bool has_event CXX_DEFAULT_VALUE(false);
+  bool is_active CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::StateChangeEvent event;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$StateChangePollResult
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 struct BarkMovementDestination final {
@@ -1500,6 +1556,23 @@ private:
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$NotificationSubscription
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$StateChangeSubscription
+#define CXXBRIDGE1_STRUCT_bark_cxx$StateChangeSubscription
+struct StateChangeSubscription final : public ::rust::Opaque {
+  void stop();
+  bool is_active() const noexcept;
+  ::bark_cxx::StateChangePollResult wait_next(::std::uint32_t timeout_ms);
+  ~StateChangeSubscription() = delete;
+
+private:
+  friend ::rust::layout;
+  struct layout {
+    static ::std::size_t size() noexcept;
+    static ::std::size_t align() noexcept;
+  };
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$StateChangeSubscription
+
 void init_logger() noexcept;
 
 ::rust::String create_mnemonic();
@@ -1507,6 +1580,10 @@ void init_logger() noexcept;
 bool is_wallet_loaded() noexcept;
 
 void close_wallet();
+
+::bark_cxx::WalletSnapshotInfo create_wallet_snapshot(::rust::Str destination_path);
+
+::bark_cxx::WalletSnapshotInfo validate_wallet_snapshot(::rust::Str path, ::bark_cxx::WalletSnapshotExpectation expected);
 
 ::bark_cxx::CxxArkInfo get_ark_info();
 
@@ -1645,6 +1722,8 @@ void sync_exit();
 ::rust::Box<::bark_cxx::NotificationSubscription> subscribe_arkoor_address_movements(::rust::Str address);
 
 ::rust::Box<::bark_cxx::NotificationSubscription> subscribe_lightning_payment_movements(::rust::Str payment_hash);
+
+::rust::Box<::bark_cxx::StateChangeSubscription> subscribe_wallet_state_changes();
 
 ::bark_cxx::OnChainBalance onchain_balance();
 

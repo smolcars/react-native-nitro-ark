@@ -15,6 +15,14 @@
 
 // Forward declaration of `BarkCreateOpts` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
+// Forward declaration of `WalletSnapshotInfo` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct WalletSnapshotInfo; }
+// Forward declaration of `WalletSnapshotExpectation` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct WalletSnapshotExpectation; }
+// Forward declaration of `HybridWalletStateChangeSubscriptionSpec` to properly resolve imports.
+namespace margelo::nitro::nitroark { class HybridWalletStateChangeSubscriptionSpec; }
+// Forward declaration of `WalletStateChangeEvent` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct WalletStateChangeEvent; }
 // Forward declaration of `ExitProgressStatusResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ExitProgressStatusResult; }
 // Forward declaration of `ExitVtxoResult` to properly resolve imports.
@@ -69,9 +77,15 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <string>
 #include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
+#include "WalletSnapshotInfo.hpp"
+#include "WalletSnapshotExpectation.hpp"
+#include <optional>
+#include <memory>
+#include "HybridWalletStateChangeSubscriptionSpec.hpp"
+#include "WalletStateChangeEvent.hpp"
+#include <functional>
 #include <vector>
 #include "ExitProgressStatusResult.hpp"
-#include <optional>
 #include "ExitVtxoResult.hpp"
 #include "ExitStatusResult.hpp"
 #include "PendingRoundStatus.hpp"
@@ -80,10 +94,8 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "KeyPairResult.hpp"
 #include "NewAddressResult.hpp"
 #include "MailboxAuthorizationResult.hpp"
-#include <memory>
 #include "HybridBarkNotificationSubscriptionSpec.hpp"
 #include "BarkNotificationEvent.hpp"
-#include <functional>
 #include "BarkMovement.hpp"
 #include "BarkVtxo.hpp"
 #include "DelegatedRoundState.hpp"
@@ -135,6 +147,9 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& config) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
+      virtual std::shared_ptr<Promise<WalletSnapshotInfo>> createWalletSnapshot(const std::string& destinationPath) = 0;
+      virtual std::shared_ptr<Promise<WalletSnapshotInfo>> validateWalletSnapshot(const std::string& path, const std::optional<WalletSnapshotExpectation>& expected) = 0;
+      virtual std::shared_ptr<HybridWalletStateChangeSubscriptionSpec> subscribeWalletStateChanges(const std::function<void(const WalletStateChangeEvent& /* event */)>& onEvent) = 0;
       virtual std::shared_ptr<Promise<void>> refreshServer() = 0;
       virtual std::shared_ptr<Promise<void>> syncPendingBoards() = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
