@@ -288,6 +288,34 @@ export interface BarkNotificationSubscription
   isActive(): boolean;
 }
 
+export interface WalletSnapshotInfo {
+  path: string;
+  sizeBytes: number;
+  sha256: string;
+  network: string;
+  walletFingerprint: string;
+  serverPubkey?: string;
+  mailboxPubkey?: string;
+  schemaVersion: number;
+}
+
+export interface WalletSnapshotExpectation {
+  network?: string;
+  walletFingerprint?: string;
+  serverPubkey?: string;
+}
+
+export interface WalletStateChangeEvent {
+  sequence: number;
+  reason: string; // 'initial' | 'databaseChanged' | 'resyncRequired'
+}
+
+export interface WalletStateChangeSubscription
+  extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
+  stop(): void;
+  isActive(): boolean;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -297,6 +325,14 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
+  createWalletSnapshot(destinationPath: string): Promise<WalletSnapshotInfo>;
+  validateWalletSnapshot(
+    path: string,
+    expected?: WalletSnapshotExpectation
+  ): Promise<WalletSnapshotInfo>;
+  subscribeWalletStateChanges(
+    onEvent: (event: WalletStateChangeEvent) => void
+  ): WalletStateChangeSubscription;
   refreshServer(): Promise<void>;
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;

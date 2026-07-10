@@ -33,6 +33,10 @@ import type {
   BoardResult,
   PendingRoundStatus as NitroPendingRoundStatus,
   DelegatedRoundState,
+  WalletSnapshotInfo,
+  WalletSnapshotExpectation,
+  WalletStateChangeEvent as NitroWalletStateChangeEvent,
+  WalletStateChangeSubscription,
 } from './NitroArk.nitro';
 
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'Exited' | 'unknown';
@@ -130,6 +134,24 @@ export type BarkNotificationEvent = Omit<
   movement?: BarkMovement;
 };
 
+export type WalletStateChangeReason =
+  | 'initial'
+  | 'databaseChanged'
+  | 'resyncRequired';
+
+export type WalletStateChangeEvent = Omit<
+  NitroWalletStateChangeEvent,
+  'reason'
+> & {
+  reason: WalletStateChangeReason;
+};
+
+export type {
+  WalletSnapshotInfo,
+  WalletSnapshotExpectation,
+  WalletStateChangeSubscription,
+};
+
 export type LightningPaymentState =
   | 'unknown'
   | 'in_progress'
@@ -214,6 +236,39 @@ export function loadWallet(
  */
 export function closeWallet(): Promise<void> {
   return NitroArkHybridObject.closeWallet();
+}
+
+/**
+ * Creates a transactionally consistent SQLite snapshot of the loaded wallet.
+ * The destination must not already exist.
+ */
+export function createWalletSnapshot(
+  destinationPath: string
+): Promise<WalletSnapshotInfo> {
+  return NitroArkHybridObject.createWalletSnapshot(destinationPath);
+}
+
+/**
+ * Validates a wallet snapshot without modifying it. When expected identity
+ * fields are omitted, the loaded wallet identity is used when available.
+ */
+export function validateWalletSnapshot(
+  path: string,
+  expected?: WalletSnapshotExpectation
+): Promise<WalletSnapshotInfo> {
+  return NitroArkHybridObject.validateWalletSnapshot(path, expected);
+}
+
+/**
+ * Observes committed native SQLite changes. Sequence values are local to this
+ * subscription and reset when a new subscription is created.
+ */
+export function subscribeWalletStateChanges(
+  onEvent: (event: WalletStateChangeEvent) => void
+): WalletStateChangeSubscription {
+  return NitroArkHybridObject.subscribeWalletStateChanges(
+    onEvent as (event: NitroWalletStateChangeEvent) => void
+  );
 }
 
 /**

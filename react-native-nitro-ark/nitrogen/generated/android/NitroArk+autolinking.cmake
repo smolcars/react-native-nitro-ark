@@ -34,6 +34,7 @@ target_sources(
   ../nitrogen/generated/android/NitroArkOnLoad.cpp
   # Shared Nitrogen C++ sources
   ../nitrogen/generated/shared/c++/HybridBarkNotificationSubscriptionSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridWalletStateChangeSubscriptionSpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroArkSpec.cpp
   # Android-specific Nitrogen C++ sources
   

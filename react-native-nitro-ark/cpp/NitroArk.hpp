@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BarkNotificationSubscription.hpp"
+#include "WalletStateChangeSubscription.hpp"
 #include "HybridNitroArkSpec.hpp"
 #include "generated/ark_cxx.h"
 #include "generated/cxx.h"
@@ -269,6 +270,12 @@ private:
     subscriptions_.push_back(subscription);
   }
 
+  void trackStateChangeSubscription(
+      const std::shared_ptr<HybridWalletStateChangeSubscriptionSpec>& subscription) {
+    std::lock_guard<std::mutex> lock(state_change_subscriptions_mutex_);
+    state_change_subscriptions_.push_back(subscription);
+  }
+
   void stopAllSubscriptions() {
     std::vector<std::shared_ptr<HybridBarkNotificationSubscriptionSpec>> active_subscriptions;
     {
@@ -290,6 +297,44 @@ private:
       } catch (...) {
       }
     }
+
+    std::vector<std::shared_ptr<HybridWalletStateChangeSubscriptionSpec>> active_state_change_subscriptions;
+    {
+      std::lock_guard<std::mutex> lock(state_change_subscriptions_mutex_);
+      auto it = state_change_subscriptions_.begin();
+      while (it != state_change_subscriptions_.end()) {
+        if (auto subscription = it->lock()) {
+          active_state_change_subscriptions.push_back(std::move(subscription));
+          ++it;
+        } else {
+          it = state_change_subscriptions_.erase(it);
+        }
+      }
+    }
+    for (const auto& subscription : active_state_change_subscriptions) {
+      try {
+        subscription->stop();
+      } catch (...) {
+      }
+    }
+  }
+
+  static WalletSnapshotInfo convertWalletSnapshotInfo(const bark_cxx::WalletSnapshotInfo& info) {
+    WalletSnapshotInfo result;
+    result.path = std::string(info.path.data(), info.path.length());
+    result.sizeBytes = static_cast<double>(info.size_bytes);
+    result.sha256 = std::string(info.sha256.data(), info.sha256.length());
+    result.network = std::string(info.network.data(), info.network.length());
+    result.walletFingerprint =
+        std::string(info.wallet_fingerprint.data(), info.wallet_fingerprint.length());
+    if (!info.server_pubkey.empty()) {
+      result.serverPubkey = std::string(info.server_pubkey.data(), info.server_pubkey.length());
+    }
+    if (!info.mailbox_pubkey.empty()) {
+      result.mailboxPubkey = std::string(info.mailbox_pubkey.data(), info.mailbox_pubkey.length());
+    }
+    result.schemaVersion = static_cast<double>(info.schema_version);
+    return result;
   }
 
   // Helper function to create ConfigOpts from BarkConfigOpts
@@ -398,6 +443,51 @@ public:
         throw std::runtime_error(e.what());
       }
     });
+  }
+
+  std::shared_ptr<Promise<WalletSnapshotInfo>>
+  createWalletSnapshot(const std::string& destinationPath) override {
+    return Promise<WalletSnapshotInfo>::async([destinationPath]() {
+      try {
+        return convertWalletSnapshotInfo(bark_cxx::create_wallet_snapshot(destinationPath));
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<WalletSnapshotInfo>>
+  validateWalletSnapshot(const std::string& path,
+                         const std::optional<WalletSnapshotExpectation>& expected) override {
+    return Promise<WalletSnapshotInfo>::async([path, expected]() {
+      try {
+        bark_cxx::WalletSnapshotExpectation expectedRs;
+        expectedRs.has_network = expected.has_value() && expected->network.has_value();
+        expectedRs.network = expectedRs.has_network ? *expected->network : "";
+        expectedRs.has_wallet_fingerprint =
+            expected.has_value() && expected->walletFingerprint.has_value();
+        expectedRs.wallet_fingerprint =
+            expectedRs.has_wallet_fingerprint ? *expected->walletFingerprint : "";
+        expectedRs.has_server_pubkey = expected.has_value() && expected->serverPubkey.has_value();
+        expectedRs.server_pubkey = expectedRs.has_server_pubkey ? *expected->serverPubkey : "";
+        return convertWalletSnapshotInfo(bark_cxx::validate_wallet_snapshot(path, expectedRs));
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<HybridWalletStateChangeSubscriptionSpec>
+  subscribeWalletStateChanges(const std::function<void(const WalletStateChangeEvent&)>& onEvent) override {
+    try {
+      auto subscription = std::make_shared<WalletStateChangeSubscription>(
+          bark_cxx::subscribe_wallet_state_changes(),
+          std::function<void(const WalletStateChangeEvent&)>(onEvent));
+      trackStateChangeSubscription(subscription);
+      return subscription;
+    } catch (const rust::Error& e) {
+      throw std::runtime_error(e.what());
+    }
   }
 
   std::shared_ptr<Promise<void>> refreshServer() override {
@@ -1678,6 +1768,8 @@ private:
   // Tag for logging/debugging within Nitro
   std::mutex subscriptions_mutex_;
   std::vector<std::weak_ptr<HybridBarkNotificationSubscriptionSpec>> subscriptions_;
+  std::mutex state_change_subscriptions_mutex_;
+  std::vector<std::weak_ptr<HybridWalletStateChangeSubscriptionSpec>> state_change_subscriptions_;
   static constexpr auto TAG = "NitroArk";
 };
 
