@@ -3,13 +3,13 @@ use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::sync::Mutex as StdMutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, bail};
 use bark::WalletProperties;
 use bark::persist::BarkPersister;
 use bark::persist::sqlite::SqliteClient;
-use rusqlite::backup::Backup;
+use rusqlite::backup::{Backup, StepResult};
 use rusqlite::{Connection, OpenFlags};
 use sha2::{Digest, Sha256};
 use tempfile::{Builder, NamedTempFile};
@@ -18,6 +18,7 @@ use crate::GLOBAL_WALLET_MANAGER;
 
 const BACKUP_PAGES_PER_STEP: i32 = 128;
 const BACKUP_STEP_PAUSE: Duration = Duration::from_millis(10);
+const BACKUP_BUSY_TIMEOUT: Duration = Duration::from_secs(30);
 const SQLITE_BUSY_TIMEOUT: Duration = Duration::from_secs(10);
 
 static SNAPSHOT_MUTEX: LazyLock<StdMutex<()>> = LazyLock::new(|| StdMutex::new(()));
@@ -238,7 +239,7 @@ fn sqlite_backup(source: &Path, destination: &Path) -> anyhow::Result<()> {
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )
     .with_context(|| format!("failed to open source database {}", source.display()))?;
-    source_connection.busy_timeout(SQLITE_BUSY_TIMEOUT)?;
+    source_connection.busy_timeout(BACKUP_STEP_PAUSE)?;
 
     let mut destination_connection = Connection::open(destination).with_context(|| {
         format!(
@@ -246,18 +247,42 @@ fn sqlite_backup(source: &Path, destination: &Path) -> anyhow::Result<()> {
             destination.display()
         )
     })?;
-    destination_connection.busy_timeout(SQLITE_BUSY_TIMEOUT)?;
+    destination_connection.busy_timeout(BACKUP_STEP_PAUSE)?;
 
     let backup = Backup::new(&source_connection, &mut destination_connection)
         .context("failed to initialize SQLite Online Backup")?;
-    backup
-        .run_to_completion(BACKUP_PAGES_PER_STEP, BACKUP_STEP_PAUSE, None)
-        .context("SQLite Online Backup failed")?;
+    run_backup_to_completion(&backup, BACKUP_BUSY_TIMEOUT)?;
     drop(backup);
     destination_connection
         .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
         .context("failed to finalize snapshot journal")?;
     Ok(())
+}
+
+fn run_backup_to_completion(backup: &Backup<'_, '_>, busy_timeout: Duration) -> anyhow::Result<()> {
+    let mut busy_since = None;
+
+    loop {
+        match backup
+            .step(BACKUP_PAGES_PER_STEP)
+            .context("SQLite Online Backup failed")?
+        {
+            StepResult::Done => return Ok(()),
+            StepResult::More => busy_since = None,
+            StepResult::Busy | StepResult::Locked => {
+                let started = *busy_since.get_or_insert_with(Instant::now);
+                let elapsed = started.elapsed();
+                if elapsed >= busy_timeout {
+                    bail!(
+                        "SQLite Online Backup remained busy or locked for {} seconds",
+                        busy_timeout.as_secs_f64()
+                    );
+                }
+                std::thread::sleep(BACKUP_STEP_PAUSE.min(busy_timeout - elapsed));
+            }
+            _ => bail!("SQLite Online Backup returned an unexpected step result"),
+        }
+    }
 }
 
 fn validate_sqlite_integrity(path: &Path) -> anyhow::Result<()> {
@@ -491,5 +516,47 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("network mismatch"));
+    }
+
+    #[test]
+    fn backup_times_out_during_lock_contention_and_recovers_after_unlock() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("source.sqlite");
+        let destination = dir.path().join("destination.sqlite");
+        let recovered_destination = dir.path().join("recovered.sqlite");
+
+        let writer = Connection::open(&source).unwrap();
+        writer
+            .execute_batch(
+                "CREATE TABLE test (value INTEGER NOT NULL);
+                 INSERT INTO test VALUES (42);
+                 BEGIN EXCLUSIVE;",
+            )
+            .unwrap();
+
+        let source_connection = Connection::open_with_flags(
+            &source,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .unwrap();
+        source_connection.busy_timeout(BACKUP_STEP_PAUSE).unwrap();
+        let mut destination_connection = Connection::open(&destination).unwrap();
+        destination_connection
+            .busy_timeout(BACKUP_STEP_PAUSE)
+            .unwrap();
+        let backup = Backup::new(&source_connection, &mut destination_connection).unwrap();
+        let error = run_backup_to_completion(&backup, Duration::from_millis(50)).unwrap_err();
+        assert!(error.to_string().contains("remained busy or locked"));
+        drop(backup);
+        drop(destination_connection);
+
+        writer.execute_batch("ROLLBACK;").unwrap();
+
+        sqlite_backup(&source, &recovered_destination).unwrap();
+        let recovered = Connection::open(&recovered_destination).unwrap();
+        let value: i64 = recovered
+            .query_row("SELECT value FROM test", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(value, 42);
     }
 }
