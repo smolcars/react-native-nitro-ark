@@ -519,6 +519,7 @@ pub(crate) mod ffi {
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
         fn onchain_sync() -> Result<()>;
+        fn onchain_is_mine(address: &str) -> Result<bool>;
         fn onchain_list_unspent() -> Result<String>;
         fn onchain_utxos() -> Result<String>;
         fn onchain_fee_rates() -> Result<BarkFeeRates>;
@@ -1957,6 +1958,14 @@ pub(crate) fn onchain_list_unspent() -> anyhow::Result<String> {
     ffi_boundary("onchain_list_unspent", || {
         let unspent = TOKIO_RUNTIME.block_on(crate::onchain::list_unspent())?;
         serde_json::to_string(&unspent).map_err(Into::into)
+    })
+}
+
+pub(crate) fn onchain_is_mine(address: &str) -> anyhow::Result<bool> {
+    ffi_boundary("onchain_is_mine", || {
+        let address = bitcoin::Address::from_str(address)
+            .with_context(|| format!("Invalid address format: '{}'", address))?;
+        crate::TOKIO_RUNTIME.block_on(crate::onchain::is_mine(address))
     })
 }
 

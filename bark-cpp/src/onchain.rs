@@ -1,6 +1,6 @@
 use bark::chain::FeeRates;
 use bark::onchain::{ChainSync, GetAddress, Utxo, WalletTxInfo};
-use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
+use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, ScriptBuf, Transaction, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;
 
@@ -16,6 +16,15 @@ pub async fn address() -> anyhow::Result<Address> {
     manager
         .with_context_async(|ctx| async { ctx.onchain_wallet.address().await })
         .await
+}
+
+/// Check if an address belongs to this wallet
+pub async fn is_mine(address: Address) -> anyhow::Result<bool> {
+    let manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context_ref(|ctx| {
+        let script = address.script_pubkey();
+        Ok(ctx.onchain_wallet.is_mine(script))
+    })
 }
 
 /// Get unspent outputs

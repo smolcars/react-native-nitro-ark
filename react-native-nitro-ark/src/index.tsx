@@ -825,6 +825,10 @@ export function onchainAddress(): Promise<string> {
   return NitroArkHybridObject.onchainAddress();
 }
 
+export function onchainIsMine(address: string): Promise<boolean> {
+  return NitroArkHybridObject.onchainIsMine(address);
+}
+
 /**
  * Sends funds using the onchain wallet.
  * @param destination The destination Bitcoin address.

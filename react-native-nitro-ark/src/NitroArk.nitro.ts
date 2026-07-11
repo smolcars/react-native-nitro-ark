@@ -420,6 +420,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Onchain Operations ---
   onchainBalance(): Promise<OnchainBalanceResult>;
   onchainSync(): Promise<void>;
+  onchainIsMine(address: string): Promise<boolean>; // Check if an address belongs to this wallet
   onchainListUnspent(): Promise<string>; // Returns JSON string
   onchainUtxos(): Promise<string>; // Returns JSON string
   onchainFeeRates(): Promise<BarkFeeRates>; // Returns fast/regular/slow fee rates in sat/vB
