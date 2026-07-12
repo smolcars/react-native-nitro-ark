@@ -185,6 +185,27 @@ fn test_get_onchain_address_ffi() {
 
 #[test]
 #[ignore = "requires live regtest backend"]
+fn test_onchain_is_mine_ffi() {
+    let _fixture = WalletTestFixture::new();
+
+    // Get the wallet's own address
+    let own_address = cxx::onchain_address().unwrap();
+
+    // The wallet's own address should be recognized as "mine"
+    let is_own = cxx::onchain_is_mine(&own_address).unwrap();
+    assert!(is_own, "Wallet's own address should be recognized as mine");
+
+    // A foreign regtest address should NOT be recognized as "mine"
+    let foreign_address = "bcrt1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+    let is_foreign = cxx::onchain_is_mine(foreign_address).unwrap();
+    assert!(
+        !is_foreign,
+        "Foreign address should not be recognized as mine"
+    );
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
 fn test_get_onchain_balance_ffi() {
     let _fixture = WalletTestFixture::new();
     // Use no_sync = true to avoid network calls in a unit test context.

@@ -70,6 +70,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("getExpiringVtxos", &HybridNitroArkSpec::getExpiringVtxos);
       prototype.registerHybridMethod("onchainBalance", &HybridNitroArkSpec::onchainBalance);
       prototype.registerHybridMethod("onchainSync", &HybridNitroArkSpec::onchainSync);
+      prototype.registerHybridMethod("onchainIsMine", &HybridNitroArkSpec::onchainIsMine);
       prototype.registerHybridMethod("onchainListUnspent", &HybridNitroArkSpec::onchainListUnspent);
       prototype.registerHybridMethod("onchainUtxos", &HybridNitroArkSpec::onchainUtxos);
       prototype.registerHybridMethod("onchainFeeRates", &HybridNitroArkSpec::onchainFeeRates);

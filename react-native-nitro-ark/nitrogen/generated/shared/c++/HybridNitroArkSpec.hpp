@@ -198,6 +198,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
+      virtual std::shared_ptr<Promise<bool>> onchainIsMine(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainListUnspent() = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainUtxos() = 0;
       virtual std::shared_ptr<Promise<BarkFeeRates>> onchainFeeRates() = 0;

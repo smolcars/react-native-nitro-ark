@@ -1191,6 +1191,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<bool>> onchainIsMine(const std::string& address) override {
+    return Promise<bool>::async([address]() {
+      try {
+        return bark_cxx::onchain_is_mine(address);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> onchainListUnspent() override {
     return Promise<std::string>::async([]() {
       try {

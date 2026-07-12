@@ -1729,6 +1729,8 @@ void sync_exit();
 
 void onchain_sync();
 
+bool onchain_is_mine(::rust::Str address);
+
 ::rust::String onchain_list_unspent();
 
 ::rust::String onchain_utxos();
