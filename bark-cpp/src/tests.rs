@@ -198,7 +198,10 @@ fn test_onchain_is_mine_ffi() {
     // A foreign regtest address should NOT be recognized as "mine"
     let foreign_address = "bcrt1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
     let is_foreign = cxx::onchain_is_mine(foreign_address).unwrap();
-    assert!(!is_foreign, "Foreign address should not be recognized as mine");
+    assert!(
+        !is_foreign,
+        "Foreign address should not be recognized as mine"
+    );
 }
 
 #[test]

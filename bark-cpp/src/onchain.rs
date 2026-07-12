@@ -1,7 +1,7 @@
 use bark::chain::FeeRates;
 use bark::onchain::{ChainSync, GetAddress, Utxo, WalletTxInfo};
-use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 use bdk_wallet::bitcoin::address::NetworkUnchecked;
+use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;
 
