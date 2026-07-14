@@ -14,6 +14,7 @@ namespace margelo::nitro::nitroark {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
+      prototype.registerHybridMethod("getBarkVersion", &HybridNitroArkSpec::getBarkVersion);
       prototype.registerHybridMethod("createMnemonic", &HybridNitroArkSpec::createMnemonic);
       prototype.registerHybridMethod("createWallet", &HybridNitroArkSpec::createWallet);
       prototype.registerHybridMethod("loadWallet", &HybridNitroArkSpec::loadWallet);

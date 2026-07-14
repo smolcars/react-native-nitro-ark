@@ -28,6 +28,7 @@ export const getWalletConfig = (mnemonic: string): BarkCreateOpts => {
     signet: false,
     bitcoin: false,
     config: {
+      user_agent: `nitro-ark-example-${Platform.OS}/0.0.1`,
       bitcoind:
         Platform.OS === 'android'
           ? 'http://192.168.4.72:18443'

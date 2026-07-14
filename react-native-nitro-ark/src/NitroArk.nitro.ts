@@ -7,6 +7,8 @@ import type { HybridObject } from 'react-native-nitro-modules';
 export interface BarkConfigOpts {
   ark: string;
   server_access_token?: string;
+  /** Client identifier sent as `x-user-agent`, formatted as `<name>/<version>`. */
+  user_agent?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;
@@ -320,6 +322,7 @@ export interface WalletStateChangeSubscription
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Management ---
+  getBarkVersion(): string;
   createMnemonic(): Promise<string>;
   createWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
