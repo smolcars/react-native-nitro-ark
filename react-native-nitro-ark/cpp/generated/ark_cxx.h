@@ -1285,6 +1285,7 @@ struct CxxArkInfo final {
 struct ConfigOpts final {
   ::rust::String ark;
   ::rust::String server_access_token;
+  ::rust::String user_agent;
   ::rust::String esplora;
   ::rust::String bitcoind;
   ::rust::String bitcoind_cookie;
@@ -1574,6 +1575,8 @@ private:
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$StateChangeSubscription
 
 void init_logger() noexcept;
+
+::rust::String bark_version() noexcept;
 
 ::rust::String create_mnemonic();
 

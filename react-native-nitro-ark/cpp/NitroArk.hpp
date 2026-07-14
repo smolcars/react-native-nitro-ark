@@ -343,6 +343,7 @@ private:
     if (config.has_value()) {
       config_opts.ark = config->ark;
       config_opts.server_access_token = config->server_access_token.value_or("");
+      config_opts.user_agent = config->user_agent.value_or("");
       config_opts.esplora = config->esplora.value_or("");
       config_opts.bitcoind = config->bitcoind.value_or("");
       config_opts.bitcoind_cookie = config->bitcoind_cookie.value_or("");
@@ -369,6 +370,11 @@ public:
   }
 
   // --- Management ---
+
+  std::string getBarkVersion() override {
+    rust::String version = bark_cxx::bark_version();
+    return std::string(version.data(), version.length());
+  }
 
   std::shared_ptr<Promise<std::string>> createMnemonic() override {
     return Promise<std::string>::async([]() {

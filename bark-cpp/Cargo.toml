@@ -38,6 +38,7 @@ tempfile = "3.23.0"
 
 [build-dependencies]
 cxx-build = "1.0.186"
+toml = "1.0"
 
 [lib]
 crate-type = ["staticlib"]

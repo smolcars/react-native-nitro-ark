@@ -128,6 +128,9 @@ impl ConfigOpts {
         if let Some(v) = self.server_access_token {
             cfg.server_access_token = if v.is_empty() { None } else { Some(v) };
         }
+        if let Some(v) = self.user_agent {
+            cfg.user_agent = if v.is_empty() { None } else { Some(v) };
+        }
         if let Some(v) = self.esplora {
             cfg.esplora_address = match v.is_empty() {
                 true => None,
@@ -184,6 +187,7 @@ pub fn https_default_scheme(url: String) -> anyhow::Result<String> {
 pub struct ConfigOpts {
     pub ark: Option<String>,
     pub server_access_token: Option<String>,
+    pub user_agent: Option<String>,
 
     /// The esplora HTTP API endpoint
     pub esplora: Option<String>,
@@ -336,6 +340,11 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
             None
         } else {
             Some(opts.config.server_access_token)
+        },
+        user_agent: if opts.config.user_agent.is_empty() {
+            None
+        } else {
+            Some(opts.config.user_agent)
         },
         esplora: Some(opts.config.esplora),
         bitcoind: Some(opts.config.bitcoind),

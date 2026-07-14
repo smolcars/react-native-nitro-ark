@@ -12,6 +12,11 @@ use tempfile::tempdir;
 
 // --- Test Setup ---
 
+#[test]
+fn bark_version_matches_resolved_build_metadata() {
+    assert_eq!(crate::cxx::bark_version(), env!("BARK_WALLET_VERSION"));
+}
+
 /// Creates a temporary directory and basic wallet creation options for tests.
 fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
     let temp_dir = tempdir().expect("Failed to create temp dir");
@@ -22,6 +27,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         // For real integration tests, these would point to live regtest services.
         ark: "http://127.0.0.1:50051".to_string(),
         server_access_token: "".to_string(),
+        user_agent: "".to_string(),
         esplora: "http://127.0.0.1:3002".to_string(),
         bitcoind: "".to_string(),
         bitcoind_cookie: "".to_string(),
@@ -64,6 +70,36 @@ fn ffi_config_to_config_maps_non_empty_server_access_token_to_some() {
         create_opts.config.server_access_token,
         Some("private-token".to_string())
     );
+}
+
+#[test]
+fn ffi_config_to_config_maps_empty_user_agent_to_none() {
+    let (_temp_dir, opts) = setup_test_wallet_opts();
+    let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+
+    assert_eq!(create_opts.config.user_agent, None);
+}
+
+#[test]
+fn ffi_config_to_config_maps_non_empty_user_agent_to_some() {
+    let (_temp_dir, mut opts) = setup_test_wallet_opts();
+    opts.config.user_agent = "someapp-android/0.0.1".to_string();
+    let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+
+    assert_eq!(
+        create_opts.config.user_agent,
+        Some("someapp-android/0.0.1".to_string())
+    );
+}
+
+#[test]
+fn merge_config_opts_sets_bark_user_agent() {
+    let (_temp_dir, mut opts) = setup_test_wallet_opts();
+    opts.config.user_agent = "someapp-ios/0.0.1".to_string();
+    let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+    let (config, _network) = crate::utils::merge_config_opts(create_opts).unwrap();
+
+    assert_eq!(config.user_agent.as_deref(), Some("someapp-ios/0.0.1"));
 }
 
 #[test]

@@ -211,6 +211,7 @@ pub(crate) mod ffi {
     pub struct ConfigOpts {
         ark: String,
         server_access_token: String,
+        user_agent: String,
         esplora: String,
         bitcoind: String,
         bitcoind_cookie: String,
@@ -379,6 +380,7 @@ pub(crate) mod ffi {
         type StateChangeSubscription;
 
         fn init_logger();
+        fn bark_version() -> String;
         fn create_mnemonic() -> Result<String>;
         fn is_wallet_loaded() -> bool;
         fn close_wallet() -> Result<()>;
@@ -540,6 +542,10 @@ pub(crate) mod ffi {
 
 pub(crate) fn init_logger() {
     crate::init_logger()
+}
+
+pub(crate) fn bark_version() -> String {
+    env!("BARK_WALLET_VERSION").to_owned()
 }
 
 pub(crate) fn create_mnemonic() -> anyhow::Result<String> {

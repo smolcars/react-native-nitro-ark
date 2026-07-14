@@ -195,6 +195,11 @@ function enrichExitStatus(result: NitroExitStatusResult): ExitStatusResult {
 
 // --- Management ---
 
+/** Returns the semver of the Bark wallet library compiled into the native module. */
+export function getBarkVersion(): string {
+  return NitroArkHybridObject.getBarkVersion();
+}
+
 /**
  * Creates a new BIP39 mnemonic phrase.
  * @returns A promise resolving to the mnemonic string.
