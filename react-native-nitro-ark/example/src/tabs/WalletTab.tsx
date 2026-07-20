@@ -44,6 +44,7 @@ export const WalletTab = ({
   const [signature, setSignature] = useState('');
   const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
   const [vtxoIdToDrop, setVtxoIdToDrop] = useState('');
+  const [vtxoIdsToUnlock, setVtxoIdsToUnlock] = useState('');
 
   const canUseWallet = !!mnemonic;
   const walletOpsDisabled = isLoading || !canUseWallet;
@@ -199,19 +200,6 @@ export const WalletTab = ({
     );
   };
 
-  const handleMaintenanceWithOnchain = () => {
-    runOperation(
-      'maintenanceWithOnchain',
-      () => NitroArk.maintenanceWithOnchain(),
-      'sync',
-      () =>
-        setResults((prev) => ({
-          ...prev,
-          sync: 'Maintenance with onchain done!',
-        }))
-    );
-  };
-
   const handleMaintenanceDelegated = () => {
     runOperation(
       'maintenanceDelegated',
@@ -221,19 +209,6 @@ export const WalletTab = ({
         setResults((prev) => ({
           ...prev,
           sync: 'Maintenance delegated done!',
-        }))
-    );
-  };
-
-  const handleMaintenanceWithOnchainDelegated = () => {
-    runOperation(
-      'maintenanceWithOnchainDelegated',
-      () => NitroArk.maintenanceWithOnchainDelegated(),
-      'sync',
-      () =>
-        setResults((prev) => ({
-          ...prev,
-          sync: 'Maintenance with onchain delegated done!',
         }))
     );
   };
@@ -355,6 +330,31 @@ export const WalletTab = ({
             ),
         },
       ]
+    );
+  };
+
+  const handleUnlockVtxos = () => {
+    const vtxoIds = vtxoIdsToUnlock
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (vtxoIds.length === 0) {
+      setError((prev) => ({
+        ...prev,
+        info: 'At least one VTXO ID is required',
+      }));
+      return;
+    }
+
+    runOperation(
+      'unlockVtxos',
+      () => NitroArk.unlockVtxos(vtxoIds),
+      'info',
+      () =>
+        setResults((prev) => ({
+          ...prev,
+          info: `Unlocked ${vtxoIds.length} VTXO(s)`,
+        }))
     );
   };
 
@@ -558,22 +558,8 @@ export const WalletTab = ({
             small
           />
           <CustomButton
-            title="Maint. + Onchain"
-            onPress={handleMaintenanceWithOnchain}
-            disabled={walletOpsDisabled}
-            small
-          />
-        </ButtonGrid>
-        <ButtonGrid>
-          <CustomButton
             title="Maint. Delegated"
             onPress={handleMaintenanceDelegated}
-            disabled={walletOpsDisabled}
-            small
-          />
-          <CustomButton
-            title="Maint. + Onchain Deleg."
-            onPress={handleMaintenanceWithOnchainDelegated}
             disabled={walletOpsDisabled}
             small
           />
@@ -765,6 +751,19 @@ export const WalletTab = ({
           <CustomButton
             title="History"
             onPress={handleGetHistory}
+            disabled={walletOpsDisabled}
+          />
+        </ButtonGrid>
+        <InputField
+          label="VTXO IDs to Unlock"
+          value={vtxoIdsToUnlock}
+          onChangeText={setVtxoIdsToUnlock}
+          placeholder="Comma-separated VTXO IDs"
+        />
+        <ButtonGrid>
+          <CustomButton
+            title="Unlock VTXOs"
+            onPress={handleUnlockVtxos}
             disabled={walletOpsDisabled}
           />
         </ButtonGrid>

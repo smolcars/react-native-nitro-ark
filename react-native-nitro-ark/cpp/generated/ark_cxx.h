@@ -1284,7 +1284,6 @@ struct CxxArkInfo final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
   ::rust::String ark;
-  ::rust::String server_access_token;
   ::rust::String user_agent;
   ::rust::String esplora;
   ::rust::String bitcoind;
@@ -1340,11 +1339,18 @@ enum class RefreshModeType : ::std::uint8_t {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
 #define CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
 struct LightningReceive final {
+  ::rust::String state;
+  ::rust::String phase;
   ::rust::String payment_hash;
   ::rust::String payment_preimage;
   ::rust::String invoice;
-  ::std::uint64_t const *preimage_revealed_at CXX_DEFAULT_VALUE(nullptr);
-  ::std::uint64_t const *finished_at CXX_DEFAULT_VALUE(nullptr);
+  ::rust::Vec<::rust::String> htlc_vtxo_ids;
+  bool has_movement_id CXX_DEFAULT_VALUE(false);
+  ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);
+  bool has_amount_sat CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  bool has_settled_at CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t settled_at CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1618,6 +1624,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 void dangerous_drop_vtxo(::rust::Str vtxo_id);
 
+void unlock_vtxos(::rust::Vec<::rust::String> vtxo_ids);
+
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
 
 ::bark_cxx::DelegatedRoundState refresh_vtxos_delegated(::rust::Vec<::rust::String> vtxo_ids);
@@ -1626,9 +1634,9 @@ void dangerous_drop_vtxo(::rust::Str vtxo_id);
 
 ::std::uint32_t const *get_next_required_refresh_blockheight();
 
-::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat, ::rust::String const *description);
+::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat, ::rust::String const *description, ::rust::String const *token);
 
-::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
+::bark_cxx::LightningReceive lightning_receive_status(::rust::String payment_hash);
 
 ::bark_cxx::LightningPaymentResult check_lightning_payment(::rust::String payment_hash, bool wait);
 
@@ -1637,10 +1645,6 @@ void sync_pending_boards();
 void maintenance();
 
 void maintenance_delegated();
-
-void maintenance_with_onchain();
-
-void maintenance_with_onchain_delegated();
 
 void maintenance_refresh();
 
@@ -1704,7 +1708,7 @@ bool has_pending_exits();
 
 ::bark_cxx::BarkFeeEstimate estimate_offboard_all(::rust::Str destination_address);
 
-::bark_cxx::LightningReceive try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
+::bark_cxx::LightningReceive try_claim_lightning_receive(::rust::String payment_hash, bool wait);
 
 void try_claim_all_lightning_receives(bool wait);
 

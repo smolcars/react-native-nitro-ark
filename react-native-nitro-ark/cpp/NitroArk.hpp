@@ -87,6 +87,32 @@ inline LightningPaymentResult convertRustLightningPaymentResult(const bark_cxx::
   return result;
 }
 
+inline LightningReceive convertRustLightningReceive(const bark_cxx::LightningReceive& rust_result) {
+  LightningReceive result;
+  result.state = std::string(rust_result.state.data(), rust_result.state.length());
+  if (!rust_result.phase.empty()) {
+    result.phase = std::string(rust_result.phase.data(), rust_result.phase.length());
+  }
+  result.payment_hash = std::string(rust_result.payment_hash.data(), rust_result.payment_hash.length());
+  result.payment_preimage =
+      std::string(rust_result.payment_preimage.data(), rust_result.payment_preimage.length());
+  result.invoice = std::string(rust_result.invoice.data(), rust_result.invoice.length());
+  result.htlc_vtxo_ids.reserve(rust_result.htlc_vtxo_ids.size());
+  for (const auto& id : rust_result.htlc_vtxo_ids) {
+    result.htlc_vtxo_ids.emplace_back(std::string(id.data(), id.length()));
+  }
+  if (rust_result.has_movement_id) {
+    result.movement_id = static_cast<double>(rust_result.movement_id);
+  }
+  if (rust_result.has_amount_sat) {
+    result.amount_sat = static_cast<double>(rust_result.amount_sat);
+  }
+  if (rust_result.has_settled_at) {
+    result.settled_at = static_cast<double>(rust_result.settled_at);
+  }
+  return result;
+}
+
 inline ExitBlockRefResult convertRustExitBlockRef(const bark_cxx::ExitBlockRefResult& block_rs) {
   ExitBlockRefResult block;
   block.height = static_cast<double>(block_rs.height);
@@ -342,7 +368,6 @@ private:
     bark_cxx::ConfigOpts config_opts;
     if (config.has_value()) {
       config_opts.ark = config->ark;
-      config_opts.server_access_token = config->server_access_token.value_or("");
       config_opts.user_agent = config->user_agent.value_or("");
       config_opts.esplora = config->esplora.value_or("");
       config_opts.bitcoind = config->bitcoind.value_or("");
@@ -530,30 +555,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> maintenanceWithOnchain() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::maintenance_with_onchain();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   std::shared_ptr<Promise<void>> maintenanceDelegated() override {
     return Promise<void>::async([]() {
       try {
         bark_cxx::maintenance_delegated();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
-  std::shared_ptr<Promise<void>> maintenanceWithOnchainDelegated() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::maintenance_with_onchain_delegated();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -1109,6 +1114,21 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> unlockVtxos(const std::vector<std::string>& vtxoIds) override {
+    return Promise<void>::async([vtxoIds]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+        bark_cxx::unlock_vtxos(std::move(rust_vtxo_ids));
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) override {
     return Promise<std::vector<BarkVtxo>>::async([threshold]() {
       try {
@@ -1433,16 +1453,20 @@ public:
   }
 
   std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat,
-                                                        const std::optional<std::string>& description) override {
-    return Promise<Bolt11Invoice>::async([amountMsat, description]() {
+                                                        const std::optional<std::string>& description,
+                                                        const std::optional<std::string>& token) override {
+    return Promise<Bolt11Invoice>::async([amountMsat, description, token]() {
       try {
-        bark_cxx::Bolt11Invoice invoice_rs;
+        std::unique_ptr<rust::String> description_rs;
+        std::unique_ptr<rust::String> token_rs;
         if (description.has_value()) {
-          rust::String description_rs(description.value());
-          invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat), &description_rs);
-        } else {
-          invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat), nullptr);
+          description_rs = std::make_unique<rust::String>(description.value());
         }
+        if (token.has_value()) {
+          token_rs = std::make_unique<rust::String>(token.value());
+        }
+        const auto invoice_rs = bark_cxx::bolt11_invoice(
+            static_cast<uint64_t>(amountMsat), description_rs.get(), token_rs.get());
         return Bolt11Invoice(std::string(invoice_rs.bolt11_invoice.data(), invoice_rs.bolt11_invoice.length()),
                              std::string(invoice_rs.payment_secret.data(), invoice_rs.payment_secret.length()),
                              std::string(invoice_rs.payment_hash.data(), invoice_rs.payment_hash.length()));
@@ -1453,36 +1477,11 @@ public:
   }
 
   std::shared_ptr<Promise<LightningReceive>>
-  tryClaimLightningReceive(const std::string& paymentHash, bool wait,
-                           const std::optional<std::string>& token) override {
-    return Promise<LightningReceive>::async([paymentHash, wait, token]() -> LightningReceive {
+  tryClaimLightningReceive(const std::string& paymentHash, bool wait) override {
+    return Promise<LightningReceive>::async([paymentHash, wait]() -> LightningReceive {
       try {
-        bark_cxx::LightningReceive result;
-        if (token.has_value()) {
-          rust::String token_rs(token.value());
-          result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, &token_rs);
-        } else {
-          result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, nullptr);
-        }
-
-        LightningReceive lr;
-        lr.payment_hash = std::string(result.payment_hash.data(), result.payment_hash.length());
-        lr.payment_preimage = std::string(result.payment_preimage.data(), result.payment_preimage.length());
-        lr.invoice = std::string(result.invoice.data(), result.invoice.length());
-
-        if (result.preimage_revealed_at != nullptr) {
-          lr.preimage_revealed_at = static_cast<double>(*result.preimage_revealed_at);
-        } else {
-          lr.preimage_revealed_at = std::nullopt;
-        }
-
-        if (result.finished_at != nullptr) {
-          lr.finished_at = static_cast<double>(*result.finished_at);
-        } else {
-          lr.finished_at = std::nullopt;
-        }
-
-        return lr;
+        const auto result = bark_cxx::try_claim_lightning_receive(paymentHash, wait);
+        return convertRustLightningReceive(result);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -1499,36 +1498,11 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::optional<LightningReceive>>>
+  std::shared_ptr<Promise<LightningReceive>>
   lightningReceiveStatus(const std::string& paymentHash) override {
-    return Promise<std::optional<LightningReceive>>::async([paymentHash]() {
+    return Promise<LightningReceive>::async([paymentHash]() {
       try {
-        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(paymentHash);
-
-        if (status_ptr == nullptr) {
-          return std::optional<LightningReceive>();
-        }
-
-        std::unique_ptr<const bark_cxx::LightningReceive> status(status_ptr);
-
-        LightningReceive result;
-        result.payment_hash = std::string(status->payment_hash.data(), status->payment_hash.length());
-        result.payment_preimage = std::string(status->payment_preimage.data(), status->payment_preimage.length());
-        result.invoice = std::string(status->invoice.data(), status->invoice.length());
-
-        if (status->preimage_revealed_at != nullptr) {
-          result.preimage_revealed_at = static_cast<double>(*status->preimage_revealed_at);
-        } else {
-          result.preimage_revealed_at = std::nullopt;
-        }
-
-        if (status->finished_at != nullptr) {
-          result.finished_at = static_cast<double>(*status->finished_at);
-        } else {
-          result.finished_at = std::nullopt;
-        }
-
-        return std::optional<LightningReceive>(result);
+        return convertRustLightningReceive(bark_cxx::lightning_receive_status(paymentHash));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

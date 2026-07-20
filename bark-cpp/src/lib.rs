@@ -9,6 +9,10 @@ use bark::ark::bitcoin::Network;
 use bark::Config;
 use bark::Wallet;
 use bark::WalletVtxo;
+use bark::actions::lightning::receive::{
+    LightningReceive as BarkLightningReceive, LightningReceiveState,
+    Progress as LightningReceiveProgress,
+};
 use bark::ark::ArkInfo;
 use bark::ark::ProtocolEncoding;
 use bark::ark::Vtxo;
@@ -22,7 +26,7 @@ use bark::lock_manager::memory::MemoryLockManager;
 use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
-use bark::persist::models::{LightningReceive, PendingBoard, RoundStateId};
+use bark::persist::models::{PendingBoard, RoundStateId, SettledLightningReceive};
 use bark::persist::sqlite::SqliteClient;
 use bark::round::RoundStatus;
 use bark::{OpenWalletArgs, WalletSeed};
@@ -30,7 +34,7 @@ use bdk_wallet::bitcoin::key::Keypair;
 use bdk_wallet::bitcoin::{Txid, bip32};
 use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
 mod backup;
 mod cxx;
@@ -92,6 +96,71 @@ pub struct LightningPaymentResult {
     pub preimage: Option<Preimage>,
 }
 
+pub struct LightningReceive {
+    pub state: String,
+    pub phase: Option<String>,
+    pub payment_hash: PaymentHash,
+    pub payment_preimage: Preimage,
+    pub invoice: Bolt11Invoice,
+    pub htlc_vtxo_ids: Vec<VtxoId>,
+    pub movement_id: Option<u32>,
+    pub amount: Option<Amount>,
+    pub settled_at: Option<chrono::DateTime<chrono::Local>>,
+}
+
+impl From<BarkLightningReceive> for LightningReceive {
+    fn from(receive: BarkLightningReceive) -> Self {
+        let (phase, htlc_vtxo_ids, movement_id) = match receive.progress {
+            LightningReceiveProgress::AwaitingPayment => ("awaiting_payment", Vec::new(), None),
+            LightningReceiveProgress::HtlcsReady(htlcs) => {
+                ("htlcs_ready", htlcs.vtxo_ids, Some(htlcs.movement_id.0))
+            }
+            LightningReceiveProgress::PreimageRevealed(htlcs) => (
+                "preimage_revealed",
+                htlcs.vtxo_ids,
+                Some(htlcs.movement_id.0),
+            ),
+        };
+
+        Self {
+            state: "in_progress".to_string(),
+            phase: Some(phase.to_string()),
+            payment_hash: receive.payment_hash,
+            payment_preimage: receive.payment_preimage,
+            invoice: receive.invoice,
+            htlc_vtxo_ids,
+            movement_id,
+            amount: None,
+            settled_at: None,
+        }
+    }
+}
+
+impl From<SettledLightningReceive> for LightningReceive {
+    fn from(receive: SettledLightningReceive) -> Self {
+        Self {
+            state: "settled".to_string(),
+            phase: None,
+            payment_hash: receive.payment_hash,
+            payment_preimage: receive.preimage,
+            invoice: receive.invoice,
+            htlc_vtxo_ids: Vec::new(),
+            movement_id: None,
+            amount: Some(receive.amount),
+            settled_at: Some(receive.settled_at),
+        }
+    }
+}
+
+impl From<LightningReceiveState> for LightningReceive {
+    fn from(state: LightningReceiveState) -> Self {
+        match state {
+            LightningReceiveState::InProgress(receive) => receive.into(),
+            LightningReceiveState::Settled(receive) => receive.into(),
+        }
+    }
+}
+
 // Global wallet manager instance
 static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
     LazyLock::new(|| Mutex::new(WalletManager::new()));
@@ -99,14 +168,14 @@ static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
 // Wallet context that holds all wallet-related components
 pub struct WalletContext {
     pub wallet: Arc<Wallet>,
-    pub onchain_wallet: OnchainWallet,
+    pub onchain_wallet: Arc<RwLock<OnchainWallet>>,
     pub db_path: PathBuf,
     pub mailbox_sync_task: Option<tokio::task::JoinHandle<()>>,
     pub mailbox_sync_shutdown: Option<CancellationToken>,
 }
 
 impl WalletContext {
-    fn new(wallet: Wallet, onchain_wallet: OnchainWallet, db_path: PathBuf) -> Self {
+    fn new(wallet: Wallet, onchain_wallet: Arc<RwLock<OnchainWallet>>, db_path: PathBuf) -> Self {
         let wallet = Arc::new(wallet);
         let mailbox_sync_shutdown = CancellationToken::new();
         let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(
@@ -255,7 +324,7 @@ impl WalletManager {
         datadir: &Path,
         mnemonic: Mnemonic,
         config: Config,
-    ) -> anyhow::Result<(Wallet, OnchainWallet)> {
+    ) -> anyhow::Result<(Wallet, Arc<RwLock<OnchainWallet>>)> {
         debug!("Opening bark wallet in {}", datadir.display());
 
         let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
@@ -264,9 +333,10 @@ impl WalletManager {
             .await?
             .context("Failed to read properties from db for opening wallet")?;
 
-        let onchain_wallet =
+        let onchain_wallet = Arc::new(RwLock::new(
             OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())
-                .await?;
+                .await?,
+        ));
         let lock_manager = Box::new(MemoryLockManager::new());
         let seed = WalletSeed::new_from_mnemonic(properties.network, &mnemonic);
         let wallet = Wallet::open(
@@ -277,6 +347,7 @@ impl WalletManager {
                 run_daemon: false,
                 persister: Some(db.clone()),
                 lock_manager: Some(lock_manager),
+                onchain: Some(onchain_wallet.clone()),
                 create_if_not_exists: false,
                 ..Default::default()
             },
@@ -486,13 +557,14 @@ pub async fn verify_message(
 pub async fn bolt11_invoice(
     amount: u64,
     description: Option<String>,
+    token: Option<String>,
 ) -> anyhow::Result<Bolt11Invoice> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let invoice = ctx
                 .wallet
-                .bolt11_invoice(Amount::from_sat(amount), description)
+                .bolt11_invoice(Amount::from_sat(amount), description, token)
                 .await
                 .context("Failed to create bolt11_invoice")?;
             Ok(invoice)
@@ -500,16 +572,12 @@ pub async fn bolt11_invoice(
         .await
 }
 
-pub async fn lightning_receive_status(
-    payment: PaymentHash,
-) -> anyhow::Result<Option<LightningReceive>> {
+pub async fn lightning_receive_status(payment: PaymentHash) -> anyhow::Result<LightningReceive> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet
-                .lightning_receive_status(payment)
-                .await
-                .context("Failed to get lightning receive status")
+            let state = ctx.wallet.lightning_receive_state(payment).await?;
+            Ok(state.into())
         })
         .await
 }
@@ -517,14 +585,14 @@ pub async fn lightning_receive_status(
 pub async fn try_claim_lightning_receive(
     payment_hash: PaymentHash,
     wait: bool,
-    token: Option<String>,
 ) -> anyhow::Result<LightningReceive> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .try_claim_lightning_receive(payment_hash, wait, token.as_deref())
+                .try_claim_lightning_receive(payment_hash, wait)
                 .await
+                .map(Into::into)
                 .context("Failed to claim bolt11 payment")
         })
         .await
@@ -577,32 +645,6 @@ pub async fn maintenance_delegated() -> anyhow::Result<()> {
                 .maintenance_delegated()
                 .await
                 .context("Failed to perform wallet maintenance delegated")?;
-            Ok(())
-        })
-        .await
-}
-
-pub async fn maintenance_with_onchain() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .maintenance_with_onchain(&mut ctx.onchain_wallet)
-                .await
-                .context("Failed to perform wallet maintenance with onchain")?;
-            Ok(())
-        })
-        .await
-}
-
-pub async fn maintenance_with_onchain_delegated() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .maintenance_with_onchain_delegated(&mut ctx.onchain_wallet)
-                .await
-                .context("Failed to perform wallet maintenance with onchain delegated")?;
             Ok(())
         })
         .await
@@ -678,6 +720,18 @@ pub async fn dangerous_drop_vtxo(vtxo_id: VtxoId) -> anyhow::Result<()> {
         .await
 }
 
+pub async fn unlock_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            ctx.wallet
+                .unlock_vtxos(vtxo_ids)
+                .await
+                .context("Failed to unlock VTXOs")
+        })
+        .await
+}
+
 pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
 
@@ -749,18 +803,14 @@ pub async fn get_next_required_refresh_blockheight() -> anyhow::Result<Option<Bl
 pub async fn board_amount(amount: Amount) -> anyhow::Result<PendingBoard> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .board_amount(&mut ctx.onchain_wallet, amount)
-                .await
-        })
+        .with_context_async(|ctx| async { ctx.wallet.board_amount(amount).await })
         .await
 }
 
 pub async fn board_all() -> anyhow::Result<PendingBoard> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.wallet.board_all(&mut ctx.onchain_wallet).await })
+        .with_context_async(|ctx| async { ctx.wallet.board_all().await })
         .await
 }
 

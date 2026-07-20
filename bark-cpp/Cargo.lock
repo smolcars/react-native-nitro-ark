@@ -118,8 +118,8 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "ark-lib"
-version = "0.3.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
+version = "0.4.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de#1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de"
 dependencies = [
  "async-trait",
  "bark-bitcoin-ext",
@@ -173,14 +173,15 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bark-bitcoin-ext"
-version = "0.3.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
+version = "0.4.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de#1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de"
 dependencies = [
  "bdk_bitcoind_rpc",
  "bdk_wallet",
  "bitcoin",
  "lazy_static",
  "log",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "thiserror",
@@ -216,7 +217,7 @@ dependencies = [
 [[package]]
 name = "bark-server-rpc"
 version = "0.3.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de#1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -233,8 +234,8 @@ dependencies = [
 
 [[package]]
 name = "bark-wallet"
-version = "0.3.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
+version = "0.4.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de#1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -348,9 +349,9 @@ dependencies = [
 
 [[package]]
 name = "bdk_wallet"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67f3c4f9526d22374fca5b7ff1d6bf8d921ab56db2dac8df66a2c5561b31d4ef"
+checksum = "1284fb23acc3e3022673712b55f4d5ce7e38aadc2c49bbef830dc3935f0a3289"
 dependencies = [
  "bdk_chain",
  "bitcoin",
@@ -368,9 +369,10 @@ checksum = "32637268377fc7b10a8c6d51de3e7fba1ce5dd371a96e342b34e6078db558e7f"
 
 [[package]]
 name = "bip321"
-version = "0.1.0"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=46e41188d9d355173a6eece9190866c2b4455002#46e41188d9d355173a6eece9190866c2b4455002"
+version = "0.4.0"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?rev=1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de#1538235d2e1fa166c7fc3c5d2d5531b9e09ba9de"
 dependencies = [
+ "bark-bitcoin-ext",
  "bitcoin",
  "lightning",
  "lightning-invoice",
@@ -461,9 +463,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoind-async-client"
-version = "0.13.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043db5dcb3e7a9cdd72cbe28381d004e2dc5836eb8e36bf4972e600364450bf2"
+checksum = "42ed1d9a649ba17d17a5bba836ed68208667473ccec8478492cb83f3af28e9dc"
 dependencies = [
  "base64 0.22.1",
  "bitcoin",

@@ -32,6 +32,7 @@
 
 #include <string>
 #include <optional>
+#include <vector>
 
 namespace margelo::nitro::nitroark {
 
@@ -40,15 +41,19 @@ namespace margelo::nitro::nitroark {
    */
   struct LightningReceive final {
   public:
+    std::string state     SWIFT_PRIVATE;
+    std::optional<std::string> phase     SWIFT_PRIVATE;
     std::string payment_hash     SWIFT_PRIVATE;
     std::string payment_preimage     SWIFT_PRIVATE;
     std::string invoice     SWIFT_PRIVATE;
-    std::optional<double> preimage_revealed_at     SWIFT_PRIVATE;
-    std::optional<double> finished_at     SWIFT_PRIVATE;
+    std::vector<std::string> htlc_vtxo_ids     SWIFT_PRIVATE;
+    std::optional<double> movement_id     SWIFT_PRIVATE;
+    std::optional<double> amount_sat     SWIFT_PRIVATE;
+    std::optional<double> settled_at     SWIFT_PRIVATE;
 
   public:
     LightningReceive() = default;
-    explicit LightningReceive(std::string payment_hash, std::string payment_preimage, std::string invoice, std::optional<double> preimage_revealed_at, std::optional<double> finished_at): payment_hash(payment_hash), payment_preimage(payment_preimage), invoice(invoice), preimage_revealed_at(preimage_revealed_at), finished_at(finished_at) {}
+    explicit LightningReceive(std::string state, std::optional<std::string> phase, std::string payment_hash, std::string payment_preimage, std::string invoice, std::vector<std::string> htlc_vtxo_ids, std::optional<double> movement_id, std::optional<double> amount_sat, std::optional<double> settled_at): state(state), phase(phase), payment_hash(payment_hash), payment_preimage(payment_preimage), invoice(invoice), htlc_vtxo_ids(htlc_vtxo_ids), movement_id(movement_id), amount_sat(amount_sat), settled_at(settled_at) {}
 
   public:
     friend bool operator==(const LightningReceive& lhs, const LightningReceive& rhs) = default;
@@ -64,20 +69,28 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroark::LightningReceive fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::LightningReceive(
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state"))),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phase"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "payment_hash"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "payment_preimage"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invoice"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preimage_revealed_at"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "finished_at")))
+        JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_vtxo_ids"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "movement_id"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "settled_at")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::LightningReceive& arg) {
       jsi::Object obj(runtime);
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "state"), JSIConverter<std::string>::toJSI(runtime, arg.state));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "phase"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.phase));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "payment_hash"), JSIConverter<std::string>::toJSI(runtime, arg.payment_hash));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "payment_preimage"), JSIConverter<std::string>::toJSI(runtime, arg.payment_preimage));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "invoice"), JSIConverter<std::string>::toJSI(runtime, arg.invoice));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "preimage_revealed_at"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.preimage_revealed_at));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "finished_at"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.finished_at));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "htlc_vtxo_ids"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.htlc_vtxo_ids));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "movement_id"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.movement_id));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.amount_sat));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "settled_at"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.settled_at));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -88,11 +101,15 @@ namespace margelo::nitro {
       if (!nitro::isPlainObject(runtime, obj)) {
         return false;
       }
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "state")))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phase")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "payment_hash")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "payment_preimage")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "invoice")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preimage_revealed_at")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "finished_at")))) return false;
+      if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_vtxo_ids")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "movement_id")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "settled_at")))) return false;
       return true;
     }
   };

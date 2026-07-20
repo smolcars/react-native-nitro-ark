@@ -26,9 +26,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("refreshServer", &HybridNitroArkSpec::refreshServer);
       prototype.registerHybridMethod("syncPendingBoards", &HybridNitroArkSpec::syncPendingBoards);
       prototype.registerHybridMethod("maintenance", &HybridNitroArkSpec::maintenance);
-      prototype.registerHybridMethod("maintenanceWithOnchain", &HybridNitroArkSpec::maintenanceWithOnchain);
       prototype.registerHybridMethod("maintenanceDelegated", &HybridNitroArkSpec::maintenanceDelegated);
-      prototype.registerHybridMethod("maintenanceWithOnchainDelegated", &HybridNitroArkSpec::maintenanceWithOnchainDelegated);
       prototype.registerHybridMethod("maintenanceRefresh", &HybridNitroArkSpec::maintenanceRefresh);
       prototype.registerHybridMethod("sync", &HybridNitroArkSpec::sync);
       prototype.registerHybridMethod("startExitForEntireWallet", &HybridNitroArkSpec::startExitForEntireWallet);
@@ -65,6 +63,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("decodeVtxoHex", &HybridNitroArkSpec::decodeVtxoHex);
       prototype.registerHybridMethod("importVtxo", &HybridNitroArkSpec::importVtxo);
       prototype.registerHybridMethod("dangerousDropVtxo", &HybridNitroArkSpec::dangerousDropVtxo);
+      prototype.registerHybridMethod("unlockVtxos", &HybridNitroArkSpec::unlockVtxos);
       prototype.registerHybridMethod("refreshVtxosDelegated", &HybridNitroArkSpec::refreshVtxosDelegated);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);
       prototype.registerHybridMethod("getNextRequiredRefreshBlockheight", &HybridNitroArkSpec::getNextRequiredRefreshBlockheight);

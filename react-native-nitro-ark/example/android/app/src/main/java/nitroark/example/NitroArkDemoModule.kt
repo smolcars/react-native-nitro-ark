@@ -28,7 +28,7 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
       val parsedConfig = requireNotNull(nestedConfig) { "Missing required wallet config." }.let { map ->
         NitroArkNative.AndroidBarkConfig(
             ark = map.getRequiredString("ark"),
-            serverAccessToken = map.getStringOrNull("server_access_token"),
+            userAgent = map.getStringOrNull("user_agent"),
             esplora = map.getStringOrNull("esplora"),
             bitcoind = map.getStringOrNull("bitcoind"),
             bitcoindCookie = map.getStringOrNull("bitcoind_cookie"),
@@ -53,6 +53,16 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
       promise.resolve(null)
     } catch (e: Exception) {
       promise.reject("ERR_LOAD_WALLET_JNI", e)
+    }
+  }
+
+  @ReactMethod
+  fun maintenanceDelegated(promise: Promise) {
+    try {
+      NitroArkNative.maintenanceDelegated()
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("ERR_MAINTENANCE_DELEGATED_JNI", e)
     }
   }
 
@@ -96,9 +106,9 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun tryClaimLightningReceive(paymentHash: String, wait: Boolean, token: String?, promise: Promise) {
+  fun tryClaimLightningReceive(paymentHash: String, wait: Boolean, promise: Promise) {
     try {
-      NitroArkNative.tryClaimLightningReceive(paymentHash, wait, token)
+      NitroArkNative.tryClaimLightningReceive(paymentHash, wait)
       promise.resolve(null)
     } catch (e: Exception) {
       promise.reject("ERR_TRY_CLAIM_LN_RECEIVE_JNI", e)
@@ -136,9 +146,9 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun bolt11Invoice(amountMsat: Double, promise: Promise) {
+  fun bolt11Invoice(amountMsat: Double, description: String?, token: String?, promise: Promise) {
     try {
-      val result = NitroArkNative.bolt11Invoice(amountMsat.toLong())
+      val result = NitroArkNative.bolt11Invoice(amountMsat.toLong(), description, token)
       promise.resolve(bolt11InvoiceToMap(result))
     } catch (e: Exception) {
       promise.reject("ERR_BOLT11_INVOICE_JNI", e)

@@ -210,7 +210,6 @@ pub(crate) mod ffi {
 
     pub struct ConfigOpts {
         ark: String,
-        server_access_token: String,
         user_agent: String,
         esplora: String,
         bitcoind: String,
@@ -248,11 +247,18 @@ pub(crate) mod ffi {
     }
 
     pub struct LightningReceive {
+        pub state: String,
+        pub phase: String,
         pub payment_hash: String,
         pub payment_preimage: String,
         pub invoice: String,
-        pub preimage_revealed_at: *const u64,
-        pub finished_at: *const u64,
+        pub htlc_vtxo_ids: Vec<String>,
+        pub has_movement_id: bool,
+        pub movement_id: u32,
+        pub has_amount_sat: bool,
+        pub amount_sat: u64,
+        pub has_settled_at: bool,
+        pub settled_at: u64,
     }
 
     pub struct OffchainBalance {
@@ -413,6 +419,7 @@ pub(crate) mod ffi {
         fn decode_vtxo_hex(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn import_vtxo(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
+        fn unlock_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn refresh_vtxos_delegated(vtxo_ids: Vec<String>) -> Result<DelegatedRoundState>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
@@ -420,8 +427,9 @@ pub(crate) mod ffi {
         unsafe fn bolt11_invoice(
             amount_msat: u64,
             description: *const String,
+            token: *const String,
         ) -> Result<Bolt11Invoice>;
-        fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
+        fn lightning_receive_status(payment_hash: String) -> Result<LightningReceive>;
         fn check_lightning_payment(
             payment_hash: String,
             wait: bool,
@@ -429,8 +437,6 @@ pub(crate) mod ffi {
         fn sync_pending_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
         fn maintenance_delegated() -> Result<()>;
-        fn maintenance_with_onchain() -> Result<()>;
-        fn maintenance_with_onchain_delegated() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn refresh_server() -> Result<()>;
         fn sync() -> Result<()>;
@@ -485,10 +491,9 @@ pub(crate) mod ffi {
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn estimate_offboard_all(destination_address: &str) -> Result<BarkFeeEstimate>;
-        unsafe fn try_claim_lightning_receive(
+        fn try_claim_lightning_receive(
             payment_hash: String,
             wait: bool,
-            token: *const String,
         ) -> Result<LightningReceive>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn start_exit_for_entire_wallet() -> Result<()>;
@@ -832,6 +837,18 @@ pub(crate) fn dangerous_drop_vtxo(vtxo_id: &str) -> anyhow::Result<()> {
     })
 }
 
+pub(crate) fn unlock_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
+    ffi_boundary("unlock_vtxos", || {
+        let vtxo_ids = vtxo_ids
+            .into_iter()
+            .map(|id| {
+                bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        crate::TOKIO_RUNTIME.block_on(crate::unlock_vtxos(vtxo_ids))
+    })
+}
+
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
     ffi_boundary("get_expiring_vtxos", || {
         let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
@@ -892,11 +909,16 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
 pub(crate) fn bolt11_invoice(
     amount_msat: u64,
     description: *const String,
+    token: *const String,
 ) -> anyhow::Result<ffi::Bolt11Invoice> {
     ffi_boundary("bolt11_invoice", || {
         let description_opt = unsafe { description.as_ref().map(|s| s.clone()) };
-        let invoice =
-            crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat, description_opt))?;
+        let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
+        let invoice = crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(
+            amount_msat,
+            description_opt,
+            token_opt,
+        ))?;
         Ok(ffi::Bolt11Invoice {
             bolt11_invoice: invoice.to_string(),
             payment_secret: invoice.payment_secret().to_string(),
@@ -905,31 +927,39 @@ pub(crate) fn bolt11_invoice(
     })
 }
 
+fn lightning_receive_to_ffi(status: crate::LightningReceive) -> ffi::LightningReceive {
+    let movement_id = status.movement_id;
+    let amount_sat = status.amount.map(|amount| amount.to_sat());
+    let settled_at = status.settled_at.map(|time| time.timestamp() as u64);
+
+    ffi::LightningReceive {
+        state: status.state,
+        phase: status.phase.unwrap_or_default(),
+        payment_hash: status.payment_hash.to_string(),
+        payment_preimage: status.payment_preimage.to_string(),
+        invoice: status.invoice.to_string(),
+        htlc_vtxo_ids: status
+            .htlc_vtxo_ids
+            .into_iter()
+            .map(|id| id.to_string())
+            .collect(),
+        has_movement_id: movement_id.is_some(),
+        movement_id: movement_id.unwrap_or_default(),
+        has_amount_sat: amount_sat.is_some(),
+        amount_sat: amount_sat.unwrap_or_default(),
+        has_settled_at: settled_at.is_some(),
+        settled_at: settled_at.unwrap_or_default(),
+    }
+}
+
 pub(crate) fn lightning_receive_status(
     payment_hash: String,
-) -> anyhow::Result<*const ffi::LightningReceive> {
+) -> anyhow::Result<ffi::LightningReceive> {
     ffi_boundary("lightning_receive_status", || {
         let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
             .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
         let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
-
-        if status.is_none() {
-            return Ok(std::ptr::null());
-        }
-
-        let status = status.unwrap();
-        let status = Box::new(ffi::LightningReceive {
-            payment_hash: status.payment_hash.to_string(),
-            payment_preimage: status.payment_preimage.to_string(),
-            invoice: status.invoice.to_string(),
-            preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
-                Box::into_raw(Box::new(v.timestamp() as u64))
-            }),
-            finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
-                Box::into_raw(Box::new(v.timestamp() as u64))
-            }),
-        });
-        Ok(Box::into_raw(status))
+        Ok(lightning_receive_to_ffi(status))
     })
 }
 
@@ -948,18 +978,6 @@ pub(crate) fn maintenance() -> anyhow::Result<()> {
 pub(crate) fn maintenance_delegated() -> anyhow::Result<()> {
     ffi_boundary("maintenance_delegated", || {
         crate::TOKIO_RUNTIME.block_on(crate::maintenance_delegated())
-    })
-}
-
-pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
-    ffi_boundary("maintenance_with_onchain", || {
-        crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
-    })
-}
-
-pub(crate) fn maintenance_with_onchain_delegated() -> anyhow::Result<()> {
-    ffi_boundary("maintenance_with_onchain_delegated", || {
-        crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain_delegated())
     })
 }
 
@@ -1452,6 +1470,10 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             let bark::exit::ExitVtxoAlreadySpentState { tip_height } = state;
             empty_exit_state_details("vtxo-already-spent", *tip_height)
         }
+        bark::exit::ExitState::Canceled(state) => {
+            let bark::exit::ExitCanceledState { tip_height } = state;
+            empty_exit_state_details("canceled", *tip_height)
+        }
     }
 }
 
@@ -1843,29 +1865,13 @@ pub(crate) fn estimate_offboard_all(destination_address: &str) -> anyhow::Result
 pub(crate) fn try_claim_lightning_receive(
     payment_hash: String,
     wait: bool,
-    token: *const String,
 ) -> anyhow::Result<ffi::LightningReceive> {
     ffi_boundary("try_claim_lightning_receive", || {
         let payment_hash = PaymentHash::from_str(&payment_hash)?;
-        let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
+        let status =
+            TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(payment_hash, wait))?;
 
-        let status = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
-            payment_hash,
-            wait,
-            token_opt,
-        ))?;
-
-        Ok(ffi::LightningReceive {
-            payment_hash: status.payment_hash.to_string(),
-            payment_preimage: status.payment_preimage.to_string(),
-            invoice: status.invoice.to_string(),
-            preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
-                Box::into_raw(Box::new(v.timestamp() as u64))
-            }),
-            finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
-                Box::into_raw(Box::new(v.timestamp() as u64))
-            }),
-        })
+        Ok(lightning_receive_to_ffi(status))
     })
 }
 

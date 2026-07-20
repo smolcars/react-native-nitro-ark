@@ -155,7 +155,7 @@ fn validate_wallet_snapshot_blocking(
             db.get_all_vtxos().await?;
             db.get_all_movements().await?;
             db.get_pending_round_state_ids().await?;
-            db.get_all_pending_lightning_receives().await?;
+            db.get_all_wallet_action_checkpoints().await?;
             db.get_exit_vtxo_entries().await?;
             let _ = db.initialize_bdk_wallet().await?;
             anyhow::Ok(properties)

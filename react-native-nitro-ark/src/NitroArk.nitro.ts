@@ -6,7 +6,6 @@ import type { HybridObject } from 'react-native-nitro-modules';
 
 export interface BarkConfigOpts {
   ark: string;
-  server_access_token?: string;
   /** Client identifier sent as `x-user-agent`, formatted as `<name>/<version>`. */
   user_agent?: string;
   esplora?: string;
@@ -229,11 +228,15 @@ export interface MailboxAuthorizationResult {
 }
 
 export interface LightningReceive {
+  state: string;
+  phase?: string;
   payment_hash: string;
   payment_preimage: string;
   invoice: string;
-  preimage_revealed_at?: number;
-  finished_at?: number;
+  htlc_vtxo_ids: string[];
+  movement_id?: number;
+  amount_sat?: number;
+  settled_at?: number;
 }
 
 export interface BarkMovementSubsystem {
@@ -339,9 +342,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   refreshServer(): Promise<void>;
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
-  maintenanceWithOnchain(): Promise<void>;
   maintenanceDelegated(): Promise<void>;
-  maintenanceWithOnchainDelegated(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
 
@@ -413,6 +414,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   decodeVtxoHex(vtxoHex: string): Promise<BarkVtxo>;
   importVtxo(vtxoHex: string): Promise<BarkVtxo>;
   dangerousDropVtxo(vtxoId: string): Promise<void>;
+  unlockVtxos(vtxoIds: string[]): Promise<void>;
   refreshVtxosDelegated(
     vtxoIds: string[]
   ): Promise<DelegatedRoundState | undefined>;
@@ -483,19 +485,17 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Lightning Invoicing ---
   bolt11Invoice(
     amountMsat: number,
-    description?: string
+    description?: string,
+    token?: string
   ): Promise<Bolt11Invoice>;
-  lightningReceiveStatus(
-    paymentHash: string
-  ): Promise<LightningReceive | undefined>;
+  lightningReceiveStatus(paymentHash: string): Promise<LightningReceive>;
   checkLightningPayment(
     paymentHash: string,
     wait: boolean
   ): Promise<LightningPaymentResult>;
   tryClaimLightningReceive(
     paymentHash: string,
-    wait: boolean,
-    token?: string
+    wait: boolean
   ): Promise<LightningReceive>; // Throws on error
   tryClaimAllLightningReceives(wait: boolean): Promise<void>; // Throws on error
 

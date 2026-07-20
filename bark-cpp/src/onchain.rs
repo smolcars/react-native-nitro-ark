@@ -1,5 +1,5 @@
 use bark::chain::FeeRates;
-use bark::onchain::{ChainSync, GetAddress, Utxo, WalletTxInfo};
+use bark::onchain::{OnchainWalletTrait, Utxo, WalletTxInfo};
 use bdk_wallet::bitcoin::address::NetworkUnchecked;
 use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Psbt, Transaction, Txid};
 
@@ -8,36 +8,38 @@ use crate::GLOBAL_WALLET_MANAGER;
 /// Get onchain balance
 pub async fn onchain_balance() -> anyhow::Result<bdk_wallet::Balance> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.balance()))
+    let onchain_wallet = manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.clone()))?;
+    Ok(onchain_wallet.read().await.balance())
 }
 
 /// Get a new address
 pub async fn address() -> anyhow::Result<Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.onchain_wallet.address().await })
+        .with_context_async(|ctx| async { ctx.onchain_wallet.write().await.address().await })
         .await
 }
 
 /// Check if an address belongs to this wallet
 pub async fn is_mine(address: Address<NetworkUnchecked>) -> anyhow::Result<bool> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| {
-        let script = address.assume_checked().script_pubkey();
-        Ok(ctx.onchain_wallet.is_mine(script))
-    })
+    let onchain_wallet = manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.clone()))?;
+    let script = address.assume_checked().script_pubkey();
+    onchain_wallet.read().await.is_mine(&script).await
 }
 
 /// Get unspent outputs
 pub async fn list_unspent() -> anyhow::Result<Vec<bdk_wallet::LocalOutput>> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.list_unspent()))
+    let onchain_wallet = manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.clone()))?;
+    Ok(onchain_wallet.read().await.list_unspent())
 }
 
 /// Get utxos
 pub async fn utxos() -> anyhow::Result<Vec<Utxo>> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.utxos()))
+    let onchain_wallet = manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.clone()))?;
+    Ok(onchain_wallet.read().await.utxos())
 }
 
 /// Get recommended onchain fee rates from the configured chain source
@@ -51,7 +53,8 @@ pub async fn fee_rates() -> anyhow::Result<FeeRates> {
 /// Get onchain wallet transaction history
 pub async fn transaction_infos() -> anyhow::Result<Vec<WalletTxInfo>> {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| ctx.onchain_wallet.list_transaction_infos())
+    let onchain_wallet = manager.with_context_ref(|ctx| Ok(ctx.onchain_wallet.clone()))?;
+    onchain_wallet.read().await.list_transaction_infos()
 }
 
 /// Send onchain transaction
@@ -60,6 +63,8 @@ pub async fn send(dest: Address, amount: Amount, fee_rate: FeeRate) -> anyhow::R
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
+                .write()
+                .await
                 .send(ctx.wallet.chain(), dest, amount, fee_rate)
                 .await
         })
@@ -75,6 +80,8 @@ pub async fn send_many(
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
+                .write()
+                .await
                 .send_many(ctx.wallet.chain(), destinations, fee_rate)
                 .await
         })
@@ -87,6 +94,8 @@ pub async fn drain(destination: Address, fee_rate: FeeRate) -> anyhow::Result<Tx
     manager
         .with_context_async(|ctx| async {
             ctx.onchain_wallet
+                .write()
+                .await
                 .drain(ctx.wallet.chain(), destination, fee_rate)
                 .await
         })
@@ -97,7 +106,13 @@ pub async fn drain(destination: Address, fee_rate: FeeRate) -> anyhow::Result<Tx
 pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.onchain_wallet.sync(ctx.wallet.chain()).await })
+        .with_context_async(|ctx| async {
+            ctx.onchain_wallet
+                .write()
+                .await
+                .sync(ctx.wallet.chain())
+                .await
+        })
         .await
 }
 
