@@ -125,9 +125,6 @@ impl ConfigOpts {
         if let Some(url) = self.ark {
             cfg.server_address = https_default_scheme(url).context("invalid ark url")?;
         }
-        if let Some(v) = self.server_access_token {
-            cfg.server_access_token = if v.is_empty() { None } else { Some(v) };
-        }
         if let Some(v) = self.user_agent {
             cfg.user_agent = if v.is_empty() { None } else { Some(v) };
         }
@@ -186,7 +183,6 @@ pub fn https_default_scheme(url: String) -> anyhow::Result<String> {
 #[derive(Debug, Clone)]
 pub struct ConfigOpts {
     pub ark: Option<String>,
-    pub server_access_token: Option<String>,
     pub user_agent: Option<String>,
 
     /// The esplora HTTP API endpoint
@@ -336,11 +332,6 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
 pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts> {
     let config_opts = ConfigOpts {
         ark: Some(opts.config.ark),
-        server_access_token: if opts.config.server_access_token.is_empty() {
-            None
-        } else {
-            Some(opts.config.server_access_token)
-        },
         user_agent: if opts.config.user_agent.is_empty() {
             None
         } else {
@@ -422,6 +413,7 @@ pub fn exit_state_name(state: &bark::exit::ExitState) -> &'static str {
         bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
         bark::exit::ExitState::Claimed(..) => "Claimed",
         bark::exit::ExitState::VtxoAlreadySpent(..) => "VtxoAlreadySpent",
+        bark::exit::ExitState::Canceled(..) => "Canceled",
     }
 }
 

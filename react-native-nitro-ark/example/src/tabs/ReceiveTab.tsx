@@ -173,7 +173,12 @@ export const ReceiveTab = ({
     }
     runOperation(
       'bolt11Invoice',
-      () => NitroArk.bolt11Invoice(amount),
+      () =>
+        NitroArk.bolt11Invoice(
+          amount,
+          undefined,
+          claimToken.trim() || undefined
+        ),
       'invoice',
       (invoice) => {
         setLastInvoice({
@@ -209,10 +214,9 @@ export const ReceiveTab = ({
       setError((prev) => ({ ...prev, claim: 'Payment hash required' }));
       return;
     }
-    const token = claimToken.trim() || undefined;
     runOperation(
       'tryClaimLightningReceive',
-      () => NitroArk.tryClaimLightningReceive(paymentHash, false, token),
+      () => NitroArk.tryClaimLightningReceive(paymentHash, false),
       'claim',
       () =>
         setResults((prev) => ({
@@ -227,10 +231,9 @@ export const ReceiveTab = ({
       setError((prev) => ({ ...prev, claim: 'Payment hash required' }));
       return;
     }
-    const token = claimToken.trim() || undefined;
     runOperation(
       'tryClaimLightningReceive (wait)',
-      () => NitroArk.tryClaimLightningReceive(paymentHash, true, token),
+      () => NitroArk.tryClaimLightningReceive(paymentHash, true),
       'claim',
       () =>
         setResults((prev) => ({

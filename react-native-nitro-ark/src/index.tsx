@@ -25,7 +25,7 @@ import type {
   NewAddressResult,
   KeyPairResult,
   MailboxAuthorizationResult,
-  LightningReceive,
+  LightningReceive as NitroLightningReceive,
   BarkNotificationEvent as NitroBarkNotificationEvent,
   BarkNotificationSubscription,
   BarkMovement as NitroBarkMovement,
@@ -61,36 +61,78 @@ export type ExitProgressState =
   | 'Claimable'
   | 'ClaimInProgress'
   | 'Claimed'
-  | 'VtxoAlreadySpent';
+  | 'VtxoAlreadySpent'
+  | 'Canceled';
+
+export type ExitStateKind =
+  | 'start'
+  | 'processing'
+  | 'awaiting-delta'
+  | 'claimable'
+  | 'claim-in-progress'
+  | 'claimed'
+  | 'vtxo-already-spent'
+  | 'canceled';
 
 export type BlockRef = NitroExitBlockRefResult;
 export type ExitTxOrigin = NitroExitTxOriginResult;
 export type ExitTxStatus = NitroExitTxStatusResult;
 export type ExitTx = NitroExitTxResult;
-export type ExitStateDetails = NitroExitStateDetailsResult;
+export type ExitStateDetails = Omit<NitroExitStateDetailsResult, 'kind'> & {
+  kind: ExitStateKind;
+};
 
 export type ExitProgressStatusResult = Omit<
   NitroExitProgressStatusResult,
-  'state'
+  'state' | 'state_details'
 > & {
   state: ExitProgressState;
+  state_details: ExitStateDetails;
 };
 
-export type ExitVtxoResult = Omit<NitroExitVtxoResult, 'state' | 'history'> & {
+export type ExitVtxoResult = Omit<
+  NitroExitVtxoResult,
+  'state' | 'state_details' | 'history' | 'history_details'
+> & {
   state: ExitProgressState;
+  state_details: ExitStateDetails;
   history: ExitProgressState[];
+  history_details: ExitStateDetails[];
 };
 
 export type ExitTransactionPackageResult = NitroExitTransactionPackageResult;
 
 export type ExitStatusResult = Omit<
   NitroExitStatusResult,
-  'state' | 'history'
+  'state' | 'state_details' | 'history' | 'history_details'
 > & {
   state: ExitProgressState;
+  state_details: ExitStateDetails;
   history: ExitProgressState[];
+  history_details: ExitStateDetails[];
   transactions: ExitTransactionPackageResult[];
 };
+
+export type LightningReceivePhase =
+  | 'awaiting_payment'
+  | 'htlcs_ready'
+  | 'preimage_revealed';
+
+type LightningReceiveBase = Omit<NitroLightningReceive, 'state' | 'phase'>;
+
+export type LightningReceive =
+  | (LightningReceiveBase & {
+      state: 'in_progress';
+      phase: LightningReceivePhase;
+      amount_sat?: undefined;
+      settled_at?: undefined;
+    })
+  | (LightningReceiveBase & {
+      state: 'settled';
+      phase?: undefined;
+      amount_sat: number;
+      settled_at: number;
+    });
 
 export type BarkMovementDestination = NitroBarkMovementDestination & {
   payment_method:
@@ -168,29 +210,67 @@ export const NitroArkHybridObject =
 function enrichExitProgressStatus(
   result: NitroExitProgressStatusResult
 ): ExitProgressStatusResult {
-  const { state, ...rest } = result;
+  const { state, state_details, ...rest } = result;
   return {
     ...rest,
     state: state as ExitProgressState,
+    state_details: {
+      ...state_details,
+      kind: state_details.kind as ExitStateKind,
+    },
   };
 }
 
 function enrichExitVtxo(result: NitroExitVtxoResult): ExitVtxoResult {
-  const { state, history: stateHistory, ...rest } = result;
+  const {
+    state,
+    state_details,
+    history: stateHistory,
+    history_details,
+    ...rest
+  } = result;
   return {
     ...rest,
     state: state as ExitProgressState,
+    state_details: {
+      ...state_details,
+      kind: state_details.kind as ExitStateKind,
+    },
     history: stateHistory as ExitProgressState[],
+    history_details: history_details.map((details) => ({
+      ...details,
+      kind: details.kind as ExitStateKind,
+    })),
   };
 }
 
 function enrichExitStatus(result: NitroExitStatusResult): ExitStatusResult {
-  const { state, history: stateHistory, ...rest } = result;
+  const {
+    state,
+    state_details,
+    history: stateHistory,
+    history_details,
+    ...rest
+  } = result;
   return {
     ...rest,
     state: state as ExitProgressState,
+    state_details: {
+      ...state_details,
+      kind: state_details.kind as ExitStateKind,
+    },
     history: stateHistory as ExitProgressState[],
+    history_details: history_details.map((details) => ({
+      ...details,
+      kind: details.kind as ExitStateKind,
+    })),
   };
+}
+
+function enrichLightningReceive(
+  result: NitroLightningReceive
+): LightningReceive {
+  return result as LightningReceive;
 }
 
 // --- Management ---
@@ -300,40 +380,14 @@ export function syncPendingBoards(): Promise<void> {
   return NitroArkHybridObject.syncPendingBoards();
 }
 
-/**
- * Runs wallet maintenance tasks for offchain.
- * This includes refreshing vtxos that need to be refreshed.
- * @returns A promise that resolves on success.
- */
+/** Runs wallet maintenance, including on-chain synchronization and exit progression. */
 export function maintenance(): Promise<void> {
   return NitroArkHybridObject.maintenance();
 }
 
-/**
- * Runs wallet maintenance tasks for both offchain and onchain.
- * This includes refreshing vtxos that need to be refreshed.
- * @returns A promise that resolves on success.
- */
-export function maintenanceWithOnchain(): Promise<void> {
-  return NitroArkHybridObject.maintenanceWithOnchain();
-}
-
-/**
- * Runs delegated wallet maintenance tasks for offchain.
- * This includes refreshing vtxos that need to be refreshed using delegated signing.
- * @returns A promise that resolves on success.
- */
+/** Runs delegated wallet maintenance, including on-chain synchronization. */
 export function maintenanceDelegated(): Promise<void> {
   return NitroArkHybridObject.maintenanceDelegated();
-}
-
-/**
- * Runs delegated wallet maintenance tasks for both offchain and onchain.
- * This includes refreshing vtxos that need to be refreshed using delegated signing.
- * @returns A promise that resolves on success.
- */
-export function maintenanceWithOnchainDelegated(): Promise<void> {
-  return NitroArkHybridObject.maintenanceWithOnchainDelegated();
 }
 
 /**
@@ -743,6 +797,15 @@ export function dangerousDropVtxo(vtxoId: string): Promise<void> {
 }
 
 /**
+ * Unlocks locked VTXOs and returns them to the spendable state.
+ * Already-spendable VTXOs are left unchanged. Spent, unknown, or malformed IDs reject the batch.
+ * @param vtxoIds VTXO IDs to unlock.
+ */
+export function unlockVtxos(vtxoIds: string[]): Promise<void> {
+  return NitroArkHybridObject.unlockVtxos(vtxoIds);
+}
+
+/**
  * Gets the first expiring VTXO blockheight for the loaded wallet.
  * @returns A promise resolving to the first expiring VTXO blockheight.
  */
@@ -877,9 +940,10 @@ export function onchainSendMany(
  */
 export function bolt11Invoice(
   amountMsat: number,
-  description?: string
+  description?: string,
+  token?: string
 ): Promise<Bolt11Invoice> {
-  return NitroArkHybridObject.bolt11Invoice(amountMsat, description);
+  return NitroArkHybridObject.bolt11Invoice(amountMsat, description, token);
 }
 
 /**
@@ -890,7 +954,10 @@ export function bolt11Invoice(
 export function lightningReceiveStatus(
   paymentHash: string
 ): Promise<LightningReceive | undefined> {
-  return NitroArkHybridObject.lightningReceiveStatus(paymentHash);
+  return NitroArkHybridObject.lightningReceiveStatus(paymentHash).then(
+    (result) =>
+      result === undefined ? undefined : enrichLightningReceive(result)
+  );
 }
 
 /**
@@ -912,21 +979,17 @@ export function checkLightningPayment(
 }
 
 /**
- * Attempts to claim a Lightning payment, optionally using a claim token.
+ * Attempts to claim a Lightning payment.
  * @param paymentHash The payment hash of the Lightning payment.
  * @param wait Whether to wait for the claim to complete.
- * @param token Optional claim token used when no spendable VTXOs are owned.
- * @returns A promise resolving to the claimed LightningReceive if successful, or null if not.
+ * @returns A promise resolving to the current Lightning receive state.
  */
 export function tryClaimLightningReceive(
   paymentHash: string,
-  wait: boolean,
-  token?: string
+  wait: boolean
 ): Promise<LightningReceive> {
-  return NitroArkHybridObject.tryClaimLightningReceive(
-    paymentHash,
-    wait,
-    token
+  return NitroArkHybridObject.tryClaimLightningReceive(paymentHash, wait).then(
+    enrichLightningReceive
   );
 }
 
@@ -1173,5 +1236,4 @@ export type {
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
-  LightningReceive,
 } from './NitroArk.nitro';

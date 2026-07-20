@@ -154,9 +154,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> refreshServer() = 0;
       virtual std::shared_ptr<Promise<void>> syncPendingBoards() = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
-      virtual std::shared_ptr<Promise<void>> maintenanceWithOnchain() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceDelegated() = 0;
-      virtual std::shared_ptr<Promise<void>> maintenanceWithOnchainDelegated() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
@@ -193,6 +191,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BarkVtxo>> decodeVtxoHex(const std::string& vtxoHex) = 0;
       virtual std::shared_ptr<Promise<BarkVtxo>> importVtxo(const std::string& vtxoHex) = 0;
       virtual std::shared_ptr<Promise<void>> dangerousDropVtxo(const std::string& vtxoId) = 0;
+      virtual std::shared_ptr<Promise<void>> unlockVtxos(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<std::optional<DelegatedRoundState>>> refreshVtxosDelegated(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
@@ -221,10 +220,10 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat, const std::optional<std::string>& description) = 0;
+      virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat, const std::optional<std::string>& description, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
-      virtual std::shared_ptr<Promise<LightningReceive>> tryClaimLightningReceive(const std::string& paymentHash, bool wait, const std::optional<std::string>& token) = 0;
+      virtual std::shared_ptr<Promise<LightningReceive>> tryClaimLightningReceive(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;

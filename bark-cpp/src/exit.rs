@@ -95,7 +95,7 @@ pub async fn progress_exits(
             let result = ctx
                 .wallet
                 .exit_mgr()
-                .progress_exits_with_bdk(ctx.wallet.as_ref(), &mut ctx.onchain_wallet, fee_rate)
+                .progress_exits_with_cpfp(ctx.wallet.as_ref(), fee_rate)
                 .await
                 .context("Failed to progress exits")?;
             Ok(result.unwrap_or_default())
