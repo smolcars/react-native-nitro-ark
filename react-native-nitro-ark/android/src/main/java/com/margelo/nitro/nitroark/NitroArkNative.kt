@@ -11,7 +11,7 @@ object NitroArkNative {
       val ark: String,
       val vtxoRefreshExpiryThreshold: Int,
       val fallbackFeeRate: Long,
-      val serverAccessToken: String? = null,
+      val userAgent: String? = null,
       val esplora: String? = null,
       val bitcoind: String? = null,
       val bitcoindCookie: String? = null,
@@ -48,7 +48,7 @@ object NitroArkNative {
         bitcoin,
         birthdayHeight,
         config.ark,
-        config.serverAccessToken,
+        config.userAgent,
         config.esplora,
         config.bitcoind,
         config.bitcoindCookie,
@@ -73,7 +73,7 @@ object NitroArkNative {
       bitcoin: Boolean,
       birthdayHeight: Int?,
       ark: String,
-      serverAccessToken: String?,
+      userAgent: String?,
       esplora: String?,
       bitcoind: String?,
       bitcoindCookie: String?,
@@ -88,19 +88,23 @@ object NitroArkNative {
 
   // Additional helpers
   external fun maintenance()
+  external fun maintenanceDelegated()
   external fun maintenanceRefresh()
   external fun tryClaimLightningReceive(
       paymentHash: String,
-      wait: Boolean,
-      token: String?
+      wait: Boolean
   )
   external fun offboardAll(destinationAddress: String): RoundStatusResult
   external fun peekKeyPair(index: Int): KeyPairResultAndroid
   external fun verifyMessage(message: String, signature: String, publicKey: String): Boolean
-  fun bolt11Invoice(amountMsat: Long, description: String? = null): Bolt11InvoiceResult =
-      bolt11InvoiceNative(amountMsat, description)
+  fun bolt11Invoice(amountMsat: Long, description: String? = null, token: String? = null): Bolt11InvoiceResult =
+      bolt11InvoiceNative(amountMsat, description, token)
 
-  private external fun bolt11InvoiceNative(amountMsat: Long, description: String?): Bolt11InvoiceResult
+  private external fun bolt11InvoiceNative(
+      amountMsat: Long,
+      description: String?,
+      token: String?
+  ): Bolt11InvoiceResult
   external fun signMessage(message: String, index: Int): String
   external fun sync()
 }

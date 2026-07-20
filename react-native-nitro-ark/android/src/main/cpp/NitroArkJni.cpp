@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <exception>
 #include <jni.h>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -226,8 +227,8 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_closeWalle
 
 JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWalletNative(
     JNIEnv* env, jobject /*thiz*/, jstring jDatadir, jstring jMnemonic, jboolean jRegtest, jboolean jSignet,
-    jboolean jBitcoin, jobject jBirthdayHeight, jstring jArk, jstring jServerAccessToken, jstring jEsplora,
-    jstring jBitcoind, jstring jBitcoindCookie, jstring jBitcoindUser, jstring jBitcoindPass,
+    jboolean jBitcoin, jobject jBirthdayHeight, jstring jArk, jstring jUserAgent, jstring jEsplora, jstring jBitcoind,
+    jstring jBitcoindCookie, jstring jBitcoindUser, jstring jBitcoindPass,
     jint jVtxoRefreshExpiryThreshold, jlong jFallbackFeeRate, jobject jHtlcRecvClaimDelta, jobject jVtxoExitMargin,
     jobject jRoundTxRequiredConfirmations) {
   try {
@@ -251,7 +252,7 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
 
     bark_cxx::ConfigOpts config{};
     config.ark = JStringToString(env, jArk);
-    config.server_access_token = JStringToString(env, jServerAccessToken);
+    config.user_agent = JStringToString(env, jUserAgent);
     config.esplora = JStringToString(env, jEsplora);
     config.bitcoind = JStringToString(env, jBitcoind);
     config.bitcoind_cookie = JStringToString(env, jBitcoindCookie);
@@ -284,6 +285,17 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
   }
 }
 
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenance(JNIEnv* env,
+                                                                                  jobject /*thiz*/) {
+  try {
+    bark_cxx::maintenance();
+  } catch (const std::exception& e) {
+    HandleException(env, e);
+  } catch (...) {
+    HandleUnknownException(env);
+  }
+}
+
 JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceDelegated(JNIEnv* env,
                                                                                            jobject /*thiz*/) {
   try {
@@ -295,28 +307,12 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanc
   }
 }
 
-JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceWithOnchainDelegated(
-    JNIEnv* env, jobject /*thiz*/) {
-  try {
-    bark_cxx::maintenance_with_onchain_delegated();
-  } catch (const std::exception& e) {
-    HandleException(env, e);
-  } catch (...) {
-    HandleUnknownException(env);
-  }
-}
-
 JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLightningReceive(
-    JNIEnv* env, jobject /*thiz*/, jstring jPaymentHash, jboolean jWait, jstring jToken) {
+    JNIEnv* env, jobject /*thiz*/, jstring jPaymentHash, jboolean jWait) {
   try {
     const std::string payment_hash = JStringToString(env, jPaymentHash);
-    const std::string token_str = JStringToString(env, jToken);
-
     rust::String payment_hash_rs(payment_hash);
-    rust::String token_rs(token_str);
-    const rust::String* token_ptr = token_str.empty() ? nullptr : &token_rs;
-
-    bark_cxx::try_claim_lightning_receive(payment_hash_rs, jWait == JNI_TRUE, token_ptr);
+    bark_cxx::try_claim_lightning_receive(payment_hash_rs, jWait == JNI_TRUE);
   } catch (const std::exception& e) {
     HandleException(env, e);
   } catch (...) {
@@ -359,15 +355,19 @@ JNIEXPORT jboolean JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_verify
 JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11InvoiceNative(JNIEnv* env,
                                                                                              jobject /*thiz*/,
                                                                                              jlong jAmountMsat,
-                                                                                             jstring jDescription) {
+                                                                                             jstring jDescription,
+                                                                                             jstring jToken) {
   try {
-    bark_cxx::Bolt11Invoice invoice;
+    std::unique_ptr<rust::String> description;
+    std::unique_ptr<rust::String> token;
     if (jDescription != nullptr) {
-      rust::String description(JStringToString(env, jDescription));
-      invoice = bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountMsat), &description);
-    } else {
-      invoice = bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountMsat), nullptr);
+      description = std::make_unique<rust::String>(JStringToString(env, jDescription));
     }
+    if (jToken != nullptr) {
+      token = std::make_unique<rust::String>(JStringToString(env, jToken));
+    }
+    const auto invoice =
+        bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountMsat), description.get(), token.get());
     return MakeBolt11Invoice(env, invoice);
   } catch (const std::exception& e) {
     HandleException(env, e);
