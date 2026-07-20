@@ -1345,9 +1345,12 @@ struct LightningReceive final {
   ::rust::String payment_preimage;
   ::rust::String invoice;
   ::rust::Vec<::rust::String> htlc_vtxo_ids;
-  ::std::uint32_t const *movement_id CXX_DEFAULT_VALUE(nullptr);
-  ::std::uint64_t const *amount_sat CXX_DEFAULT_VALUE(nullptr);
-  ::std::uint64_t const *settled_at CXX_DEFAULT_VALUE(nullptr);
+  bool has_movement_id CXX_DEFAULT_VALUE(false);
+  ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);
+  bool has_amount_sat CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  bool has_settled_at CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t settled_at CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1633,7 +1636,7 @@ void unlock_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
 ::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat, ::rust::String const *description, ::rust::String const *token);
 
-::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
+::bark_cxx::LightningReceive lightning_receive_status(::rust::String payment_hash);
 
 ::bark_cxx::LightningPaymentResult check_lightning_payment(::rust::String payment_hash, bool wait);
 

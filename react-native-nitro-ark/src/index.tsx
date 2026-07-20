@@ -953,10 +953,9 @@ export function bolt11Invoice(
  */
 export function lightningReceiveStatus(
   paymentHash: string
-): Promise<LightningReceive | undefined> {
+): Promise<LightningReceive> {
   return NitroArkHybridObject.lightningReceiveStatus(paymentHash).then(
-    (result) =>
-      result === undefined ? undefined : enrichLightningReceive(result)
+    enrichLightningReceive
   );
 }
 

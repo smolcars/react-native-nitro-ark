@@ -253,9 +253,12 @@ pub(crate) mod ffi {
         pub payment_preimage: String,
         pub invoice: String,
         pub htlc_vtxo_ids: Vec<String>,
-        pub movement_id: *const u32,
-        pub amount_sat: *const u64,
-        pub settled_at: *const u64,
+        pub has_movement_id: bool,
+        pub movement_id: u32,
+        pub has_amount_sat: bool,
+        pub amount_sat: u64,
+        pub has_settled_at: bool,
+        pub settled_at: u64,
     }
 
     pub struct OffchainBalance {
@@ -426,7 +429,7 @@ pub(crate) mod ffi {
             description: *const String,
             token: *const String,
         ) -> Result<Bolt11Invoice>;
-        fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
+        fn lightning_receive_status(payment_hash: String) -> Result<LightningReceive>;
         fn check_lightning_payment(
             payment_hash: String,
             wait: bool,
@@ -925,6 +928,10 @@ pub(crate) fn bolt11_invoice(
 }
 
 fn lightning_receive_to_ffi(status: crate::LightningReceive) -> ffi::LightningReceive {
+    let movement_id = status.movement_id;
+    let amount_sat = status.amount.map(|amount| amount.to_sat());
+    let settled_at = status.settled_at.map(|time| time.timestamp() as u64);
+
     ffi::LightningReceive {
         state: status.state,
         phase: status.phase.unwrap_or_default(),
@@ -936,32 +943,23 @@ fn lightning_receive_to_ffi(status: crate::LightningReceive) -> ffi::LightningRe
             .into_iter()
             .map(|id| id.to_string())
             .collect(),
-        movement_id: status
-            .movement_id
-            .map_or(std::ptr::null(), |id| Box::into_raw(Box::new(id))),
-        amount_sat: status.amount.map_or(std::ptr::null(), |amount| {
-            Box::into_raw(Box::new(amount.to_sat()))
-        }),
-        settled_at: status.settled_at.map_or(std::ptr::null(), |time| {
-            Box::into_raw(Box::new(time.timestamp() as u64))
-        }),
+        has_movement_id: movement_id.is_some(),
+        movement_id: movement_id.unwrap_or_default(),
+        has_amount_sat: amount_sat.is_some(),
+        amount_sat: amount_sat.unwrap_or_default(),
+        has_settled_at: settled_at.is_some(),
+        settled_at: settled_at.unwrap_or_default(),
     }
 }
 
 pub(crate) fn lightning_receive_status(
     payment_hash: String,
-) -> anyhow::Result<*const ffi::LightningReceive> {
+) -> anyhow::Result<ffi::LightningReceive> {
     ffi_boundary("lightning_receive_status", || {
         let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
             .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
         let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
-
-        if status.is_none() {
-            return Ok(std::ptr::null());
-        }
-
-        let status = Box::new(lightning_receive_to_ffi(status.unwrap()));
-        Ok(Box::into_raw(status))
+        Ok(lightning_receive_to_ffi(status))
     })
 }
 

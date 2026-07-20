@@ -101,14 +101,14 @@ inline LightningReceive convertRustLightningReceive(const bark_cxx::LightningRec
   for (const auto& id : rust_result.htlc_vtxo_ids) {
     result.htlc_vtxo_ids.emplace_back(std::string(id.data(), id.length()));
   }
-  if (rust_result.movement_id != nullptr) {
-    result.movement_id = static_cast<double>(*rust_result.movement_id);
+  if (rust_result.has_movement_id) {
+    result.movement_id = static_cast<double>(rust_result.movement_id);
   }
-  if (rust_result.amount_sat != nullptr) {
-    result.amount_sat = static_cast<double>(*rust_result.amount_sat);
+  if (rust_result.has_amount_sat) {
+    result.amount_sat = static_cast<double>(rust_result.amount_sat);
   }
-  if (rust_result.settled_at != nullptr) {
-    result.settled_at = static_cast<double>(*rust_result.settled_at);
+  if (rust_result.has_settled_at) {
+    result.settled_at = static_cast<double>(rust_result.settled_at);
   }
   return result;
 }
@@ -1498,19 +1498,11 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::optional<LightningReceive>>>
+  std::shared_ptr<Promise<LightningReceive>>
   lightningReceiveStatus(const std::string& paymentHash) override {
-    return Promise<std::optional<LightningReceive>>::async([paymentHash]() {
+    return Promise<LightningReceive>::async([paymentHash]() {
       try {
-        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(paymentHash);
-
-        if (status_ptr == nullptr) {
-          return std::optional<LightningReceive>();
-        }
-
-        std::unique_ptr<const bark_cxx::LightningReceive> status(status_ptr);
-
-        return std::optional<LightningReceive>(convertRustLightningReceive(*status));
+        return convertRustLightningReceive(bark_cxx::lightning_receive_status(paymentHash));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

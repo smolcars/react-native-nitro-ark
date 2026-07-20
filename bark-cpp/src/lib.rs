@@ -169,19 +169,13 @@ static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
 pub struct WalletContext {
     pub wallet: Arc<Wallet>,
     pub onchain_wallet: Arc<RwLock<OnchainWallet>>,
-    pub db: Arc<SqliteClient>,
     pub db_path: PathBuf,
     pub mailbox_sync_task: Option<tokio::task::JoinHandle<()>>,
     pub mailbox_sync_shutdown: Option<CancellationToken>,
 }
 
 impl WalletContext {
-    fn new(
-        wallet: Wallet,
-        onchain_wallet: Arc<RwLock<OnchainWallet>>,
-        db: Arc<SqliteClient>,
-        db_path: PathBuf,
-    ) -> Self {
+    fn new(wallet: Wallet, onchain_wallet: Arc<RwLock<OnchainWallet>>, db_path: PathBuf) -> Self {
         let wallet = Arc::new(wallet);
         let mailbox_sync_shutdown = CancellationToken::new();
         let mailbox_sync_task = Some(mailbox::spawn_mailbox_sync_task(
@@ -192,7 +186,6 @@ impl WalletContext {
         Self {
             wallet,
             onchain_wallet,
-            db,
             db_path,
             mailbox_sync_task,
             mailbox_sync_shutdown: Some(mailbox_sync_shutdown),
@@ -255,12 +248,11 @@ impl WalletManager {
         }
 
         info!("Attempting to open wallet...");
-        let (wallet, onchain_wallet, db) = self.open_wallet(datadir, mnemonic, config).await?;
+        let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic, config).await?;
 
         self.context = Some(WalletContext::new(
             wallet,
             onchain_wallet,
-            db,
             datadir.join(DB_FILE),
         ));
 
@@ -332,7 +324,7 @@ impl WalletManager {
         datadir: &Path,
         mnemonic: Mnemonic,
         config: Config,
-    ) -> anyhow::Result<(Wallet, Arc<RwLock<OnchainWallet>>, Arc<SqliteClient>)> {
+    ) -> anyhow::Result<(Wallet, Arc<RwLock<OnchainWallet>>)> {
         debug!("Opening bark wallet in {}", datadir.display());
 
         let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
@@ -362,7 +354,7 @@ impl WalletManager {
         )
         .await?;
 
-        Ok((wallet, onchain_wallet, db))
+        Ok((wallet, onchain_wallet))
     }
 }
 
@@ -580,21 +572,12 @@ pub async fn bolt11_invoice(
         .await
 }
 
-pub async fn lightning_receive_status(
-    payment: PaymentHash,
-) -> anyhow::Result<Option<LightningReceive>> {
+pub async fn lightning_receive_status(payment: PaymentHash) -> anyhow::Result<LightningReceive> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            if let Some(receive) = ctx.wallet.lightning_receive_checkpoint(payment).await? {
-                return Ok(Some(receive.into()));
-            }
-
-            Ok(ctx
-                .db
-                .get_settled_lightning_receive(payment)
-                .await?
-                .map(Into::into))
+            let state = ctx.wallet.lightning_receive_state(payment).await?;
+            Ok(state.into())
         })
         .await
 }
