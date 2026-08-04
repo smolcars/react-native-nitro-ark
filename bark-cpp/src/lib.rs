@@ -120,6 +120,11 @@ impl From<BarkLightningReceive> for LightningReceive {
                 htlcs.vtxo_ids,
                 Some(htlcs.movement_id.0),
             ),
+            LightningReceiveProgress::Delivering(delivery) => (
+                "delivering",
+                delivery.vtxos.iter().map(Vtxo::id).collect(),
+                Some(delivery.movement_id.0),
+            ),
         };
 
         Self {

@@ -116,7 +116,8 @@ export type ExitStatusResult = Omit<
 export type LightningReceivePhase =
   | 'awaiting_payment'
   | 'htlcs_ready'
-  | 'preimage_revealed';
+  | 'preimage_revealed'
+  | 'delivering';
 
 type LightningReceiveBase = Omit<NitroLightningReceive, 'state' | 'phase'>;
 
