@@ -1618,6 +1618,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
+void update_history_metadata(::std::uint32_t movement_id, ::rust::Str patch_json);
+
 ::bark_cxx::BarkVtxo decode_vtxo_hex(::rust::Str vtxo_hex);
 
 ::bark_cxx::BarkVtxo import_vtxo(::rust::Str vtxo_hex);
@@ -1673,6 +1675,8 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::BarkFeeEstimate estimate_lightning_send_fee(::std::uint64_t amount_sat);
 
 ::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, bool wait);
+
+::bark_cxx::LightningPaymentResult pay_lightning_invoice_with_origin(::rust::Str invoice, ::rust::Str origin_method, ::rust::Str origin_value, bool wait);
 
 ::bark_cxx::LightningPaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat, bool wait);
 

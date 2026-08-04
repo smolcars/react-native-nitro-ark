@@ -12,6 +12,26 @@ use tempfile::tempdir;
 
 // --- Test Setup ---
 
+const INVALID_MNEMONIC_SENTINEL: &str =
+    "h3-secret-sentinel invalid mnemonic words must stay private";
+
+fn assert_invalid_mnemonic_is_redacted<T>(result: anyhow::Result<T>) {
+    let error = match result {
+        Ok(_) => panic!("invalid mnemonic should be rejected"),
+        Err(error) => error,
+    };
+    let error_chain = crate::utils::format_error_chain(&error);
+
+    assert!(
+        error_chain.contains("Invalid mnemonic format"),
+        "error should explain that the mnemonic format is invalid: {error_chain}"
+    );
+    assert!(
+        !error_chain.contains(INVALID_MNEMONIC_SENTINEL),
+        "error chain must not contain the supplied mnemonic: {error_chain}"
+    );
+}
+
 #[test]
 fn bark_version_matches_resolved_build_metadata() {
     assert_eq!(crate::cxx::bark_version(), env!("BARK_WALLET_VERSION"));
@@ -25,6 +45,113 @@ fn unlock_vtxos_rejects_invalid_ids_before_wallet_access() {
         result.unwrap_err().to_string().contains("Invalid VTXO ID"),
         "error should identify the invalid VTXO ID"
     );
+}
+
+#[test]
+fn history_metadata_patch_accepts_json_objects() {
+    let patch = crate::parse_history_metadata_patch(
+        r#"{"noah":{"lnurl_pay":{"payer_data":{"name":"Alice"}}}}"#,
+    )
+    .expect("object patches should be accepted");
+
+    assert_eq!(patch["noah"]["lnurl_pay"]["payer_data"]["name"], "Alice");
+}
+
+#[test]
+fn history_metadata_patch_rejects_non_objects() {
+    for patch in ["null", "[]", r#""value""#, "42", "true"] {
+        let error = crate::parse_history_metadata_patch(patch)
+            .expect_err("non-object patches should be rejected");
+        assert!(
+            error
+                .to_string()
+                .contains("History metadata patch must be a JSON object")
+        );
+    }
+}
+
+#[test]
+fn history_metadata_patch_rejects_malformed_json() {
+    let error =
+        crate::parse_history_metadata_patch("{").expect_err("malformed JSON should be rejected");
+    assert!(
+        error
+            .to_string()
+            .contains("Invalid history metadata patch JSON")
+    );
+}
+
+#[test]
+fn history_metadata_patch_rejects_oversized_payloads_before_wallet_access() {
+    let oversized = format!(
+        r#"{{"value":"{}"}}"#,
+        "x".repeat(crate::MAX_HISTORY_METADATA_PATCH_BYTES)
+    );
+    let error = cxx::update_history_metadata(1, &oversized)
+        .expect_err("oversized patches should be rejected");
+    assert!(
+        error
+            .to_string()
+            .contains("History metadata patch exceeds the 16384 byte limit")
+    );
+}
+
+#[test]
+fn lightning_payment_origin_accepts_supported_methods() {
+    let cases = [
+        ("lightning-address", "byte@second.tech", "byte@second.tech"),
+        (
+            "lnurl",
+            "LNURL1DP68GURN8GHJ7UM9WFMXJCM99E3K7MF0V9CXJ0M385EKVCENXC6R2C35XVUKXEFCV5MKVV34X5EKZD3EV56NYD3HXQURZEPEXEJXXEPNXSCRVWFNV9NXZCN9XQ6XYEFHVGCXXCMYXYMNSERXFQ5FNS",
+            "lnurl1dp68gurn8ghj7um9wfmxjcm99e3k7mf0v9cxj0m385ekvcenxc6r2c35xvukxefcv5mkvv34x5ekzd3ev56nyd3hxqurzepexejxxepnxscrvwfnv9nxzcn9xq6xyefhvgcxxcmyxymnserxfq5fns",
+        ),
+        (
+            "custom",
+            "https://example.com/lnurlp/alice",
+            "https://example.com/lnurlp/alice",
+        ),
+    ];
+
+    for (method, value, expected_value) in cases {
+        let origin = crate::parse_lightning_payment_origin(method, value)
+            .expect("supported Lightning payment origins should be accepted");
+
+        assert_eq!(origin.type_str(), method);
+        assert_eq!(origin.value_string(), expected_value);
+    }
+}
+
+#[test]
+fn lightning_payment_origin_rejects_invalid_values() {
+    for (method, value) in [
+        ("lightning-address", "not-an-address"),
+        ("lnurl", "https://example.com/lnurlp/alice"),
+        ("custom", ""),
+        ("custom", "   "),
+    ] {
+        crate::parse_lightning_payment_origin(method, value)
+            .expect_err("invalid Lightning payment origin values should be rejected");
+    }
+}
+
+#[test]
+fn lightning_payment_origin_rejects_unsupported_methods() {
+    for method in [
+        "ark",
+        "bitcoin",
+        "output-script",
+        "invoice",
+        "offer",
+        "unknown",
+    ] {
+        let error = crate::parse_lightning_payment_origin(method, "value")
+            .expect_err("unsupported Lightning payment origin methods should be rejected");
+        assert!(
+            error
+                .to_string()
+                .contains("Unsupported Lightning payment origin method")
+        );
+    }
 }
 
 /// Creates a temporary directory and basic wallet creation options for tests.
@@ -101,6 +228,35 @@ fn format_error_chain_includes_causes() {
         crate::utils::format_error_chain(&error),
         "outer context\ncaused by: middle context\ncaused by: root cause"
     );
+}
+
+#[test]
+fn invalid_mnemonic_errors_do_not_include_the_supplied_value() {
+    assert_invalid_mnemonic_is_redacted(cxx::sign_messsage_with_mnemonic(
+        "message",
+        INVALID_MNEMONIC_SENTINEL,
+        "mainnet",
+        0,
+    ));
+    assert_invalid_mnemonic_is_redacted(cxx::derive_keypair_from_mnemonic(
+        INVALID_MNEMONIC_SENTINEL,
+        "mainnet",
+        0,
+    ));
+
+    let (create_dir, mut create_opts) = setup_test_wallet_opts();
+    create_opts.mnemonic = INVALID_MNEMONIC_SENTINEL.to_string();
+    assert_invalid_mnemonic_is_redacted(cxx::create_wallet(
+        create_dir.path().to_str().unwrap(),
+        create_opts,
+    ));
+
+    let (load_dir, mut load_opts) = setup_test_wallet_opts();
+    load_opts.mnemonic = INVALID_MNEMONIC_SENTINEL.to_string();
+    assert_invalid_mnemonic_is_redacted(cxx::load_wallet(
+        load_dir.path().to_str().unwrap(),
+        load_opts,
+    ));
 }
 
 /// A test fixture to ensure the wallet is loaded for a test and closed afterward.

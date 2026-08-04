@@ -10,7 +10,6 @@ use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{Address, address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, FeeRate, network};
-use bip39::Mnemonic;
 use bitcoin_ext::FeeRateExt;
 use logger::log::{self, info};
 
@@ -416,6 +415,7 @@ pub(crate) mod ffi {
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn history() -> Result<Vec<BarkMovement>>;
         fn vtxos() -> Result<Vec<BarkVtxo>>;
+        fn update_history_metadata(movement_id: u32, patch_json: &str) -> Result<()>;
         fn decode_vtxo_hex(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn import_vtxo(vtxo_hex: &str) -> Result<BarkVtxo>;
         fn dangerous_drop_vtxo(vtxo_id: &str) -> Result<()>;
@@ -453,6 +453,12 @@ pub(crate) mod ffi {
         unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
+            wait: bool,
+        ) -> Result<LightningPaymentResult>;
+        fn pay_lightning_invoice_with_origin(
+            invoice: &str,
+            origin_method: &str,
+            origin_value: &str,
             wait: bool,
         ) -> Result<LightningPaymentResult>;
         unsafe fn pay_lightning_offer(
@@ -733,8 +739,7 @@ pub(crate) fn sign_messsage_with_mnemonic(
     index: u32,
 ) -> anyhow::Result<String> {
     ffi_boundary("sign_messsage_with_mnemonic", || {
-        let mnemonic = Mnemonic::from_str(mnemonic)
-            .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+        let mnemonic = utils::parse_mnemonic(mnemonic)?;
 
         let network = match network {
             "mainnet" => network::Network::Bitcoin,
@@ -758,8 +763,7 @@ pub(crate) fn derive_keypair_from_mnemonic(
     index: u32,
 ) -> anyhow::Result<ffi::KeyPairResult> {
     ffi_boundary("derive_keypair_from_mnemonic", || {
-        let mnemonic = bip39::Mnemonic::from_str(mnemonic)
-            .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+        let mnemonic = utils::parse_mnemonic(mnemonic)?;
         let network = match network {
             "mainnet" => network::Network::Bitcoin,
             "regtest" => network::Network::Regtest,
@@ -801,6 +805,12 @@ pub(crate) fn history() -> anyhow::Result<Vec<BarkMovement>> {
         }
 
         history.iter().map(fun_name).collect()
+    })
+}
+
+pub(crate) fn update_history_metadata(movement_id: u32, patch_json: &str) -> anyhow::Result<()> {
+    ffi_boundary("update_history_metadata", || {
+        crate::TOKIO_RUNTIME.block_on(crate::update_history_metadata(movement_id, patch_json))
     })
 }
 
@@ -1009,8 +1019,7 @@ pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Res
 
 pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Result<()> {
     ffi_boundary("load_wallet", || {
-        let mnemonic = bip39::Mnemonic::from_str(&config.mnemonic)
-            .with_context(|| format!("Invalid mnemonic format: '{}'", config.mnemonic))?;
+        let mnemonic = utils::parse_mnemonic(&config.mnemonic)?;
 
         log::info!("Loading wallet with datadir: {}", datadir);
 
@@ -1219,6 +1228,24 @@ pub(crate) fn pay_lightning_invoice(
 
         let send_result = crate::TOKIO_RUNTIME
             .block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
+
+        Ok(lightning_payment_result_to_ffi(send_result))
+    })
+}
+
+pub(crate) fn pay_lightning_invoice_with_origin(
+    invoice: &str,
+    origin_method: &str,
+    origin_value: &str,
+    wait: bool,
+) -> anyhow::Result<ffi::LightningPaymentResult> {
+    ffi_boundary("pay_lightning_invoice_with_origin", || {
+        let origin = crate::parse_lightning_payment_origin(origin_method, origin_value)?;
+        let invoice = lightning::Invoice::from_str(invoice)?;
+
+        let send_result = crate::TOKIO_RUNTIME.block_on(
+            crate::pay_lightning_invoice_with_origin(invoice, origin, wait),
+        )?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
     })

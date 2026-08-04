@@ -218,8 +218,8 @@ fn movement_matches_filter(movement: &Movement, filter: &NotificationFilter) -> 
         }
         NotificationFilter::LightningPayment(payment_hash) => {
             debug!(
-                "Evaluating lightning filter target={} movement_id={} subsystem={} metadata={:?}",
-                payment_hash, movement.id.0, movement.subsystem.kind, movement.metadata
+                "Evaluating lightning filter target={} movement_id={} subsystem={}",
+                payment_hash, movement.id.0, movement.subsystem.kind
             );
             if !movement
                 .subsystem
@@ -361,12 +361,12 @@ fn format_destinations(movement: &Movement) -> String {
 fn notification_summary(notification: &WalletNotification) -> String {
     match notification {
         WalletNotification::MovementCreated { movement } => format!(
-            "MovementCreated id={} status={} subsystem={} metadata={:?}",
-            movement.id.0, movement.status, movement.subsystem.kind, movement.metadata
+            "MovementCreated id={} status={} subsystem={}",
+            movement.id.0, movement.status, movement.subsystem.kind
         ),
         WalletNotification::MovementUpdated { movement } => format!(
-            "MovementUpdated id={} status={} subsystem={} metadata={:?}",
-            movement.id.0, movement.status, movement.subsystem.kind, movement.metadata
+            "MovementUpdated id={} status={} subsystem={}",
+            movement.id.0, movement.status, movement.subsystem.kind
         ),
         WalletNotification::ChannelLagging => "ChannelLagging".to_string(),
     }
@@ -421,4 +421,35 @@ pub async fn subscribe_lightning_payment_movements(
             NotificationFilter::LightningPayment(payment_hash),
         )))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use bark::movement::{MovementId, MovementStatus, MovementSubsystem};
+    use chrono::Local;
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn notification_summary_does_not_include_movement_metadata() {
+        let mut movement = Movement::new(
+            MovementId::new(7),
+            MovementStatus::Successful,
+            &MovementSubsystem {
+                name: "bark.lightning_receive".to_string(),
+                kind: "receive".to_string(),
+            },
+            Local::now(),
+        );
+        movement.metadata.insert(
+            "noah".to_string(),
+            json!({ "lnurl_pay": { "payer_data": { "name": "private payer" } } }),
+        );
+
+        let summary = notification_summary(&WalletNotification::MovementUpdated { movement });
+
+        assert!(!summary.contains("private payer"));
+        assert!(!summary.contains("metadata"));
+    }
 }

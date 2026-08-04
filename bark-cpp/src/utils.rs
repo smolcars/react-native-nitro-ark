@@ -58,6 +58,10 @@ pub(crate) fn format_error_chain(error: &anyhow::Error) -> String {
         .join("\n")
 }
 
+pub(crate) fn parse_mnemonic(mnemonic: &str) -> anyhow::Result<bip39::Mnemonic> {
+    bip39::Mnemonic::from_str(mnemonic).map_err(|_| anyhow::anyhow!("Invalid mnemonic format"))
+}
+
 pub(crate) async fn lightning_payment_result_from_state(
     ctx: &WalletContext,
     payment_hash: PaymentHash,
@@ -353,7 +357,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         regtest: opts.regtest,
         signet: opts.signet,
         bitcoin: opts.bitcoin,
-        mnemonic: bip39::Mnemonic::from_str(&opts.mnemonic)?,
+        mnemonic: parse_mnemonic(&opts.mnemonic)?,
         birthday_height: unsafe { opts.birthday_height.as_ref().map(|r| *r) },
         config: config_opts,
     };

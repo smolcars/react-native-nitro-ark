@@ -5,6 +5,9 @@
 #include "HybridNitroArkSpec.hpp"
 #include "generated/ark_cxx.h"
 #include "generated/cxx.h"
+#include <cmath>
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -16,6 +19,19 @@
 namespace margelo::nitro::nitroark {
 
 using namespace margelo::nitro;
+
+inline std::string lightningPaymentOriginMethodToString(LightningPaymentOriginMethod method) {
+  switch (method) {
+    case LightningPaymentOriginMethod::LIGHTNING_ADDRESS:
+      return "lightning-address";
+    case LightningPaymentOriginMethod::LNURL:
+      return "lnurl";
+    case LightningPaymentOriginMethod::CUSTOM:
+      return "custom";
+  }
+  throw std::invalid_argument("Unsupported Lightning payment origin method");
+}
+
 // Helper functions to convert rust vtxos to C++ values
 inline BarkVtxo convertRustVtxo(const bark_cxx::BarkVtxo& vtxo_rs) {
   BarkVtxo vtxo;
@@ -1071,6 +1087,21 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> updateHistoryMetadata(double movementId, const std::string& patchJson) override {
+    return Promise<void>::async([movementId, patchJson]() {
+      if (!std::isfinite(movementId) || std::trunc(movementId) != movementId || movementId < 0 ||
+          movementId > static_cast<double>(std::numeric_limits<uint32_t>::max())) {
+        throw std::invalid_argument("movementId must be a finite unsigned 32-bit integer");
+      }
+
+      try {
+        bark_cxx::update_history_metadata(static_cast<uint32_t>(movementId), patchJson);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() override {
     return Promise<std::vector<BarkVtxo>>::async([]() {
       try {
@@ -1387,6 +1418,22 @@ public:
         } else {
           rust_result = bark_cxx::pay_lightning_invoice(destination, nullptr, wait);
         }
+
+        return convertRustLightningPaymentResult(rust_result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  // Pay an invoice resolved by the caller while preserving the durable,
+  // user-facing origin in Bark instead of storing only the one-time invoice.
+  std::shared_ptr<Promise<LightningPaymentResult>>
+  payLightningInvoiceWithOrigin(const std::string& invoice, const LightningPaymentOrigin& origin, bool wait) override {
+    return Promise<LightningPaymentResult>::async([invoice, origin, wait]() {
+      try {
+        bark_cxx::LightningPaymentResult rust_result = bark_cxx::pay_lightning_invoice_with_origin(
+            invoice, lightningPaymentOriginMethodToString(origin.method), origin.value, wait);
 
         return convertRustLightningPaymentResult(rust_result);
       } catch (const rust::Error& e) {
