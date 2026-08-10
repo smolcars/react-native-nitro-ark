@@ -1,4 +1,5 @@
 jest.mock('react-native-nitro-modules', () => {
+  const cancelExit = jest.fn(() => Promise.resolve());
   const updateHistoryMetadata = jest.fn(() => Promise.resolve());
   const payLightningInvoiceWithOrigin = jest.fn(() =>
     Promise.resolve({
@@ -14,28 +15,47 @@ jest.mock('react-native-nitro-modules', () => {
   return {
     NitroModules: {
       createHybridObject: () => ({
+        cancelExit,
         updateHistoryMetadata,
         payLightningInvoiceWithOrigin,
       }),
     },
+    mockCancelExit: cancelExit,
     mockUpdateHistoryMetadata: updateHistoryMetadata,
     mockPayLightningInvoiceWithOrigin: payLightningInvoiceWithOrigin,
   };
 });
 
-const { mockUpdateHistoryMetadata, mockPayLightningInvoiceWithOrigin } =
-  jest.requireMock('react-native-nitro-modules') as {
-    mockUpdateHistoryMetadata: jest.MockedFunction<
-      (movementId: number, patchJson: string) => Promise<void>
-    >;
-    mockPayLightningInvoiceWithOrigin: jest.Mock;
-  };
+const {
+  mockCancelExit,
+  mockUpdateHistoryMetadata,
+  mockPayLightningInvoiceWithOrigin,
+} = jest.requireMock('react-native-nitro-modules') as {
+  mockCancelExit: jest.MockedFunction<(vtxoId: string) => Promise<void>>;
+  mockUpdateHistoryMetadata: jest.MockedFunction<
+    (movementId: number, patchJson: string) => Promise<void>
+  >;
+  mockPayLightningInvoiceWithOrigin: jest.Mock;
+};
 
 import {
   NitroArkHybridObject,
+  cancelExit,
   payLightningInvoiceWithOrigin,
   updateHistoryMetadata,
 } from '../index';
+
+describe('cancelExit', () => {
+  beforeEach(() => {
+    mockCancelExit.mockClear();
+  });
+
+  it('delegates the VTXO ID to the native bridge', async () => {
+    await cancelExit('vtxo-id');
+
+    expect(mockCancelExit).toHaveBeenCalledWith('vtxo-id');
+  });
+});
 
 describe('updateHistoryMetadata', () => {
   beforeEach(() => {

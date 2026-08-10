@@ -48,6 +48,16 @@ fn unlock_vtxos_rejects_invalid_ids_before_wallet_access() {
 }
 
 #[test]
+fn cancel_exit_rejects_invalid_id_before_wallet_access() {
+    let result = cxx::cancel_exit("not-a-vtxo-id");
+    assert!(result.is_err());
+    assert!(
+        result.unwrap_err().to_string().contains("Invalid VTXO ID"),
+        "error should identify the invalid VTXO ID"
+    );
+}
+
+#[test]
 fn history_metadata_patch_accepts_json_objects() {
     let patch = crate::parse_history_metadata_patch(
         r#"{"noah":{"lnurl_pay":{"payer_data":{"name":"Alice"}}}}"#,

@@ -37,6 +37,7 @@ export const ExitTab = ({
   runOperation,
 }: TabProps) => {
   const [progressFeeRate, setProgressFeeRate] = useState('');
+  const [cancelVtxoId, setCancelVtxoId] = useState('');
   const [drainFeeRate, setDrainFeeRate] = useState('');
   const [drainDestinationAddress, setDrainDestinationAddress] = useState('');
   const [drainVtxoIdsInput, setDrainVtxoIdsInput] = useState('');
@@ -69,6 +70,25 @@ export const ExitTab = ({
         setResults((prev) => ({
           ...prev,
           exitLifecycle: 'Exit coordinator sync completed.',
+        }))
+    );
+  };
+
+  const handleCancelExit = () => {
+    const vtxoId = cancelVtxoId.trim();
+    if (!vtxoId) {
+      setSectionError('exitLifecycle', 'A VTXO ID is required');
+      return;
+    }
+
+    runOperation(
+      'cancelExit',
+      () => NitroArk.cancelExit(vtxoId),
+      'exitLifecycle',
+      () =>
+        setResults((prev) => ({
+          ...prev,
+          exitLifecycle: `Canceled unilateral exit for ${vtxoId}.`,
         }))
     );
   };
@@ -216,10 +236,22 @@ export const ExitTab = ({
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Section title="Exit Lifecycle">
+        <InputField
+          label="VTXO ID to Cancel"
+          value={cancelVtxoId}
+          onChangeText={setCancelVtxoId}
+          placeholder="Enter an in-flight exit VTXO ID"
+        />
         <ButtonGrid>
           <CustomButton
             title="Start Entire Wallet Exit"
             onPress={handleStartExitForEntireWallet}
+            disabled={exitOpsDisabled}
+            color={COLORS.warning}
+          />
+          <CustomButton
+            title="Cancel Exit"
+            onPress={handleCancelExit}
             disabled={exitOpsDisabled}
             color={COLORS.warning}
           />

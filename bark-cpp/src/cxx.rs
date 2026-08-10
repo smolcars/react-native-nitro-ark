@@ -504,6 +504,7 @@ pub(crate) mod ffi {
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn start_exit_for_entire_wallet() -> Result<()>;
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<()>;
+        fn cancel_exit(vtxo_id: &str) -> Result<()>;
         fn sync_exit() -> Result<()>;
         fn sync_pending_rounds() -> Result<Vec<PendingRoundStatus>>;
         fn mailbox_keypair() -> Result<KeyPairResult>;
@@ -1930,6 +1931,12 @@ pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
 pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
     ffi_boundary("start_exit_for_vtxos", || {
         TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(vtxo_ids))
+    })
+}
+
+pub(crate) fn cancel_exit(vtxo_id: &str) -> anyhow::Result<()> {
+    ffi_boundary("cancel_exit", || {
+        TOKIO_RUNTIME.block_on(crate::cancel_exit(vtxo_id.to_owned()))
     })
 }
 
