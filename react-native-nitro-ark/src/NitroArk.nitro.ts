@@ -364,6 +364,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Exits ---
   startExitForEntireWallet(): Promise<void>;
   startExitForVtxos(vtxoIds: string[]): Promise<void>;
+  cancelExit(vtxoId: string): Promise<void>;
   syncExit(): Promise<void>;
   progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;

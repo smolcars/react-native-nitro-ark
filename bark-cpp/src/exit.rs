@@ -73,6 +73,23 @@ pub async fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
         .await
 }
 
+pub async fn cancel_exit(vtxo_id: String) -> anyhow::Result<()> {
+    let vtxo_id = bark::ark::VtxoId::from_str(&vtxo_id)
+        .with_context(|| format!("Invalid VTXO ID: {vtxo_id}"))?;
+
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            ctx.wallet
+                .exit_mgr()
+                .cancel_exit(vtxo_id)
+                .await
+                .context("Failed to cancel exit")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn sync_exit() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager

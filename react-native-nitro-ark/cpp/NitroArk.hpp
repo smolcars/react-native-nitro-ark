@@ -626,6 +626,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> cancelExit(const std::string& vtxoId) override {
+    return Promise<void>::async([vtxoId]() {
+      try {
+        bark_cxx::cancel_exit(vtxoId);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> syncExit() override {
     return Promise<void>::async([]() {
       try {

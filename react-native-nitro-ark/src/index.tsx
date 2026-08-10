@@ -446,6 +446,16 @@ export function startExitForVtxos(vtxoIds: string[]): Promise<void> {
 }
 
 /**
+ * Cancels a unilateral exit while its final transaction is still unbroadcast.
+ * The VTXO remains spendable and can be exited again later.
+ * @param vtxoId VTXO ID whose exit should be canceled.
+ * @returns A promise that resolves on success.
+ */
+export function cancelExit(vtxoId: string): Promise<void> {
+  return NitroArkHybridObject.cancelExit(vtxoId);
+}
+
+/**
  * Synchronizes the exit coordinator state.
  * @returns A promise that resolves on success.
  */

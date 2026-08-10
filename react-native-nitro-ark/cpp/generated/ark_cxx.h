@@ -1720,6 +1720,8 @@ void start_exit_for_entire_wallet();
 
 void start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
+void cancel_exit(::rust::Str vtxo_id);
+
 void sync_exit();
 
 ::rust::Vec<::bark_cxx::PendingRoundStatus> sync_pending_rounds();
