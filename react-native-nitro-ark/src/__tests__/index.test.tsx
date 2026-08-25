@@ -1,5 +1,15 @@
 jest.mock('react-native-nitro-modules', () => {
   const cancelExit = jest.fn(() => Promise.resolve());
+  const estimateEmergencyExitFee = jest.fn(() =>
+    Promise.resolve({
+      exit_broadcast_fee_sat: 1200,
+      claim_fee_sat: 300,
+      total_fee_sat: 1500,
+      fee_rate_sat_per_vb: 2,
+      txs_to_broadcast: 4,
+      fundable: true,
+    })
+  );
   const updateHistoryMetadata = jest.fn(() => Promise.resolve());
   const payLightningInvoiceWithOrigin = jest.fn(() =>
     Promise.resolve({
@@ -16,11 +26,13 @@ jest.mock('react-native-nitro-modules', () => {
     NitroModules: {
       createHybridObject: () => ({
         cancelExit,
+        estimateEmergencyExitFee,
         updateHistoryMetadata,
         payLightningInvoiceWithOrigin,
       }),
     },
     mockCancelExit: cancelExit,
+    mockEstimateEmergencyExitFee: estimateEmergencyExitFee,
     mockUpdateHistoryMetadata: updateHistoryMetadata,
     mockPayLightningInvoiceWithOrigin: payLightningInvoiceWithOrigin,
   };
@@ -28,10 +40,12 @@ jest.mock('react-native-nitro-modules', () => {
 
 const {
   mockCancelExit,
+  mockEstimateEmergencyExitFee,
   mockUpdateHistoryMetadata,
   mockPayLightningInvoiceWithOrigin,
 } = jest.requireMock('react-native-nitro-modules') as {
   mockCancelExit: jest.MockedFunction<(vtxoId: string) => Promise<void>>;
+  mockEstimateEmergencyExitFee: jest.Mock;
   mockUpdateHistoryMetadata: jest.MockedFunction<
     (movementId: number, patchJson: string) => Promise<void>
   >;
@@ -41,6 +55,7 @@ const {
 import {
   NitroArkHybridObject,
   cancelExit,
+  estimateEmergencyExitFee,
   payLightningInvoiceWithOrigin,
   updateHistoryMetadata,
 } from '../index';
@@ -54,6 +69,34 @@ describe('cancelExit', () => {
     await cancelExit('vtxo-id');
 
     expect(mockCancelExit).toHaveBeenCalledWith('vtxo-id');
+  });
+});
+
+describe('estimateEmergencyExitFee', () => {
+  beforeEach(() => {
+    mockEstimateEmergencyExitFee.mockClear();
+  });
+
+  it('forwards the VTXOs and optional pricing inputs to the native bridge', async () => {
+    const result = await estimateEmergencyExitFee(
+      ['vtxo-1', 'vtxo-2'],
+      2000,
+      'bcrt1pdestination'
+    );
+
+    expect(mockEstimateEmergencyExitFee).toHaveBeenCalledWith(
+      ['vtxo-1', 'vtxo-2'],
+      2000,
+      'bcrt1pdestination'
+    );
+    expect(result).toEqual({
+      exit_broadcast_fee_sat: 1200,
+      claim_fee_sat: 300,
+      total_fee_sat: 1500,
+      fee_rate_sat_per_vb: 2,
+      txs_to_broadcast: 4,
+      fundable: true,
+    });
   });
 });
 

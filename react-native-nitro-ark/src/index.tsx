@@ -7,6 +7,7 @@ import type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,
+  ExitFeeEstimate,
   BarkFeeRates,
   OnchainTransactionInfo,
   ExitProgressStatusResult as NitroExitProgressStatusResult,
@@ -473,6 +474,27 @@ export function progressExits(
 ): Promise<ExitProgressStatusResult[]> {
   return NitroArkHybridObject.progressExits(feeRateSatPerKvb).then((results) =>
     results.map(enrichExitProgressStatus)
+  );
+}
+
+/**
+ * Estimates the onchain fees required to unilaterally exit selected VTXOs.
+ * The estimate itself does not synchronize or mutate the wallet; synchronize
+ * first when current chain and mempool state is required.
+ * @param vtxoIds VTXO IDs to include in the emergency exit estimate.
+ * @param feeRateSatPerKvb Optional fee-rate override in sat/kvB, applied to both fee legs.
+ * @param destinationAddress Optional claim destination, which affects the claim transaction weight.
+ * @returns A promise resolving to the CPFP broadcast and later claim fee breakdown.
+ */
+export function estimateEmergencyExitFee(
+  vtxoIds: string[],
+  feeRateSatPerKvb?: number,
+  destinationAddress?: string
+): Promise<ExitFeeEstimate> {
+  return NitroArkHybridObject.estimateEmergencyExitFee(
+    vtxoIds,
+    feeRateSatPerKvb,
+    destinationAddress
   );
 }
 
@@ -978,16 +1000,16 @@ export function onchainSendMany(
 
 /**
  * Creates a Bolt 11 invoice.
- * @param amountMsat The amount in millisatoshis for the invoice.
+ * @param amountSat The amount in satoshis for the invoice.
  * @param description Optional invoice description/memo.
  * @returns A promise resolving to Bolt11Invoice object.
  */
 export function bolt11Invoice(
-  amountMsat: number,
+  amountSat: number,
   description?: string,
   token?: string
 ): Promise<Bolt11Invoice> {
-  return NitroArkHybridObject.bolt11Invoice(amountMsat, description, token);
+  return NitroArkHybridObject.bolt11Invoice(amountSat, description, token);
 }
 
 /**
@@ -1311,6 +1333,7 @@ export type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   BarkFeeEstimate,
+  ExitFeeEstimate,
   BarkFeeRates,
   OnchainTransactionInfo,
   LightningPaymentResult,

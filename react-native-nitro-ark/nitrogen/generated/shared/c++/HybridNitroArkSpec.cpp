@@ -34,6 +34,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("cancelExit", &HybridNitroArkSpec::cancelExit);
       prototype.registerHybridMethod("syncExit", &HybridNitroArkSpec::syncExit);
       prototype.registerHybridMethod("progressExits", &HybridNitroArkSpec::progressExits);
+      prototype.registerHybridMethod("estimateEmergencyExitFee", &HybridNitroArkSpec::estimateEmergencyExitFee);
       prototype.registerHybridMethod("getExitVtxos", &HybridNitroArkSpec::getExitVtxos);
       prototype.registerHybridMethod("listClaimable", &HybridNitroArkSpec::listClaimable);
       prototype.registerHybridMethod("getExitStatus", &HybridNitroArkSpec::getExitStatus);

@@ -4,7 +4,7 @@ use crate::cxx::{
     ffi::{self, RefreshModeType},
 };
 use anyhow::Context;
-use bark::ark::bitcoin::Amount;
+use bark::ark::bitcoin::{Amount, FeeRate};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -55,6 +55,43 @@ fn cancel_exit_rejects_invalid_id_before_wallet_access() {
         result.unwrap_err().to_string().contains("Invalid VTXO ID"),
         "error should identify the invalid VTXO ID"
     );
+}
+
+#[test]
+fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
+    let result = cxx::estimate_emergency_exit_fee(
+        vec!["not-a-vtxo-id".to_string()],
+        std::ptr::null(),
+        std::ptr::null(),
+    );
+    let error = match result {
+        Ok(_) => panic!("invalid VTXO ID should be rejected"),
+        Err(error) => error,
+    };
+    assert!(
+        error.to_string().contains("Invalid VTXO ID"),
+        "error should identify the invalid VTXO ID"
+    );
+}
+
+#[test]
+fn emergency_exit_fee_conversion_preserves_the_breakdown() {
+    let estimate = bark::exit::ExitFeeEstimate {
+        exit_broadcast_fee: Amount::from_sat(1_200),
+        claim_fee: Amount::from_sat(300),
+        fee_rate: FeeRate::from_sat_per_vb(2).unwrap(),
+        txs_to_broadcast: 4,
+        fundable: true,
+    };
+
+    let result = cxx::exit_fee_estimate_to_ffi(&estimate);
+
+    assert_eq!(result.exit_broadcast_fee_sat, 1_200);
+    assert_eq!(result.claim_fee_sat, 300);
+    assert_eq!(result.total_fee_sat, 1_500);
+    assert_eq!(result.fee_rate_sat_per_vb, 2);
+    assert_eq!(result.txs_to_broadcast, 4);
+    assert!(result.fundable);
 }
 
 #[test]
@@ -427,8 +464,8 @@ fn test_bolt11_invoice_ffi() {
     let _fixture = WalletTestFixture::new();
     // This test requires a running LDK node, which is part of the wallet.
     // It should succeed even without onchain funds.
-    let amount_msat = 100_000; // 100 sat
-    let invoice_res = cxx::bolt11_invoice(amount_msat, std::ptr::null(), std::ptr::null());
+    let amount_sat = 100_000;
+    let invoice_res = cxx::bolt11_invoice(amount_sat, std::ptr::null(), std::ptr::null());
     assert!(
         invoice_res.is_ok(),
         "Failed to create bolt11 invoice: {:?}",

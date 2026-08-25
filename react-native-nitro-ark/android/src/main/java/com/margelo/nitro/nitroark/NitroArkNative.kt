@@ -97,11 +97,11 @@ object NitroArkNative {
   external fun offboardAll(destinationAddress: String): RoundStatusResult
   external fun peekKeyPair(index: Int): KeyPairResultAndroid
   external fun verifyMessage(message: String, signature: String, publicKey: String): Boolean
-  fun bolt11Invoice(amountMsat: Long, description: String? = null, token: String? = null): Bolt11InvoiceResult =
-      bolt11InvoiceNative(amountMsat, description, token)
+  fun bolt11Invoice(amountSat: Long, description: String? = null, token: String? = null): Bolt11InvoiceResult =
+      bolt11InvoiceNative(amountSat, description, token)
 
   private external fun bolt11InvoiceNative(
-      amountMsat: Long,
+      amountSat: Long,
       description: String?,
       token: String?
   ): Bolt11InvoiceResult

@@ -148,7 +148,7 @@ impl ConfigOpts {
             cfg.bitcoind_user = if v.is_empty() { None } else { Some(v) };
         }
         if let Some(v) = self.bitcoind_pass {
-            cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v) };
+            cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v.into()) };
         }
         cfg.htlc_recv_claim_delta = self.htlc_recv_claim_delta;
         cfg.vtxo_exit_margin = self.vtxo_exit_margin;

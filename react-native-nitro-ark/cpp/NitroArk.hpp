@@ -680,6 +680,49 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<ExitFeeEstimate>>
+  estimateEmergencyExitFee(const std::vector<std::string>& vtxoIds,
+                           std::optional<double> feeRateSatPerKvb,
+                           const std::optional<std::string>& destinationAddress) override {
+    return Promise<ExitFeeEstimate>::async([vtxoIds, feeRateSatPerKvb, destinationAddress]() {
+      try {
+        rust::Vec<rust::String> rust_vtxo_ids;
+        rust_vtxo_ids.reserve(vtxoIds.size());
+        for (const auto& vtxoId : vtxoIds) {
+          rust_vtxo_ids.push_back(vtxoId);
+        }
+
+        uint64_t feeRateVal;
+        const uint64_t* feeRatePtr = nullptr;
+        if (feeRateSatPerKvb.has_value()) {
+          feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
+          feeRatePtr = &feeRateVal;
+        }
+
+        rust::String destinationAddressVal;
+        const rust::String* destinationAddressPtr = nullptr;
+        if (destinationAddress.has_value()) {
+          destinationAddressVal = rust::String(destinationAddress.value());
+          destinationAddressPtr = &destinationAddressVal;
+        }
+
+        bark_cxx::ExitFeeEstimate rust_result = bark_cxx::estimate_emergency_exit_fee(
+            std::move(rust_vtxo_ids), feeRatePtr, destinationAddressPtr);
+
+        ExitFeeEstimate result;
+        result.exit_broadcast_fee_sat = static_cast<double>(rust_result.exit_broadcast_fee_sat);
+        result.claim_fee_sat = static_cast<double>(rust_result.claim_fee_sat);
+        result.total_fee_sat = static_cast<double>(rust_result.total_fee_sat);
+        result.fee_rate_sat_per_vb = static_cast<double>(rust_result.fee_rate_sat_per_vb);
+        result.txs_to_broadcast = static_cast<double>(rust_result.txs_to_broadcast);
+        result.fundable = rust_result.fundable;
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() override {
     return Promise<std::vector<ExitVtxoResult>>::async([]() {
       try {
@@ -862,7 +905,7 @@ public:
         info.round_interval = static_cast<double>(rust_info.round_interval);
         info.nb_round_nonces = static_cast<double>(rust_info.nb_round_nonces);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
-        info.vtxo_expiry_delta = static_cast<double>(rust_info.vtxo_expiry_delta);
+        info.vtxo_lifetime = static_cast<double>(rust_info.vtxo_lifetime);
         info.htlc_send_expiry_delta = static_cast<double>(rust_info.htlc_send_expiry_delta);
         info.max_vtxo_amount = static_cast<double>(rust_info.max_vtxo_amount);
         info.required_board_confirmations = static_cast<double>(rust_info.required_board_confirmations);
@@ -1509,10 +1552,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat,
+  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountSat,
                                                         const std::optional<std::string>& description,
                                                         const std::optional<std::string>& token) override {
-    return Promise<Bolt11Invoice>::async([amountMsat, description, token]() {
+    return Promise<Bolt11Invoice>::async([amountSat, description, token]() {
       try {
         std::unique_ptr<rust::String> description_rs;
         std::unique_ptr<rust::String> token_rs;
@@ -1523,7 +1566,7 @@ public:
           token_rs = std::make_unique<rust::String>(token.value());
         }
         const auto invoice_rs = bark_cxx::bolt11_invoice(
-            static_cast<uint64_t>(amountMsat), description_rs.get(), token_rs.get());
+            static_cast<uint64_t>(amountSat), description_rs.get(), token_rs.get());
         return Bolt11Invoice(std::string(invoice_rs.bolt11_invoice.data(), invoice_rs.bolt11_invoice.length()),
                              std::string(invoice_rs.payment_secret.data(), invoice_rs.payment_secret.length()),
                              std::string(invoice_rs.payment_hash.data(), invoice_rs.payment_hash.length()));

@@ -25,6 +25,8 @@ namespace margelo::nitro::nitroark { class HybridWalletStateChangeSubscriptionSp
 namespace margelo::nitro::nitroark { struct WalletStateChangeEvent; }
 // Forward declaration of `ExitProgressStatusResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ExitProgressStatusResult; }
+// Forward declaration of `ExitFeeEstimate` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ExitFeeEstimate; }
 // Forward declaration of `ExitVtxoResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ExitVtxoResult; }
 // Forward declaration of `ExitStatusResult` to properly resolve imports.
@@ -88,6 +90,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <functional>
 #include <vector>
 #include "ExitProgressStatusResult.hpp"
+#include "ExitFeeEstimate.hpp"
 #include "ExitVtxoResult.hpp"
 #include "ExitStatusResult.hpp"
 #include "PendingRoundStatus.hpp"
@@ -165,6 +168,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> cancelExit(const std::string& vtxoId) = 0;
       virtual std::shared_ptr<Promise<void>> syncExit() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>> progressExits(std::optional<double> feeRateSatPerKvb) = 0;
+      virtual std::shared_ptr<Promise<ExitFeeEstimate>> estimateEmergencyExitFee(const std::vector<std::string>& vtxoIds, std::optional<double> feeRateSatPerKvb, const std::optional<std::string>& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> listClaimable() = 0;
       virtual std::shared_ptr<Promise<std::optional<ExitStatusResult>>> getExitStatus(const std::string& vtxoId, std::optional<bool> includeHistory, std::optional<bool> includeTransactions) = 0;
@@ -226,7 +230,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat, const std::optional<std::string>& description, const std::optional<std::string>& token) = 0;
+      virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountSat, const std::optional<std::string>& description, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<LightningReceive>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<LightningReceive>> tryClaimLightningReceive(const std::string& paymentHash, bool wait) = 0;

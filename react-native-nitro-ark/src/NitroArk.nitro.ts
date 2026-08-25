@@ -36,7 +36,7 @@ export interface BarkArkInfo {
   round_interval: number; // u64
   nb_round_nonces: number; // u16
   vtxo_exit_delta: number; // u16
-  vtxo_expiry_delta: number; // u16
+  vtxo_lifetime: number; // u16
   htlc_send_expiry_delta: number; // u16
   max_vtxo_amount: number; // u64
   required_board_confirmations: number; // u8
@@ -82,6 +82,15 @@ export interface BarkFeeEstimate {
   fee_sat: number; // u64
   net_amount_sat: number; // u64
   vtxos_spent: string[];
+}
+
+export interface ExitFeeEstimate {
+  exit_broadcast_fee_sat: number; // u64
+  claim_fee_sat: number; // u64
+  total_fee_sat: number; // u64
+  fee_rate_sat_per_vb: number; // u64
+  txs_to_broadcast: number; // u64
+  fundable: boolean;
 }
 
 export interface BarkFeeRates {
@@ -367,6 +376,11 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   cancelExit(vtxoId: string): Promise<void>;
   syncExit(): Promise<void>;
   progressExits(feeRateSatPerKvb?: number): Promise<ExitProgressStatusResult[]>;
+  estimateEmergencyExitFee(
+    vtxoIds: string[],
+    feeRateSatPerKvb?: number,
+    destinationAddress?: string
+  ): Promise<ExitFeeEstimate>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;
   listClaimable(): Promise<ExitVtxoResult[]>;
   getExitStatus(
@@ -510,7 +524,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // --- Lightning Invoicing ---
   bolt11Invoice(
-    amountMsat: number,
+    amountSat: number,
     description?: string,
     token?: string
   ): Promise<Bolt11Invoice>;

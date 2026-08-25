@@ -973,6 +973,7 @@ namespace bark_cxx {
   struct LightningPaymentResult;
   struct ArkoorPaymentResult;
   struct BarkFeeEstimate;
+  struct ExitFeeEstimate;
   struct BarkFeeRates;
   struct OnchainPaymentResult;
   struct OnchainTransactionInfo;
@@ -1096,6 +1097,20 @@ struct BarkFeeEstimate final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ExitFeeEstimate
+#define CXXBRIDGE1_STRUCT_bark_cxx$ExitFeeEstimate
+struct ExitFeeEstimate final {
+  ::std::uint64_t exit_broadcast_fee_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t claim_fee_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t txs_to_broadcast CXX_DEFAULT_VALUE(0);
+  bool fundable CXX_DEFAULT_VALUE(false);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ExitFeeEstimate
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeRates
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeRates
@@ -1269,7 +1284,7 @@ struct CxxArkInfo final {
   ::std::uint64_t round_interval CXX_DEFAULT_VALUE(0);
   ::std::uint16_t nb_round_nonces CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
-  ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_lifetime CXX_DEFAULT_VALUE(0);
   ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
   ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
@@ -1636,7 +1651,7 @@ void unlock_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
 ::std::uint32_t const *get_next_required_refresh_blockheight();
 
-::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat, ::rust::String const *description, ::rust::String const *token);
+::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_sat, ::rust::String const *description, ::rust::String const *token);
 
 ::bark_cxx::LightningReceive lightning_receive_status(::rust::String payment_hash);
 
@@ -1683,6 +1698,8 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::LightningPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment, bool wait);
 
 ::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
+
+::bark_cxx::ExitFeeEstimate estimate_emergency_exit_fee(::rust::Vec<::rust::String> vtxo_ids, ::std::uint64_t const *fee_rate_sat_per_kvb, ::rust::String const *destination_address);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
 
