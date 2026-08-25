@@ -146,9 +146,9 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun bolt11Invoice(amountMsat: Double, description: String?, token: String?, promise: Promise) {
+  fun bolt11Invoice(amountSat: Double, description: String?, token: String?, promise: Promise) {
     try {
-      val result = NitroArkNative.bolt11Invoice(amountMsat.toLong(), description, token)
+      val result = NitroArkNative.bolt11Invoice(amountSat.toLong(), description, token)
       promise.resolve(bolt11InvoiceToMap(result))
     } catch (e: Exception) {
       promise.reject("ERR_BOLT11_INVOICE_JNI", e)

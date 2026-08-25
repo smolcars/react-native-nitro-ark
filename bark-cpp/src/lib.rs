@@ -599,7 +599,7 @@ pub async fn verify_message(
 }
 
 pub async fn bolt11_invoice(
-    amount: u64,
+    amount_sat: u64,
     description: Option<String>,
     token: Option<String>,
 ) -> anyhow::Result<Bolt11Invoice> {
@@ -608,7 +608,7 @@ pub async fn bolt11_invoice(
         .with_context_async(|ctx| async {
             let invoice = ctx
                 .wallet
-                .bolt11_invoice(Amount::from_sat(amount), description, token)
+                .bolt11_invoice(Amount::from_sat(amount_sat), description, token)
                 .await
                 .context("Failed to create bolt11_invoice")?;
             Ok(invoice)

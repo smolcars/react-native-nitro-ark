@@ -354,7 +354,7 @@ JNIEXPORT jboolean JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_verify
 
 JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11InvoiceNative(JNIEnv* env,
                                                                                              jobject /*thiz*/,
-                                                                                             jlong jAmountMsat,
+                                                                                             jlong jAmountSat,
                                                                                              jstring jDescription,
                                                                                              jstring jToken) {
   try {
@@ -367,7 +367,7 @@ JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11I
       token = std::make_unique<rust::String>(JStringToString(env, jToken));
     }
     const auto invoice =
-        bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountMsat), description.get(), token.get());
+        bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountSat), description.get(), token.get());
     return MakeBolt11Invoice(env, invoice);
   } catch (const std::exception& e) {
     HandleException(env, e);

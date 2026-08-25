@@ -89,6 +89,15 @@ pub(crate) mod ffi {
         vtxos_spent: Vec<String>,
     }
 
+    pub struct ExitFeeEstimate {
+        exit_broadcast_fee_sat: u64,
+        claim_fee_sat: u64,
+        total_fee_sat: u64,
+        fee_rate_sat_per_vb: u64,
+        txs_to_broadcast: u64,
+        fundable: bool,
+    }
+
     pub struct BarkFeeRates {
         fast: f64,
         regular: f64,
@@ -199,7 +208,7 @@ pub(crate) mod ffi {
         round_interval: u64,
         nb_round_nonces: u16,
         vtxo_exit_delta: u16,
-        vtxo_expiry_delta: u16,
+        vtxo_lifetime: u16,
         htlc_send_expiry_delta: u16,
         max_vtxo_amount: u64,
         required_board_confirmations: u8,
@@ -425,7 +434,7 @@ pub(crate) mod ffi {
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         unsafe fn bolt11_invoice(
-            amount_msat: u64,
+            amount_sat: u64,
             description: *const String,
             token: *const String,
         ) -> Result<Bolt11Invoice>;
@@ -475,6 +484,11 @@ pub(crate) mod ffi {
         unsafe fn progress_exits(
             fee_rate_sat_per_kvb: *const u64,
         ) -> Result<Vec<ExitProgressStatusResult>>;
+        unsafe fn estimate_emergency_exit_fee(
+            vtxo_ids: Vec<String>,
+            fee_rate_sat_per_kvb: *const u64,
+            destination_address: *const String,
+        ) -> Result<ExitFeeEstimate>;
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
         fn list_claimable() -> Result<Vec<ExitVtxoResult>>;
         fn get_exit_status(
@@ -657,7 +671,7 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
             round_interval: info.round_interval.as_secs(),
             nb_round_nonces: info.nb_round_nonces as u16,
             vtxo_exit_delta: info.vtxo_exit_delta,
-            vtxo_expiry_delta: info.vtxo_expiry_delta,
+            vtxo_lifetime: info.vtxo_lifetime,
             htlc_send_expiry_delta: info.htlc_send_expiry_delta,
             max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
             required_board_confirmations: info.required_board_confirmations as u8,
@@ -918,7 +932,7 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
 }
 
 pub(crate) fn bolt11_invoice(
-    amount_msat: u64,
+    amount_sat: u64,
     description: *const String,
     token: *const String,
 ) -> anyhow::Result<ffi::Bolt11Invoice> {
@@ -926,7 +940,7 @@ pub(crate) fn bolt11_invoice(
         let description_opt = unsafe { description.as_ref().map(|s| s.clone()) };
         let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
         let invoice = crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(
-            amount_msat,
+            amount_sat,
             description_opt,
             token_opt,
         ))?;
@@ -1505,6 +1519,19 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
     }
 }
 
+pub(crate) fn exit_fee_estimate_to_ffi(
+    estimate: &bark::exit::ExitFeeEstimate,
+) -> ffi::ExitFeeEstimate {
+    ffi::ExitFeeEstimate {
+        exit_broadcast_fee_sat: estimate.exit_broadcast_fee.to_sat(),
+        claim_fee_sat: estimate.claim_fee.to_sat(),
+        total_fee_sat: estimate.total().to_sat(),
+        fee_rate_sat_per_vb: estimate.fee_rate.to_sat_per_vb_ceil(),
+        txs_to_broadcast: estimate.txs_to_broadcast as u64,
+        fundable: estimate.fundable,
+    }
+}
+
 pub(crate) fn progress_exits(
     fee_rate_sat_per_kvb: *const u64,
 ) -> anyhow::Result<Vec<ffi::ExitProgressStatusResult>> {
@@ -1530,6 +1557,35 @@ pub(crate) fn progress_exits(
                 })
             })
             .collect()
+    })
+}
+
+pub(crate) fn estimate_emergency_exit_fee(
+    vtxo_ids: Vec<String>,
+    fee_rate_sat_per_kvb: *const u64,
+    destination_address: *const String,
+) -> anyhow::Result<ffi::ExitFeeEstimate> {
+    ffi_boundary("estimate_emergency_exit_fee", || {
+        let fee_rate = unsafe {
+            fee_rate_sat_per_kvb
+                .as_ref()
+                .copied()
+                .map(FeeRate::from_sat_per_kvb_ceil)
+        };
+        let destination = unsafe { destination_address.as_ref() }
+            .map(|address| {
+                Address::<address::NetworkUnchecked>::from_str(address)
+                    .with_context(|| format!("Invalid destination address format: '{address}'"))
+            })
+            .transpose()?;
+
+        let estimate = TOKIO_RUNTIME.block_on(crate::estimate_emergency_exit_fee(
+            vtxo_ids,
+            fee_rate,
+            destination,
+        ))?;
+
+        Ok(exit_fee_estimate_to_ffi(&estimate))
     })
 }
 

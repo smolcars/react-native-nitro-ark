@@ -45,7 +45,7 @@ namespace margelo::nitro::nitroark {
     double round_interval     SWIFT_PRIVATE;
     double nb_round_nonces     SWIFT_PRIVATE;
     double vtxo_exit_delta     SWIFT_PRIVATE;
-    double vtxo_expiry_delta     SWIFT_PRIVATE;
+    double vtxo_lifetime     SWIFT_PRIVATE;
     double htlc_send_expiry_delta     SWIFT_PRIVATE;
     double max_vtxo_amount     SWIFT_PRIVATE;
     double required_board_confirmations     SWIFT_PRIVATE;
@@ -54,7 +54,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkArkInfo() = default;
-    explicit BarkArkInfo(std::string network, std::string server_pubkey, std::string mailbox_pubkey, double round_interval, double nb_round_nonces, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_send_expiry_delta, double max_vtxo_amount, double required_board_confirmations, double min_board_amount, bool ln_receive_anti_dos_required): network(network), server_pubkey(server_pubkey), mailbox_pubkey(mailbox_pubkey), round_interval(round_interval), nb_round_nonces(nb_round_nonces), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_send_expiry_delta(htlc_send_expiry_delta), max_vtxo_amount(max_vtxo_amount), required_board_confirmations(required_board_confirmations), min_board_amount(min_board_amount), ln_receive_anti_dos_required(ln_receive_anti_dos_required) {}
+    explicit BarkArkInfo(std::string network, std::string server_pubkey, std::string mailbox_pubkey, double round_interval, double nb_round_nonces, double vtxo_exit_delta, double vtxo_lifetime, double htlc_send_expiry_delta, double max_vtxo_amount, double required_board_confirmations, double min_board_amount, bool ln_receive_anti_dos_required): network(network), server_pubkey(server_pubkey), mailbox_pubkey(mailbox_pubkey), round_interval(round_interval), nb_round_nonces(nb_round_nonces), vtxo_exit_delta(vtxo_exit_delta), vtxo_lifetime(vtxo_lifetime), htlc_send_expiry_delta(htlc_send_expiry_delta), max_vtxo_amount(max_vtxo_amount), required_board_confirmations(required_board_confirmations), min_board_amount(min_board_amount), ln_receive_anti_dos_required(ln_receive_anti_dos_required) {}
 
   public:
     friend bool operator==(const BarkArkInfo& lhs, const BarkArkInfo& rhs) = default;
@@ -76,7 +76,7 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "round_interval"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nb_round_nonces"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_delta"))),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_expiry_delta"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_lifetime"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_send_expiry_delta"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "max_vtxo_amount"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "required_board_confirmations"))),
@@ -92,7 +92,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "round_interval"), JSIConverter<double>::toJSI(runtime, arg.round_interval));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "nb_round_nonces"), JSIConverter<double>::toJSI(runtime, arg.nb_round_nonces));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_delta"), JSIConverter<double>::toJSI(runtime, arg.vtxo_exit_delta));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_expiry_delta"), JSIConverter<double>::toJSI(runtime, arg.vtxo_expiry_delta));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_lifetime"), JSIConverter<double>::toJSI(runtime, arg.vtxo_lifetime));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "htlc_send_expiry_delta"), JSIConverter<double>::toJSI(runtime, arg.htlc_send_expiry_delta));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "max_vtxo_amount"), JSIConverter<double>::toJSI(runtime, arg.max_vtxo_amount));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "required_board_confirmations"), JSIConverter<double>::toJSI(runtime, arg.required_board_confirmations));
@@ -114,7 +114,7 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "round_interval")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nb_round_nonces")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_delta")))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_expiry_delta")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_lifetime")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_send_expiry_delta")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "max_vtxo_amount")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "required_board_confirmations")))) return false;

@@ -1,5 +1,6 @@
 use anyhow::{Context, bail};
 use bark::vtxo::{FilterVtxos, VtxoFilter};
+use bdk_wallet::bitcoin::address::NetworkUnchecked;
 use bdk_wallet::bitcoin::{Address, FeeRate, Psbt};
 use std::str::FromStr;
 
@@ -116,6 +117,39 @@ pub async fn progress_exits(
                 .await
                 .context("Failed to progress exits")?;
             Ok(result.unwrap_or_default())
+        })
+        .await
+}
+
+pub async fn estimate_emergency_exit_fee(
+    vtxo_ids: Vec<String>,
+    fee_rate: Option<FeeRate>,
+    destination: Option<Address<NetworkUnchecked>>,
+) -> anyhow::Result<bark::exit::ExitFeeEstimate> {
+    let vtxo_ids = vtxo_ids
+        .into_iter()
+        .map(|id| {
+            bark::ark::VtxoId::from_str(&id).with_context(|| format!("Invalid VTXO ID: {id}"))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async move {
+            let destination = match destination {
+                Some(address) => {
+                    let network = ctx.wallet.network().await?;
+                    Some(address.require_network(network).with_context(|| {
+                        format!("Address is not valid for configured network {network}")
+                    })?)
+                }
+                None => None,
+            };
+
+            ctx.wallet
+                .estimate_emergency_exit_fee(&vtxo_ids, fee_rate, destination)
+                .await
+                .context("Failed to estimate emergency exit fee")
         })
         .await
 }
