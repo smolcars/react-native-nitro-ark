@@ -782,7 +782,9 @@ pub async fn unlock_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<()> {
     manager
         .with_context_async(|ctx| async move {
             ctx.wallet
-                .unlock_vtxos(vtxo_ids)
+                // The public API only releases ownerless locks. Locks held by
+                // wallet subsystems must be released by their matching owner.
+                .unlock_vtxos(vtxo_ids, None)
                 .await
                 .context("Failed to unlock VTXOs")
         })
