@@ -68,10 +68,12 @@ services:
         condition: service_healthy
 
   captaind:
-    image: niteshbalusu/captaind:nightly-2026-08-05
+    image: niteshbalusu/captaind:nightly-2026-09-04
     volumes:
       - captaind:/data/captaind
       - ./captaind.toml:/data/captaind/captaind.toml
+      - watchmand:/data/watchmand
+      - ./watchmand.toml:/data/watchmand/watchmand.toml
       - postgres:/var/lib/postgresql/data
       - cln:/data/cln
     ports:
@@ -87,7 +89,7 @@ services:
         condition: service_healthy
 
   bark:
-    image: niteshbalusu/bark:nightly-2026-08-05
+    image: niteshbalusu/bark:nightly-2026-09-04
     volumes:
       - bark:/root
     depends_on:
@@ -118,6 +120,7 @@ services:
 
 volumes:
   captaind:
+  watchmand:
   bark:
   cln:
   bitcoind:

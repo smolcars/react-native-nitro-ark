@@ -13,6 +13,7 @@ export interface BarkConfigOpts {
   bitcoind_cookie?: string;
   bitcoind_user?: string;
   bitcoind_pass?: string;
+  /** Number of blocks before expiry to refresh VTXOs (0–65535). */
   vtxo_refresh_expiry_threshold: number;
   fallback_fee_rate: number;
   htlc_recv_claim_delta: number;

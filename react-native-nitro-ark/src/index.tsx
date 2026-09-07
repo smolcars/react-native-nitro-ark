@@ -863,8 +863,9 @@ export function dangerousDropVtxo(vtxoId: string): Promise<void> {
 }
 
 /**
- * Unlocks locked VTXOs and returns them to the spendable state.
- * Already-spendable VTXOs are left unchanged. Spent, unknown, or malformed IDs reject the batch.
+ * Unlocks ownerless VTXO locks and returns those VTXOs to the spendable state.
+ * VTXOs held by wallet subsystems or without an ownerless lock are left unchanged.
+ * Malformed IDs reject the batch before any VTXOs are unlocked.
  * @param vtxoIds VTXO IDs to unlock.
  */
 export function unlockVtxos(vtxoIds: string[]): Promise<void> {

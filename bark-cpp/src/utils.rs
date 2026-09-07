@@ -153,7 +153,10 @@ impl ConfigOpts {
         cfg.htlc_recv_claim_delta = self.htlc_recv_claim_delta;
         cfg.vtxo_exit_margin = self.vtxo_exit_margin;
         cfg.round_tx_required_confirmations = self.round_tx_required_confirmations;
-        cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
+        cfg.vtxo_refresh_expiry_threshold = self
+            .vtxo_refresh_expiry_threshold
+            .try_into()
+            .context("vtxo_refresh_expiry_threshold must be at most 65535 blocks")?;
         cfg.fallback_fee_rate = self.fallback_fee_rate.map(FeeRate::from_sat_per_kvb_ceil);
 
         if cfg.esplora_address.is_none() && cfg.bitcoind_address.is_none() {

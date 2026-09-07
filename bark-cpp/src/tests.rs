@@ -236,6 +236,33 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
 }
 
 #[test]
+fn merge_config_opts_preserves_valid_refresh_thresholds() {
+    for threshold in [0, 144, u16::MAX as u32] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.vtxo_refresh_expiry_threshold = threshold;
+        let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let (config, _) = crate::utils::merge_config_opts(create_opts).unwrap();
+
+        assert_eq!(u32::from(config.vtxo_refresh_expiry_threshold), threshold);
+    }
+}
+
+#[test]
+fn merge_config_opts_rejects_overflowing_refresh_thresholds() {
+    for threshold in [u16::MAX as u32 + 1, u32::MAX] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.vtxo_refresh_expiry_threshold = threshold;
+        let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let error = crate::utils::merge_config_opts(create_opts).unwrap_err();
+
+        assert!(
+            crate::utils::format_error_chain(&error)
+                .contains("vtxo_refresh_expiry_threshold must be at most 65535 blocks")
+        );
+    }
+}
+
+#[test]
 fn ffi_config_to_config_maps_empty_user_agent_to_none() {
     let (_temp_dir, opts) = setup_test_wallet_opts();
     let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();

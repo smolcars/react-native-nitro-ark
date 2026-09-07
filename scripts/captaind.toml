@@ -1,3 +1,4 @@
+
 data_dir = "/data/captaind"
 # The bitcoin network this server runs on
 network = "regtest"
@@ -37,6 +38,11 @@ rpc_rich_errors = true
 txindex_check_interval = "30s"
 # The interval at which the SyncManager polls for new blocks
 sync_manager_block_poll_interval = "100ms"
+
+# The number of blocks within which a tx broadcast via the TxNursery is
+# expected to confirm; when the target passes the operator is warned
+# on every new block
+nursery_confirm_target_blocks = 6
 
 # The minimum balance to maintain for the forfeit watcher, if running
 watchman_min_balance = "1 btc"
@@ -90,6 +96,10 @@ round_forfeit_nonces_timeout = "30s"
 
 # The time after which we drop offboard sessions and release locked VTXOs
 offboard_session_timeout = "30s"
+
+# How often we check pending offboards: expiring timed-out sessions and
+# retrying the commit and broadcast of signed offboard txs
+offboard_check_interval = "1s"
 
 # The time in which a fee rate is considered valid for performing an offboard.
 #
@@ -155,6 +165,10 @@ receive_htlc_forward_timeout = "3min"
 # when preparing a lightning claim.
 ln_receive_anti_dos_required = false
 
+# Maximum amount for which the server will issue lightning receive
+# invoices.
+#max_ln_receive_amount = "100000 sat"
+
 # The fraction of the fee we charge that we allow CLN to claim at most
 #
 # E.g. if a user wants to pay 1000 sat, we charge him 0.4%, so 4 sats,
@@ -166,11 +180,17 @@ ln_max_fee_ppm = 900000
 #############
 [watchman]
 enabled = true
-process_interval = "60s"
+# How often to react to on-chain exit activity: progressing exit chains and
+# claiming VTXOs before a counterparty's timelock matures.
+reaction_interval = "10m"
+# How often to sweep VTXOs only the watchman can spend. Sweeps have no
+# deadline, so this can be much longer than reaction_interval.
+sweep_interval = "2h"
 progress_grace_period = 2
 claim_chunksize = 20
 incremental_relay_fee = "100 sat/kvb"
 min_cpfp_amount = "10000 sat"
+
 
 ########
 # FEES #
@@ -223,6 +243,7 @@ ppm_expiry_table = [
   { expiry_blocks_threshold = 2161, ppm = 8000 }, # 2160 < exp: 8,000 ppm (0.8%)
 ]
 
+
 #############
 # VTXO POOL #
 #############
@@ -241,7 +262,7 @@ vtxo_lifetime = 432
 # Time in blocks before the expiry to no longer use VTXOs
 vtxo_pre_expiry = 144
 # Maximum depth for pool VTXOs
-max_vtxo_arkoor_depth = 3
+max_vtxo_exit_depth = 3
 # The interval at which to check if an issuance should be made
 issue_interval = "1m"
 
