@@ -57,7 +57,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/smolcars/react-native-nitro-ark"
+    "url": "git+https://github.com/smolcars/react-native-nitro-ark.git"
   },
   "author": "Nitesh Balusu <niteshbalusu@icloud.com> (https://github.com/niteshbalusu11)",
   "license": "MIT",
