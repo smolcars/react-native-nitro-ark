@@ -14,6 +14,10 @@ npm install react-native-nitro-ark react-native-nitro-modules
 
 - Please check the [`src/index.tsx`](./src/index.tsx) file for all methods and type definitions.
 
+### VTXO recovery key gap
+
+Set `config.vtxo_key_gap_limit` when creating or opening a wallet to control how many consecutive unused key indices recovery and VTXO imports scan. It defaults to 250 when omitted. Increase it for wallets that issued many addresses without receiving into them. Values must be integers from 0 to 100,000; larger scans take more work.
+
 ### Wallet snapshots
 
 `createWalletSnapshot` uses SQLite Online Backup to create a consistent database image while the wallet remains loaded. The destination's parent directory must exist, and an existing destination is never overwritten.

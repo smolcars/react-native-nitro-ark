@@ -48,6 +48,7 @@ namespace margelo::nitro::nitroark {
     std::optional<std::string> bitcoind_user     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind_pass     SWIFT_PRIVATE;
     double vtxo_refresh_expiry_threshold     SWIFT_PRIVATE;
+    std::optional<double> vtxo_key_gap_limit     SWIFT_PRIVATE;
     double fallback_fee_rate     SWIFT_PRIVATE;
     double htlc_recv_claim_delta     SWIFT_PRIVATE;
     double vtxo_exit_margin     SWIFT_PRIVATE;
@@ -55,7 +56,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkConfigOpts() = default;
-    explicit BarkConfigOpts(std::string ark, std::optional<std::string> user_agent, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, double vtxo_refresh_expiry_threshold, double fallback_fee_rate, double htlc_recv_claim_delta, double vtxo_exit_margin, double round_tx_required_confirmations): ark(ark), user_agent(user_agent), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), fallback_fee_rate(fallback_fee_rate), htlc_recv_claim_delta(htlc_recv_claim_delta), vtxo_exit_margin(vtxo_exit_margin), round_tx_required_confirmations(round_tx_required_confirmations) {}
+    explicit BarkConfigOpts(std::string ark, std::optional<std::string> user_agent, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, double vtxo_refresh_expiry_threshold, std::optional<double> vtxo_key_gap_limit, double fallback_fee_rate, double htlc_recv_claim_delta, double vtxo_exit_margin, double round_tx_required_confirmations): ark(ark), user_agent(user_agent), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), vtxo_key_gap_limit(vtxo_key_gap_limit), fallback_fee_rate(fallback_fee_rate), htlc_recv_claim_delta(htlc_recv_claim_delta), vtxo_exit_margin(vtxo_exit_margin), round_tx_required_confirmations(round_tx_required_confirmations) {}
 
   public:
     friend bool operator==(const BarkConfigOpts& lhs, const BarkConfigOpts& rhs) = default;
@@ -79,6 +80,7 @@ namespace margelo::nitro {
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_key_gap_limit"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin"))),
@@ -95,6 +97,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_user));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_pass));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold"), JSIConverter<double>::toJSI(runtime, arg.vtxo_refresh_expiry_threshold));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_key_gap_limit"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.vtxo_key_gap_limit));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate"), JSIConverter<double>::toJSI(runtime, arg.fallback_fee_rate));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta"), JSIConverter<double>::toJSI(runtime, arg.htlc_recv_claim_delta));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin"), JSIConverter<double>::toJSI(runtime, arg.vtxo_exit_margin));
@@ -117,6 +120,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_user")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bitcoind_pass")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_refresh_expiry_threshold")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_key_gap_limit")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fallback_fee_rate")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "htlc_recv_claim_delta")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vtxo_exit_margin")))) return false;

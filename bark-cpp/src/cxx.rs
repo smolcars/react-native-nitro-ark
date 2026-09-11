@@ -225,6 +225,7 @@ pub(crate) mod ffi {
         bitcoind_user: String,
         bitcoind_pass: String,
         vtxo_refresh_expiry_threshold: u32,
+        vtxo_key_gap_limit: u32,
         fallback_fee_rate: u64,
         htlc_recv_claim_delta: u16,
         vtxo_exit_margin: u16,

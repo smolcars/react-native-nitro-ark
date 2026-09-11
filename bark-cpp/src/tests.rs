@@ -217,6 +217,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         bitcoind_user: "".to_string(),
         bitcoind_pass: "".to_string(),
         vtxo_refresh_expiry_threshold: 3600,
+        vtxo_key_gap_limit: 250,
         fallback_fee_rate: 1,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
@@ -233,6 +234,36 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
     };
 
     (temp_dir, create_opts)
+}
+
+#[test]
+fn merge_config_opts_preserves_vtxo_key_gap_limits() {
+    for gap_limit in [
+        0,
+        bark::DEFAULT_VTXO_KEY_GAP_LIMIT,
+        10_000,
+        bark::MAX_VTXO_KEY_GAP_LIMIT,
+    ] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.vtxo_key_gap_limit = gap_limit;
+        let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let (config, _) = crate::utils::merge_config_opts(create_opts).unwrap();
+        assert_eq!(config.vtxo_key_gap_limit, gap_limit);
+    }
+}
+
+#[test]
+fn merge_config_opts_rejects_excessive_vtxo_key_gap_limits() {
+    for gap_limit in [bark::MAX_VTXO_KEY_GAP_LIMIT + 1, u32::MAX] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.vtxo_key_gap_limit = gap_limit;
+        let create_opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let error = crate::utils::merge_config_opts(create_opts).unwrap_err();
+        assert!(
+            crate::utils::format_error_chain(&error)
+                .contains("vtxo_key_gap_limit must be at most 100000")
+        );
+    }
 }
 
 #[test]
