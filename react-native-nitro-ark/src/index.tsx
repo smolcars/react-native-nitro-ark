@@ -845,6 +845,8 @@ export function decodeVtxoHex(vtxoHex: string): Promise<BarkVtxo> {
 
 /**
  * Imports a serialized VTXO hex string into the loaded wallet.
+ * Uses the configured VTXO key gap limit and checks the server's spend state.
+ * Already-spent VTXOs are imported as spent rather than spendable.
  * @param vtxoHex Hex-encoded serialized VTXO.
  * @returns A promise resolving the imported wallet VTXO.
  */

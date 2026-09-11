@@ -382,6 +382,7 @@ private:
   // Helper function to create ConfigOpts from BarkConfigOpts
   static bark_cxx::ConfigOpts createConfigOpts(const std::optional<BarkConfigOpts>& config) {
     bark_cxx::ConfigOpts config_opts;
+    config_opts.vtxo_key_gap_limit = 250;
     if (config.has_value()) {
       config_opts.ark = config->ark;
       config_opts.user_agent = config->user_agent.value_or("");
@@ -392,6 +393,12 @@ private:
       config_opts.bitcoind_pass = config->bitcoind_pass.value_or("");
       config_opts.vtxo_refresh_expiry_threshold =
           static_cast<uint32_t>(config->vtxo_refresh_expiry_threshold);
+      const double gap_limit = config->vtxo_key_gap_limit.value_or(250);
+      if (!std::isfinite(gap_limit) || std::floor(gap_limit) != gap_limit ||
+          gap_limit < 0 || gap_limit > 100000) {
+        throw std::invalid_argument("vtxo_key_gap_limit must be an integer between 0 and 100000");
+      }
+      config_opts.vtxo_key_gap_limit = static_cast<uint32_t>(gap_limit);
       config_opts.fallback_fee_rate = static_cast<uint64_t>(config->fallback_fee_rate);
       config_opts.htlc_recv_claim_delta = static_cast<uint32_t>(config->htlc_recv_claim_delta);
       config_opts.vtxo_exit_margin = static_cast<uint32_t>(config->vtxo_exit_margin);

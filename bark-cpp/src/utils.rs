@@ -158,6 +158,10 @@ impl ConfigOpts {
             .try_into()
             .context("vtxo_refresh_expiry_threshold must be at most 65535 blocks")?;
         cfg.fallback_fee_rate = self.fallback_fee_rate.map(FeeRate::from_sat_per_kvb_ceil);
+        if self.vtxo_key_gap_limit > bark::MAX_VTXO_KEY_GAP_LIMIT {
+            bail!("vtxo_key_gap_limit must be at most 100000");
+        }
+        cfg.vtxo_key_gap_limit = self.vtxo_key_gap_limit;
 
         if cfg.esplora_address.is_none() && cfg.bitcoind_address.is_none() {
             bail!("Provide either an esplora or bitcoind url as chain source.");
@@ -200,6 +204,7 @@ pub struct ConfigOpts {
     pub bitcoind_user: Option<String>,
     pub bitcoind_pass: Option<String>,
     pub vtxo_refresh_expiry_threshold: u32,
+    pub vtxo_key_gap_limit: u32,
     pub fallback_fee_rate: Option<u64>,
     pub htlc_recv_claim_delta: u16,
     pub vtxo_exit_margin: u16,
@@ -350,6 +355,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         bitcoind_user: Some(opts.config.bitcoind_user),
         bitcoind_pass: Some(opts.config.bitcoind_pass),
         vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
+        vtxo_key_gap_limit: opts.config.vtxo_key_gap_limit,
         fallback_fee_rate: Some(opts.config.fallback_fee_rate),
         htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
         vtxo_exit_margin: opts.config.vtxo_exit_margin,

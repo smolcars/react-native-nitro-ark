@@ -15,6 +15,8 @@ export interface BarkConfigOpts {
   bitcoind_pass?: string;
   /** Number of blocks before expiry to refresh VTXOs (0–65535). */
   vtxo_refresh_expiry_threshold: number;
+  /** Unused VTXO key indices to scan during recovery. Default: 250; integer from 0 to 100000. */
+  vtxo_key_gap_limit?: number;
   fallback_fee_rate: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;

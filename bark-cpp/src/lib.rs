@@ -754,7 +754,7 @@ pub async fn import_vtxo(vtxo: Vtxo) -> anyhow::Result<WalletVtxo> {
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .import_vtxo(&vtxo)
+                .import_vtxo(&vtxo, bark::ImportVtxoArgs::default())
                 .await
                 .with_context(|| format!("Failed to import vtxo {vtxo_id}"))?;
             ctx.wallet
