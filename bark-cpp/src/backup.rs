@@ -127,7 +127,8 @@ fn validate_wallet_snapshot_blocking(
 
     validate_sqlite_integrity(snapshot)?;
     let source_schema_version = read_schema_version(snapshot)?;
-    let supported_schema_version = supported_schema_version()?;
+    let parent = snapshot.parent().unwrap_or_else(|| Path::new("."));
+    let supported_schema_version = supported_schema_version(parent)?;
     if source_schema_version > supported_schema_version {
         bail!(
             "Snapshot schema version {} is newer than supported version {}",
@@ -136,7 +137,6 @@ fn validate_wallet_snapshot_blocking(
         );
     }
 
-    let parent = snapshot.parent().unwrap_or_else(|| Path::new("."));
     let migrated = Builder::new()
         .prefix(".nitro-ark-validation-")
         .suffix(".sqlite")
@@ -314,11 +314,12 @@ fn validate_sqlite_integrity(path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn supported_schema_version() -> anyhow::Result<u32> {
+fn supported_schema_version(directory: &Path) -> anyhow::Result<u32> {
+    // Android's default temp directory may be inaccessible to the app.
     let scratch = Builder::new()
         .prefix("nitro-ark-schema-")
         .suffix(".sqlite")
-        .tempfile()
+        .tempfile_in(directory)
         .context("failed to create schema probe database")?;
     SqliteClient::open(scratch.path()).context("failed to initialize schema probe database")?;
     read_schema_version(scratch.path())
@@ -481,6 +482,53 @@ mod tests {
         )
         .unwrap();
         assert_eq!(validated.sha256, created.sha256);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn validates_snapshot_without_writable_system_temp() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::process::Command;
+
+        const SNAPSHOT_ENV: &str = "NITRO_ARK_TEST_SNAPSHOT";
+        const TEMP_ENV: &str = "NITRO_ARK_TEST_SYSTEM_TEMP";
+        if let Some(snapshot) = std::env::var_os(SNAPSHOT_ENV) {
+            let system_temp = PathBuf::from(std::env::var_os(TEMP_ENV).unwrap());
+            tempfile::env::override_temp_dir(&system_temp).unwrap();
+            let denied = Builder::new().tempfile().unwrap_err();
+            assert_eq!(denied.kind(), std::io::ErrorKind::PermissionDenied);
+
+            validate_wallet_snapshot_blocking(Path::new(&snapshot), None, None)
+                .unwrap_or_else(|error| panic!("snapshot validation failed: {error:#}"));
+            return;
+        }
+
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("db.sqlite");
+        let snapshot = dir.path().join("snapshot.sqlite");
+        create_test_wallet_db(&source);
+        create_wallet_snapshot_blocking(&source, &snapshot).unwrap();
+
+        let system_temp = dir.path().join("system-temp");
+        std::fs::create_dir(&system_temp).unwrap();
+        std::fs::set_permissions(&system_temp, std::fs::Permissions::from_mode(0o500)).unwrap();
+        // Isolate the global tempfile override from other tests.
+        let output = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "backup::tests::validates_snapshot_without_writable_system_temp",
+                "--nocapture",
+            ])
+            .env(SNAPSHOT_ENV, &snapshot)
+            .env(TEMP_ENV, &system_temp)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     #[test]
