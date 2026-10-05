@@ -90,19 +90,6 @@
               EOF
 
               chmod +x $out/bin/*
-
-              if [ -d "/Applications/Xcode-beta.app" ]; then
-                DEVELOPER_DIR="/Applications/Xcode-beta.app/Contents/Developer"
-              elif [ -d "/Applications/Xcode.app" ]; then
-                DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-              elif [ -d "/Applications/Xcode-16.4.0.app" ]; then
-                DEVELOPER_DIR="/Applications/Xcode-16.4.0.app/Contents/Developer"
-              else
-                echo "Error: Xcode not found"
-                exit 1
-              fi
-
-              echo "export DEVELOPER_DIR=\"$DEVELOPER_DIR\"" > $out/bin/env.sh
             '';
           };
 
@@ -166,12 +153,11 @@
 
             unset SDKROOT
 
+            # Resolve the current host selection on shell entry, ignoring stale overrides.
+            export DEVELOPER_DIR="$(/usr/bin/env -u DEVELOPER_DIR /usr/bin/xcode-select -p)"
+
             rustup target add aarch64-linux-android x86_64-linux-android i686-linux-android
             rustup target add aarch64-apple-ios aarch64-apple-darwin
-
-            if [ -f "${darwinDerivations.xcode-wrapper pkgs}/bin/env.sh" ]; then
-              source "${darwinDerivations.xcode-wrapper pkgs}/bin/env.sh"
-            fi
 
             export LD=/usr/bin/clang
             export LD_FOR_TARGET=/usr/bin/clang
