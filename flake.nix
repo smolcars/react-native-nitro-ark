@@ -35,7 +35,9 @@
         system:
         android-nixpkgs.sdk.${system} (
           sdkPkgs: with sdkPkgs; [
-            cmdline-tools-latest
+            # Version 23 bootstraps Android CLI over the network during SDK
+            # assembly, which fails in the sandboxed Linux CI build.
+            cmdline-tools-22-0
             build-tools-35-0-0
             build-tools-36-0-0
             build-tools-37-0-0
