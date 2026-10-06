@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import RNFSTurbo from 'react-native-fs-turbo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,6 +25,14 @@ import { COLORS, ARK_DATA_PATH, MNEMONIC_STORAGE_KEY } from './constants';
 import type { TabName } from './types';
 
 export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+function AppContent() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabName>('wallet');
 
