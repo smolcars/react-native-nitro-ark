@@ -9,7 +9,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:8.7.2"
+    classpath "com.android.tools.build:gradle:9.2.1"
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
@@ -24,13 +24,15 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 apply from: '../nitrogen/generated/android/NitroArk+autolinking.gradle'
 
-apply plugin: "com.facebook.react"
+// NitroArk uses Nitrogen bindings and does not need React Native codegen.
 
 def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroArk_" + name]).toInteger()
 }
 
 android {
+  ndkVersion getExtOrDefault("ndkVersion")
+
   namespace "com.margelo.nitro.nitroark"
 
   compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
