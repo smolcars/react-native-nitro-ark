@@ -120,6 +120,7 @@ fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
         vec!["not-a-vtxo-id".to_string()],
         std::ptr::null(),
         std::ptr::null(),
+        std::ptr::null(),
     );
     let error = match result {
         Ok(_) => panic!("invalid VTXO ID should be rejected"),
@@ -133,20 +134,53 @@ fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
 
 #[test]
 fn emergency_exit_fee_conversion_preserves_the_breakdown() {
-    let estimate = bark::exit::ExitFeeEstimate {
-        exit_broadcast_fee: Amount::from_sat(1_200),
-        claim_fee: Amount::from_sat(300),
-        fee_rate: FeeRate::from_sat_per_vb(2).unwrap(),
-        txs_to_broadcast: 4,
-    };
+    for (sat_per_kwu, sat_per_vb) in [(500, 2.0), (375, 1.5)] {
+        let estimate = bark::exit::ExitFeeEstimate {
+            exit_broadcast_fee: Amount::from_sat(1_200),
+            claim_fee: Amount::from_sat(300),
+            fee_rate: FeeRate::from_sat_per_kwu(sat_per_kwu),
+            txs_to_broadcast: 4,
+        };
 
-    let result = cxx::exit_fee_estimate_to_ffi(&estimate);
+        let result = cxx::exit_fee_estimate_to_ffi(&estimate);
 
-    assert_eq!(result.exit_broadcast_fee_sat, 1_200);
-    assert_eq!(result.claim_fee_sat, 300);
-    assert_eq!(result.total_fee_sat, 1_500);
-    assert_eq!(result.fee_rate_sat_per_vb, 2);
-    assert_eq!(result.txs_to_broadcast, 4);
+        assert_eq!(result.exit_broadcast_fee_sat, 1_200);
+        assert_eq!(result.claim_fee_sat, 300);
+        assert_eq!(result.total_fee_sat, 1_500);
+        assert_eq!(result.fee_rate_sat_per_vb, sat_per_vb);
+        assert_eq!(result.txs_to_broadcast, 4);
+    }
+}
+
+#[test]
+fn emergency_exit_fee_validates_margins_before_wallet_access() {
+    for margin in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.5] {
+        let error = cxx::estimate_emergency_exit_fee(
+            vec!["not-a-vtxo-id".to_string()],
+            std::ptr::null(),
+            std::ptr::null(),
+            &margin,
+        )
+        .err()
+        .expect("invalid margin should be rejected");
+        assert!(
+            error
+                .to_string()
+                .contains("feeMargin must be finite and non-negative")
+        );
+    }
+
+    for margin in [0.0, 1.0, 1.2, 1.5] {
+        let error = cxx::estimate_emergency_exit_fee(
+            vec!["not-a-vtxo-id".to_string()],
+            std::ptr::null(),
+            std::ptr::null(),
+            &margin,
+        )
+        .err()
+        .expect("invalid VTXO ID should be rejected");
+        assert!(error.to_string().contains("Invalid VTXO ID"));
+    }
 }
 
 #[test]

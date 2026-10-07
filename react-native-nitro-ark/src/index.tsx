@@ -482,22 +482,26 @@ export function progressExits(
 
 /**
  * Estimates the onchain fees required to unilaterally exit selected VTXOs.
- * The estimate itself does not synchronize or mutate the wallet; synchronize
- * first when current chain and mempool state is required.
+ * Call syncExit() first when fresh chain and mempool state is required.
+ * Estimating does not start or progress an exit and works before funding the onchain wallet.
  * @param vtxoIds VTXO IDs to include in the emergency exit estimate.
- * @param feeRateSatPerKvb Optional fee-rate override in sat/kvB, applied to both fee legs.
+ * @param feeRateSatPerKvb Optional nonnegative safe integer in sat/kvB, applied to both fee legs.
  * @param destinationAddress Optional claim destination, which affects the claim transaction weight.
+ * @param feeMargin Optional finite, nonnegative broadcast-fee multiplier. Defaults to 1.2;
+ * 1.0 adds no margin, and 0 produces a zero broadcast estimate. The claim fee is unchanged.
  * @returns A promise resolving to the CPFP broadcast and later claim fee breakdown.
  */
 export function estimateEmergencyExitFee(
   vtxoIds: string[],
   feeRateSatPerKvb?: number,
-  destinationAddress?: string
+  destinationAddress?: string,
+  feeMargin?: number
 ): Promise<ExitFeeEstimate> {
   return NitroArkHybridObject.estimateEmergencyExitFee(
     vtxoIds,
     feeRateSatPerKvb,
-    destinationAddress
+    destinationAddress,
+    feeMargin
   );
 }
 

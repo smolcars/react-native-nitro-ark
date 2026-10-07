@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import * as NitroArk from 'react-native-nitro-ark';
 import type { ExitVtxoResult } from 'react-native-nitro-ark';
 
@@ -10,7 +10,7 @@ import {
   ResultBox,
   Section,
 } from '../components';
-import { COLORS } from '../constants';
+import { COLORS, formatSats } from '../constants';
 import type { TabProps } from '../types';
 
 const parseOptionalFeeRate = (value: string): number | undefined => {
@@ -19,9 +19,9 @@ const parseOptionalFeeRate = (value: string): number | undefined => {
     return undefined;
   }
 
-  const parsed = parseInt(trimmed, 10);
-  if (isNaN(parsed) || parsed <= 0) {
-    throw new Error('Fee rate must be a positive number');
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error('Fee rate must be a positive safe integer in sat/kvB');
   }
 
   return parsed;
@@ -41,11 +41,56 @@ export const ExitTab = ({
   const [drainFeeRate, setDrainFeeRate] = useState('');
   const [drainDestinationAddress, setDrainDestinationAddress] = useState('');
   const [drainVtxoIdsInput, setDrainVtxoIdsInput] = useState('');
+  const [estimateVtxoIdsInput, setEstimateVtxoIdsInput] = useState('');
+  const [estimateFeeRate, setEstimateFeeRate] = useState('');
+  const [estimateDestinationAddress, setEstimateDestinationAddress] =
+    useState('');
+  const [estimateFeeMargin, setEstimateFeeMargin] = useState('');
 
   const exitOpsDisabled = isLoading || !isWalletLoaded;
 
   const setSectionError = (section: string, message: string) => {
     setError((prev) => ({ ...prev, [section]: message }));
+  };
+
+  const handleEstimateExitFee = () => {
+    const vtxoIds = estimateVtxoIdsInput
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    let feeRateSatPerKvb: number | undefined;
+    try {
+      feeRateSatPerKvb = parseOptionalFeeRate(estimateFeeRate);
+    } catch (err: any) {
+      setSectionError('exitEstimate', err.message);
+      return;
+    }
+    const feeMargin =
+      estimateFeeMargin.trim() === '' ? undefined : Number(estimateFeeMargin);
+
+    runOperation(
+      'estimateEmergencyExitFee',
+      () =>
+        NitroArk.estimateEmergencyExitFee(
+          vtxoIds,
+          feeRateSatPerKvb,
+          estimateDestinationAddress.trim() || undefined,
+          feeMargin
+        ),
+      'exitEstimate',
+      (estimate) => {
+        setResults((prev) => ({
+          ...prev,
+          exitEstimate: [
+            `Upfront broadcast funding: ${formatSats(estimate.exit_broadcast_fee_sat)}`,
+            `Later claim fee (deducted from recovered funds): ${formatSats(estimate.claim_fee_sat)}`,
+            `Total cost: ${formatSats(estimate.total_fee_sat)}`,
+            `Base broadcast fee rate (before margin): ${estimate.fee_rate_sat_per_vb} sat/vB`,
+            `Transactions requiring broadcast/CPFP: ${estimate.txs_to_broadcast}`,
+          ].join('\n'),
+        }));
+      }
+    );
   };
 
   const handleStartExitForEntireWallet = () => {
@@ -235,6 +280,52 @@ export const ExitTab = ({
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Section title="Exit Fee Estimate">
+        <InputField
+          label="VTXO IDs (empty = none)"
+          value={estimateVtxoIdsInput}
+          onChangeText={setEstimateVtxoIdsInput}
+          placeholder="Comma-separated VTXO IDs"
+          multiline
+        />
+        <InputField
+          label="Fee Rate Override (sat/kvB)"
+          value={estimateFeeRate}
+          onChangeText={setEstimateFeeRate}
+          placeholder="Optional; e.g., 1500 = 1.5 sat/vB"
+          keyboardType="numeric"
+        />
+        <InputField
+          label="Claim Destination Address"
+          value={estimateDestinationAddress}
+          onChangeText={setEstimateDestinationAddress}
+          placeholder="Optional; defaults to a P2TR output"
+        />
+        <InputField
+          label="Broadcast Fee Multiplier"
+          value={estimateFeeMargin}
+          onChangeText={setEstimateFeeMargin}
+          placeholder="Default 1.2 (20% margin)"
+          keyboardType="numeric"
+        />
+        <Text style={styles.estimateHelp}>
+          Estimates selected VTXOs only; an empty selection costs zero. Sync
+          Exit first for fresh chain state. The multiplier applies to broadcast
+          funding: 1 adds no margin, and 0 produces a zero broadcast estimate.
+          The claim fee is deducted later from recovered funds. Estimating works
+          before funding the onchain wallet.
+        </Text>
+        <ButtonGrid>
+          <CustomButton
+            title="Estimate Exit Fee"
+            onPress={handleEstimateExitFee}
+            disabled={exitOpsDisabled}
+            color={COLORS.primary}
+          />
+        </ButtonGrid>
+        <ResultBox result={results.exitEstimate} error={error.exitEstimate} />
+      </Section>
+
       <Section title="Exit Lifecycle">
         <InputField
           label="VTXO ID to Cancel"
@@ -349,5 +440,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  estimateHelp: {
+    color: COLORS.textMuted,
+    marginBottom: 12,
   },
 });

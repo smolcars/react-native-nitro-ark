@@ -96,11 +96,11 @@ export interface BarkFeeEstimate {
 }
 
 export interface ExitFeeEstimate {
-  exit_broadcast_fee_sat: number; // u64
-  claim_fee_sat: number; // u64
-  total_fee_sat: number; // u64
-  fee_rate_sat_per_vb: number; // u64
-  txs_to_broadcast: number; // u64
+  exit_broadcast_fee_sat: number; // Upfront funding from confirmed onchain funds, including margin
+  claim_fee_sat: number; // Later claim fee deducted from recovered funds
+  total_fee_sat: number; // Broadcast + claim fees
+  fee_rate_sat_per_vb: number; // Base broadcast rate in sat/vB, before margin; may be fractional
+  txs_to_broadcast: number; // Transactions still requiring broadcast/CPFP
 }
 
 export interface BarkFeeRates {
@@ -396,7 +396,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   estimateEmergencyExitFee(
     vtxoIds: string[],
     feeRateSatPerKvb?: number,
-    destinationAddress?: string
+    destinationAddress?: string,
+    feeMargin?: number
   ): Promise<ExitFeeEstimate>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;
   listClaimable(): Promise<ExitVtxoResult[]>;

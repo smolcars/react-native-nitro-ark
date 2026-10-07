@@ -41,6 +41,28 @@ Omit it for the server default. `0` requests one attempt; positive values reques
 
 This applies to `payLightningInvoice`, `payLightningOffer`, `payLightningAddress`, and `payLightningInvoiceWithOrigin`. Retry control requires a server supporting this option. The example's **Lightning Payments** section provides retry duration and wait controls.
 
+### Emergency exit estimates
+
+Estimate selected VTXOs before starting an exit or funding the onchain wallet:
+
+```ts
+import { estimateEmergencyExitFee, syncExit } from 'react-native-nitro-ark';
+
+await syncExit();
+const estimate = await estimateEmergencyExitFee(
+  vtxoIds,
+  1500, // Optional sat/kvB override: 1.5 sat/vB, applied to broadcast and claim
+  undefined, // Optional claim destination; defaults to a P2TR output
+  1.5 // Optional broadcast multiplier: adds 50%
+);
+```
+
+Omit `feeMargin` for Bark's default `1.2` multiplier. `1` adds no margin; `0` produces a zero broadcast estimate. Values must be finite and nonnegative. The multiplier affects only `exit_broadcast_fee_sat`; Bark rejects calculated fees that exceed its amount limits. Fee-rate overrides must be nonnegative safe integers in sat/kvB.
+
+`exit_broadcast_fee_sat` is the funding target from confirmed onchain funds. `claim_fee_sat` is deducted from recovered funds later. `total_fee_sat` is their sum. `fee_rate_sat_per_vb` reports the base broadcast rate before the multiplier, preserving fractional values; without an override, the claim uses a separate regular rate. `txs_to_broadcast` counts transactions still requiring broadcast/CPFP.
+
+Already-confirmed transactions and sufficiently funded mempool packages avoid additional broadcast costs. Call `syncExit()` for fresh tracked chain state. Estimating does not start or progress an exit, and an empty VTXO list estimates zero fees. The example's **Exit Fee Estimate** section exposes these inputs and the funding breakdown.
+
 ### VTXO recovery key gap
 
 Set `config.vtxo_key_gap_limit` when creating or opening a wallet to control how many consecutive unused key indices recovery and VTXO imports scan. It defaults to 250 when omitted. Increase it for wallets that issued many addresses without receiving into them. Values must be integers from 0 to 100,000; larger scans take more work.

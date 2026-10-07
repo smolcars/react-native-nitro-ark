@@ -2,7 +2,7 @@
 
 Research snapshot from **2026-10-07**, before implementation. The baseline below records the dependency and master revisions at that point.
 
-Implementation update: richer balances, wallet diagnostics, and Lightning retry duration are exposed by `offchainBalance()`, `debugInfo()`, and the optional final `retryForSeconds` argument on Lightning send methods. [The dependencies](../bark-cpp/Cargo.toml) pin master commit `8661f24e902698047f32481545672b5cefd7b9cc`. The other optional API additions below remain follow-ups.
+Implementation update: richer balances, wallet diagnostics, Lightning retry duration, and exit fee margins are exposed by `offchainBalance()`, `debugInfo()`, the optional final `retryForSeconds` argument on Lightning send methods, and `feeMargin` on `estimateEmergencyExitFee()`. Exit estimates preserve fractional sat/vB rates. [The dependencies](../bark-cpp/Cargo.toml) pin master commit `8661f24e902698047f32481545672b5cefd7b9cc`. The other optional API additions below remain follow-ups.
 
 ## Comparison baseline
 

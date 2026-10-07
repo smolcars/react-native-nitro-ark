@@ -93,7 +93,7 @@ pub(crate) mod ffi {
         exit_broadcast_fee_sat: u64,
         claim_fee_sat: u64,
         total_fee_sat: u64,
-        fee_rate_sat_per_vb: u64,
+        fee_rate_sat_per_vb: f64,
         txs_to_broadcast: u64,
     }
 
@@ -512,6 +512,7 @@ pub(crate) mod ffi {
             vtxo_ids: Vec<String>,
             fee_rate_sat_per_kvb: *const u64,
             destination_address: *const String,
+            fee_margin: *const f64,
         ) -> Result<ExitFeeEstimate>;
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
         fn list_claimable() -> Result<Vec<ExitVtxoResult>>;
@@ -1602,7 +1603,7 @@ pub(crate) fn exit_fee_estimate_to_ffi(
         exit_broadcast_fee_sat: estimate.exit_broadcast_fee.to_sat(),
         claim_fee_sat: estimate.claim_fee.to_sat(),
         total_fee_sat: estimate.total().to_sat(),
-        fee_rate_sat_per_vb: estimate.fee_rate.to_sat_per_vb_ceil(),
+        fee_rate_sat_per_vb: fee_rate_to_sat_per_vbyte(estimate.fee_rate),
         txs_to_broadcast: estimate.txs_to_broadcast as u64,
     }
 }
@@ -1639,6 +1640,7 @@ pub(crate) fn estimate_emergency_exit_fee(
     vtxo_ids: Vec<String>,
     fee_rate_sat_per_kvb: *const u64,
     destination_address: *const String,
+    fee_margin: *const f64,
 ) -> anyhow::Result<ffi::ExitFeeEstimate> {
     ffi_boundary("estimate_emergency_exit_fee", || {
         let fee_rate = unsafe {
@@ -1658,6 +1660,7 @@ pub(crate) fn estimate_emergency_exit_fee(
             vtxo_ids,
             fee_rate,
             destination,
+            unsafe { fee_margin.as_ref().copied() },
         ))?;
 
         Ok(exit_fee_estimate_to_ffi(&estimate))

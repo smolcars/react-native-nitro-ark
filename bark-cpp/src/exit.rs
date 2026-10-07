@@ -125,7 +125,12 @@ pub async fn estimate_emergency_exit_fee(
     vtxo_ids: Vec<String>,
     fee_rate: Option<FeeRate>,
     destination: Option<Address<NetworkUnchecked>>,
+    fee_margin: Option<f64>,
 ) -> anyhow::Result<bark::exit::ExitFeeEstimate> {
+    if fee_margin.is_some_and(|margin| !margin.is_finite() || margin < 0.0) {
+        bail!("feeMargin must be finite and non-negative");
+    }
+
     let vtxo_ids = vtxo_ids
         .into_iter()
         .map(|id| {
@@ -147,7 +152,7 @@ pub async fn estimate_emergency_exit_fee(
             };
 
             ctx.wallet
-                .estimate_emergency_exit_fee(&vtxo_ids, fee_rate, destination, None)
+                .estimate_emergency_exit_fee(&vtxo_ids, fee_rate, destination, fee_margin)
                 .await
                 .context("Failed to estimate emergency exit fee")
         })

@@ -690,8 +690,9 @@ public:
   std::shared_ptr<Promise<ExitFeeEstimate>>
   estimateEmergencyExitFee(const std::vector<std::string>& vtxoIds,
                            std::optional<double> feeRateSatPerKvb,
-                           const std::optional<std::string>& destinationAddress) override {
-    return Promise<ExitFeeEstimate>::async([vtxoIds, feeRateSatPerKvb, destinationAddress]() {
+                           const std::optional<std::string>& destinationAddress,
+                           std::optional<double> feeMargin) override {
+    return Promise<ExitFeeEstimate>::async([vtxoIds, feeRateSatPerKvb, destinationAddress, feeMargin]() {
       try {
         rust::Vec<rust::String> rust_vtxo_ids;
         rust_vtxo_ids.reserve(vtxoIds.size());
@@ -702,6 +703,10 @@ public:
         uint64_t feeRateVal;
         const uint64_t* feeRatePtr = nullptr;
         if (feeRateSatPerKvb.has_value()) {
+          const double rate = feeRateSatPerKvb.value();
+          if (!std::isfinite(rate) || std::trunc(rate) != rate || rate < 0 || rate > 9007199254740991.0) {
+            throw std::invalid_argument("feeRateSatPerKvb must be a nonnegative safe integer");
+          }
           feeRateVal = static_cast<uint64_t>(feeRateSatPerKvb.value());
           feeRatePtr = &feeRateVal;
         }
@@ -714,7 +719,7 @@ public:
         }
 
         bark_cxx::ExitFeeEstimate rust_result = bark_cxx::estimate_emergency_exit_fee(
-            std::move(rust_vtxo_ids), feeRatePtr, destinationAddressPtr);
+            std::move(rust_vtxo_ids), feeRatePtr, destinationAddressPtr, feeMargin ? &feeMargin.value() : nullptr);
 
         ExitFeeEstimate result;
         result.exit_broadcast_fee_sat = static_cast<double>(rust_result.exit_broadcast_fee_sat);

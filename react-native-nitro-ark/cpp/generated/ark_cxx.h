@@ -1106,7 +1106,7 @@ struct ExitFeeEstimate final {
   ::std::uint64_t exit_broadcast_fee_sat CXX_DEFAULT_VALUE(0);
   ::std::uint64_t claim_fee_sat CXX_DEFAULT_VALUE(0);
   ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
+  double fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
   ::std::uint64_t txs_to_broadcast CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
@@ -1735,7 +1735,7 @@ void validate_arkoor_address(::rust::Str address);
 
 ::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
 
-::bark_cxx::ExitFeeEstimate estimate_emergency_exit_fee(::rust::Vec<::rust::String> vtxo_ids, ::std::uint64_t const *fee_rate_sat_per_kvb, ::rust::String const *destination_address);
+::bark_cxx::ExitFeeEstimate estimate_emergency_exit_fee(::rust::Vec<::rust::String> vtxo_ids, ::std::uint64_t const *fee_rate_sat_per_kvb, ::rust::String const *destination_address, double const *fee_margin);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
 

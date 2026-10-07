@@ -5,7 +5,7 @@ jest.mock('react-native-nitro-modules', () => {
       exit_broadcast_fee_sat: 1200,
       claim_fee_sat: 300,
       total_fee_sat: 1500,
-      fee_rate_sat_per_vb: 2,
+      fee_rate_sat_per_vb: 1.5,
       txs_to_broadcast: 4,
     })
   );
@@ -85,26 +85,31 @@ describe('estimateEmergencyExitFee', () => {
     mockEstimateEmergencyExitFee.mockClear();
   });
 
-  it('forwards the VTXOs and optional pricing inputs to the native bridge', async () => {
-    const result = await estimateEmergencyExitFee(
-      ['vtxo-1', 'vtxo-2'],
-      2000,
-      'bcrt1pdestination'
-    );
+  it.each([undefined, 0, 1, 1.2, 1.5])(
+    'forwards pricing inputs with fee margin %p and preserves fractional rates',
+    async (feeMargin) => {
+      const result = await estimateEmergencyExitFee(
+        ['vtxo-1', 'vtxo-2'],
+        1500,
+        'bcrt1pdestination',
+        feeMargin
+      );
 
-    expect(mockEstimateEmergencyExitFee).toHaveBeenCalledWith(
-      ['vtxo-1', 'vtxo-2'],
-      2000,
-      'bcrt1pdestination'
-    );
-    expect(result).toEqual({
-      exit_broadcast_fee_sat: 1200,
-      claim_fee_sat: 300,
-      total_fee_sat: 1500,
-      fee_rate_sat_per_vb: 2,
-      txs_to_broadcast: 4,
-    });
-  });
+      expect(mockEstimateEmergencyExitFee).toHaveBeenCalledWith(
+        ['vtxo-1', 'vtxo-2'],
+        1500,
+        'bcrt1pdestination',
+        feeMargin
+      );
+      expect(result).toEqual({
+        exit_broadcast_fee_sat: 1200,
+        claim_fee_sat: 300,
+        total_fee_sat: 1500,
+        fee_rate_sat_per_vb: 1.5,
+        txs_to_broadcast: 4,
+      });
+    }
+  );
 });
 
 describe('updateHistoryMetadata', () => {

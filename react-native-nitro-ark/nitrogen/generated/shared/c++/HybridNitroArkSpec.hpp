@@ -171,7 +171,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> cancelExit(const std::string& vtxoId) = 0;
       virtual std::shared_ptr<Promise<void>> syncExit() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitProgressStatusResult>>> progressExits(std::optional<double> feeRateSatPerKvb) = 0;
-      virtual std::shared_ptr<Promise<ExitFeeEstimate>> estimateEmergencyExitFee(const std::vector<std::string>& vtxoIds, std::optional<double> feeRateSatPerKvb, const std::optional<std::string>& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<ExitFeeEstimate>> estimateEmergencyExitFee(const std::vector<std::string>& vtxoIds, std::optional<double> feeRateSatPerKvb, const std::optional<std::string>& destinationAddress, std::optional<double> feeMargin) = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> getExitVtxos() = 0;
       virtual std::shared_ptr<Promise<std::vector<ExitVtxoResult>>> listClaimable() = 0;
       virtual std::shared_ptr<Promise<std::optional<ExitStatusResult>>> getExitStatus(const std::string& vtxoId, std::optional<bool> includeHistory, std::optional<bool> includeTransactions) = 0;
