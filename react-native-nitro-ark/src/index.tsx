@@ -63,6 +63,7 @@ export type ExitProgressState =
   | 'ClaimInProgress'
   | 'Claimed'
   | 'VtxoAlreadySpent'
+  | 'VtxoSwept'
   | 'Canceled';
 
 export type ExitStateKind =
@@ -73,6 +74,7 @@ export type ExitStateKind =
   | 'claim-in-progress'
   | 'claimed'
   | 'vtxo-already-spent'
+  | 'vtxo-swept'
   | 'canceled';
 
 export type BlockRef = NitroExitBlockRefResult;
@@ -546,7 +548,8 @@ export function hasPendingExits(): Promise<boolean> {
 }
 
 /**
- * Returns the total amount, in sats, still waiting on pending exit confirmations.
+ * Returns sats whose exit committed onchain and which have not been claimed yet.
+ * Matches offchainBalance().pending_exit; cancelable exits are excluded.
  * @returns A promise resolving to the pending exit total in satoshis.
  */
 export function pendingExitTotal(): Promise<number> {
@@ -620,6 +623,9 @@ export function getArkInfo(): Promise<BarkArkInfo> {
 
 /**
  * Gets the offchain balance for the loaded wallet.
+ * All values are satoshis. Use spendable for available funds and total for
+ * funds owned; pending and total overlap the individual pending categories.
+ * Call sync() first to update the wallet state.
  * @returns A promise resolving to the OffchainBalanceResult object.
  */
 export function offchainBalance(): Promise<OffchainBalanceResult> {
@@ -894,7 +900,7 @@ export function getNextRequiredRefreshBlockheight(): Promise<
 
 /**
  * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
- * @param threshold The block height threshold to check for expiring VTXOs.
+ * @param threshold Number of blocks ahead to check for expiring VTXOs (0–65535).
  * @returns A promise resolving BarkVtxo[] array.
  */
 

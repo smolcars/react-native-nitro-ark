@@ -81,7 +81,6 @@ fn emergency_exit_fee_conversion_preserves_the_breakdown() {
         claim_fee: Amount::from_sat(300),
         fee_rate: FeeRate::from_sat_per_vb(2).unwrap(),
         txs_to_broadcast: 4,
-        fundable: true,
     };
 
     let result = cxx::exit_fee_estimate_to_ffi(&estimate);
@@ -91,7 +90,37 @@ fn emergency_exit_fee_conversion_preserves_the_breakdown() {
     assert_eq!(result.total_fee_sat, 1_500);
     assert_eq!(result.fee_rate_sat_per_vb, 2);
     assert_eq!(result.txs_to_broadcast, 4);
-    assert!(result.fundable);
+}
+
+#[test]
+fn offchain_balance_conversion_preserves_categories_and_totals() {
+    for unit in [0, 5_000_000_000] {
+        let balance = bark::Balance {
+            spendable: Amount::from_sat(1_000 + unit),
+            needs_refresh: Amount::from_sat(200 + unit),
+            pending_arkoor_send: Amount::from_sat(unit),
+            pending_lightning_send: Amount::from_sat(2 * unit),
+            claimable_lightning_receive: Amount::from_sat(4 * unit),
+            pending_in_round: Amount::from_sat(8 * unit),
+            pending_board: Amount::from_sat(16 * unit),
+            pending_offboard: Amount::from_sat(32 * unit),
+            pending_exit: Amount::from_sat(64 * unit),
+        };
+
+        let result = cxx::offchain_balance_to_ffi(&balance);
+
+        assert_eq!(result.spendable, 1_000 + unit);
+        assert_eq!(result.needs_refresh, 200 + unit);
+        assert_eq!(result.pending_arkoor_send, unit);
+        assert_eq!(result.pending_lightning_send, 2 * unit);
+        assert_eq!(result.claimable_lightning_receive, 4 * unit);
+        assert_eq!(result.pending_in_round, 8 * unit);
+        assert_eq!(result.pending_board, 16 * unit);
+        assert_eq!(result.pending_offboard, 32 * unit);
+        assert_eq!(result.pending_exit, 64 * unit);
+        assert_eq!(result.pending, 127 * unit);
+        assert_eq!(result.total, 1_200 + 129 * unit);
+    }
 }
 
 #[test]
@@ -289,6 +318,41 @@ fn merge_config_opts_rejects_overflowing_refresh_thresholds() {
         assert!(
             crate::utils::format_error_chain(&error)
                 .contains("vtxo_refresh_expiry_threshold must be at most 65535 blocks")
+        );
+    }
+}
+
+#[test]
+fn block_delta_inputs_are_checked_at_the_ffi_boundary() {
+    for confirmations in [0, u16::MAX as u32] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.round_tx_required_confirmations = confirmations;
+        let opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let (config, _) = crate::utils::merge_config_opts(opts).unwrap();
+        assert_eq!(
+            u32::from(config.round_tx_required_confirmations),
+            confirmations
+        );
+    }
+
+    for value in [u16::MAX as u32 + 1, u32::MAX] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.round_tx_required_confirmations = value;
+        let opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let error = crate::utils::merge_config_opts(opts).unwrap_err();
+        assert!(
+            crate::utils::format_error_chain(&error)
+                .contains("round_tx_required_confirmations must be at most 65535 blocks")
+        );
+
+        let error = match cxx::get_expiring_vtxos(value) {
+            Ok(_) => panic!("overflowing block delta should be rejected"),
+            Err(error) => error,
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("threshold must be at most 65535 blocks")
         );
     }
 }

@@ -147,7 +147,7 @@ pub async fn estimate_emergency_exit_fee(
             };
 
             ctx.wallet
-                .estimate_emergency_exit_fee(&vtxo_ids, fee_rate, destination)
+                .estimate_emergency_exit_fee(&vtxo_ids, fee_rate, destination, None)
                 .await
                 .context("Failed to estimate emergency exit fee")
         })
@@ -202,18 +202,10 @@ pub async fn has_pending_exits() -> anyhow::Result<bool> {
 }
 
 pub async fn pending_exit_total() -> anyhow::Result<bark::ark::bitcoin::Amount> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .exit_mgr()
-                .try_pending_total()
-                .context("Exit manager is currently locked")
-        })
-        .await
+    Ok(crate::balance().await?.pending_exit)
 }
 
-pub async fn all_claimable_at_height() -> anyhow::Result<Option<u32>> {
+pub async fn all_claimable_at_height() -> anyhow::Result<Option<bitcoin_ext::BlockHeight>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {

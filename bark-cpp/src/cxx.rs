@@ -95,7 +95,6 @@ pub(crate) mod ffi {
         total_fee_sat: u64,
         fee_rate_sat_per_vb: u64,
         txs_to_broadcast: u64,
-        fundable: bool,
     }
 
     pub struct BarkFeeRates {
@@ -271,18 +270,28 @@ pub(crate) mod ffi {
     }
 
     pub struct OffchainBalance {
-        /// Coins that are spendable in the Ark, either in-round or out-of-round.
+        /// All amounts are in satoshis. Available to pay now.
         pub spendable: u64,
+        /// Expired VTXOs or VTXOs at the server's exit-depth limit.
+        pub needs_refresh: u64,
+        /// Sum of the seven pending categories below.
+        pub pending: u64,
+        /// spendable + needs_refresh + pending; summary fields overlap the breakdown.
+        pub total: u64,
+        /// Coins held by outgoing Ark payments, including change.
+        pub pending_arkoor_send: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
-        /// Coins that are in the process of being received over Lightning.
+        /// Received HTLC coins whose preimage has been revealed.
         pub claimable_lightning_receive: u64,
-        /// Coins locked in a round.
+        /// Coins locked as round inputs.
         pub pending_in_round: u64,
-        /// Coins that are in the process of unilaterally exiting the Ark.
+        /// Coins whose exit committed onchain, awaiting claim.
         pub pending_exit: u64,
         /// Coins that are pending sufficient confirmations from board transactions.
         pub pending_board: u64,
+        /// Coins held until offboard broadcast, including change.
+        pub pending_offboard: u64,
     }
 
     pub struct OnChainBalance {
@@ -671,9 +680,9 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
             mailbox_pubkey: info.mailbox_pubkey.to_string(),
             round_interval: info.round_interval.as_secs(),
             nb_round_nonces: info.nb_round_nonces as u16,
-            vtxo_exit_delta: info.vtxo_exit_delta,
-            vtxo_lifetime: info.vtxo_lifetime,
-            htlc_send_expiry_delta: info.htlc_send_expiry_delta,
+            vtxo_exit_delta: info.vtxo_exit_delta.to_u16(),
+            vtxo_lifetime: info.vtxo_lifetime.to_u16(),
+            htlc_send_expiry_delta: info.htlc_send_expiry_delta.to_u16(),
             max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
             required_board_confirmations: info.required_board_confirmations as u8,
             min_board_amount: info.min_board_amount.to_sat(),
@@ -685,16 +694,24 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
 pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     ffi_boundary("offchain_balance", || {
         let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
-        Ok(ffi::OffchainBalance {
-            spendable: balance.spendable.to_sat(),
-            claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
-            pending_lightning_send: balance.pending_lightning_send.to_sat(),
-
-            pending_in_round: balance.pending_in_round.to_sat(),
-            pending_exit: balance.pending_exit.map_or(0, |a| a.to_sat()),
-            pending_board: balance.pending_board.to_sat(),
-        })
+        Ok(offchain_balance_to_ffi(&balance))
     })
+}
+
+pub(crate) fn offchain_balance_to_ffi(balance: &bark::Balance) -> ffi::OffchainBalance {
+    ffi::OffchainBalance {
+        spendable: balance.spendable.to_sat(),
+        needs_refresh: balance.needs_refresh.to_sat(),
+        pending: balance.pending().to_sat(),
+        total: balance.total().to_sat(),
+        pending_arkoor_send: balance.pending_arkoor_send.to_sat(),
+        pending_lightning_send: balance.pending_lightning_send.to_sat(),
+        claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
+        pending_in_round: balance.pending_in_round.to_sat(),
+        pending_exit: balance.pending_exit.to_sat(),
+        pending_board: balance.pending_board.to_sat(),
+        pending_offboard: balance.pending_offboard.to_sat(),
+    }
 }
 
 pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> {
@@ -877,6 +894,9 @@ pub(crate) fn unlock_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
 
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
     ffi_boundary("get_expiring_vtxos", || {
+        let threshold = threshold
+            .try_into()
+            .context("threshold must be at most 65535 blocks")?;
         let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
         Ok(expiring_vtxos
             .into_iter()
@@ -915,7 +935,7 @@ pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32
         let blockheight =
             crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -926,7 +946,7 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
         let blockheight =
             crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -1322,7 +1342,7 @@ fn empty_exit_block_ref() -> ffi::ExitBlockRefResult {
 
 fn exit_block_ref_to_ffi(block: bitcoin_ext::BlockRef) -> ffi::ExitBlockRefResult {
     ffi::ExitBlockRefResult {
-        height: block.height,
+        height: block.height.to_u32(),
         hash: block.hash.to_string(),
     }
 }
@@ -1420,10 +1440,13 @@ fn exit_tx_to_ffi(tx: &bark::exit::ExitTx) -> ffi::ExitTxResult {
     }
 }
 
-fn empty_exit_state_details(kind: &str, tip_height: u32) -> ffi::ExitStateDetailsResult {
+fn empty_exit_state_details(
+    kind: &str,
+    tip_height: bitcoin_ext::BlockHeight,
+) -> ffi::ExitStateDetailsResult {
     ffi::ExitStateDetailsResult {
         kind: kind.to_string(),
-        tip_height,
+        tip_height: tip_height.to_u32(),
         transactions: Vec::new(),
         has_confirmed_block: false,
         confirmed_block: empty_exit_block_ref(),
@@ -1464,7 +1487,7 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             ffi::ExitStateDetailsResult {
                 has_confirmed_block: true,
                 confirmed_block: exit_block_ref_to_ffi(*confirmed_block),
-                claimable_height: *claimable_height,
+                claimable_height: claimable_height.to_u32(),
                 ..empty_exit_state_details("awaiting-delta", *tip_height)
             }
         }
@@ -1513,6 +1536,9 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             let bark::exit::ExitVtxoAlreadySpentState { tip_height } = state;
             empty_exit_state_details("vtxo-already-spent", *tip_height)
         }
+        bark::exit::ExitState::VtxoSwept(state) => {
+            empty_exit_state_details("vtxo-swept", state.tip_height)
+        }
         bark::exit::ExitState::Canceled(state) => {
             let bark::exit::ExitCanceledState { tip_height } = state;
             empty_exit_state_details("canceled", *tip_height)
@@ -1529,7 +1555,6 @@ pub(crate) fn exit_fee_estimate_to_ffi(
         total_fee_sat: estimate.total().to_sat(),
         fee_rate_sat_per_vb: estimate.fee_rate.to_sat_per_vb_ceil(),
         txs_to_broadcast: estimate.txs_to_broadcast as u64,
-        fundable: estimate.fundable,
     }
 }
 
@@ -1711,7 +1736,7 @@ pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
     ffi_boundary("all_claimable_at_height", || {
         let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -2112,7 +2137,7 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                 }),
                 bark::onchain::Utxo::Exit(exit) => serde_json::json!({
                     "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
-                    "height": exit.height
+                    "height": exit.height.to_u32()
                 }),
             })
             .collect::<Vec<_>>();
@@ -2144,7 +2169,7 @@ pub(crate) fn onchain_transactions() -> anyhow::Result<Vec<OnchainTransactionInf
             .map(|tx_info| {
                 let (has_confirmation, confirmation_height, confirmation_hash) =
                     match tx_info.confirmation {
-                        Some(block) => (true, block.height, block.hash.to_string()),
+                        Some(block) => (true, block.height.to_u32(), block.hash.to_string()),
                         None => (false, 0, String::new()),
                     };
 

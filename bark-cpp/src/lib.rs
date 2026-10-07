@@ -32,7 +32,7 @@ use bark::round::RoundStatus;
 use bark::{OpenWalletArgs, WalletSeed};
 use bdk_wallet::bitcoin::key::Keypair;
 use bdk_wallet::bitcoin::{Txid, bip32};
-use bitcoin_ext::BlockHeight;
+use bitcoin_ext::{BlockDelta, BlockHeight};
 use tokio::runtime::Runtime;
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
@@ -791,7 +791,7 @@ pub async fn unlock_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<()> {
         .await
 }
 
-pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
+pub async fn get_expiring_vtxos(threshold: BlockDelta) -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
 
     manager

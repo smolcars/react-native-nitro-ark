@@ -722,7 +722,6 @@ public:
         result.total_fee_sat = static_cast<double>(rust_result.total_fee_sat);
         result.fee_rate_sat_per_vb = static_cast<double>(rust_result.fee_rate_sat_per_vb);
         result.txs_to_broadcast = static_cast<double>(rust_result.txs_to_broadcast);
-        result.fundable = rust_result.fundable;
         return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -931,11 +930,16 @@ public:
         bark_cxx::OffchainBalance rust_balance = bark_cxx::offchain_balance();
         OffchainBalanceResult balance;
         balance.spendable = static_cast<double>(rust_balance.spendable);
+        balance.needs_refresh = static_cast<double>(rust_balance.needs_refresh);
+        balance.pending = static_cast<double>(rust_balance.pending);
+        balance.total = static_cast<double>(rust_balance.total);
+        balance.pending_arkoor_send = static_cast<double>(rust_balance.pending_arkoor_send);
         balance.pending_lightning_send = static_cast<double>(rust_balance.pending_lightning_send);
         balance.claimable_lightning_receive = static_cast<double>(rust_balance.claimable_lightning_receive);
         balance.pending_in_round = static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         balance.pending_board = static_cast<double>(rust_balance.pending_board);
+        balance.pending_offboard = static_cast<double>(rust_balance.pending_offboard);
 
         return balance;
       } catch (const rust::Error& e) {

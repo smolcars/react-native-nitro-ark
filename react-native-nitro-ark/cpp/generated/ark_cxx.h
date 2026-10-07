@@ -1106,7 +1106,6 @@ struct ExitFeeEstimate final {
   ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
   ::std::uint64_t fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
   ::std::uint64_t txs_to_broadcast CXX_DEFAULT_VALUE(0);
-  bool fundable CXX_DEFAULT_VALUE(false);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1375,18 +1374,28 @@ struct LightningReceive final {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 #define CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 struct OffchainBalance final {
-  // Coins that are spendable in the Ark, either in-round or out-of-round.
+  // All amounts are in satoshis. Available to pay now.
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
+  // Expired VTXOs or VTXOs at the server's exit-depth limit.
+  ::std::uint64_t needs_refresh CXX_DEFAULT_VALUE(0);
+  // Sum of the seven pending categories below.
+  ::std::uint64_t pending CXX_DEFAULT_VALUE(0);
+  // spendable + needs_refresh + pending; summary fields overlap the breakdown.
+  ::std::uint64_t total CXX_DEFAULT_VALUE(0);
+  // Coins held by outgoing Ark payments, including change.
+  ::std::uint64_t pending_arkoor_send CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of being received over Lightning.
+  // Received HTLC coins whose preimage has been revealed.
   ::std::uint64_t claimable_lightning_receive CXX_DEFAULT_VALUE(0);
-  // Coins locked in a round.
+  // Coins locked as round inputs.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of unilaterally exiting the Ark.
+  // Coins whose exit committed onchain, awaiting claim.
   ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
   // Coins that are pending sufficient confirmations from board transactions.
   ::std::uint64_t pending_board CXX_DEFAULT_VALUE(0);
+  // Coins held until offboard broadcast, including change.
+  ::std::uint64_t pending_offboard CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };

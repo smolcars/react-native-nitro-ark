@@ -20,6 +20,7 @@ export interface BarkConfigOpts {
   fallback_fee_rate: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;
+  /** Required round confirmations (0–65535). */
   round_tx_required_confirmations: number;
 }
 
@@ -93,7 +94,6 @@ export interface ExitFeeEstimate {
   total_fee_sat: number; // u64
   fee_rate_sat_per_vb: number; // u64
   txs_to_broadcast: number; // u64
-  fundable: boolean;
 }
 
 export interface BarkFeeRates {
@@ -217,13 +217,20 @@ export interface OnchainPaymentResult {
   destination_address: string; // Destination address
 }
 
+/** All amounts are integer satoshis. Summary fields overlap the breakdown. */
 export interface OffchainBalanceResult {
-  spendable: number; // u64
-  pending_lightning_send: number; // u64
-  claimable_lightning_receive: number; // u64
-  pending_in_round: number; // u64
-  pending_exit: number; // u64
-  pending_board: number; // u64
+  spendable: number; // Available to pay now
+  needs_refresh: number; // Expired or at the server's exit-depth limit
+  pending: number; // Sum of the seven pending categories below
+  total: number; // spendable + needs_refresh + pending
+
+  pending_arkoor_send: number; // Held by outgoing Ark payments, including change
+  pending_lightning_send: number; // Held by outgoing Lightning payments
+  claimable_lightning_receive: number; // Preimage revealed; awaiting spendable VTXOs
+  pending_in_round: number; // Locked round inputs
+  pending_board: number; // Awaiting board confirmations
+  pending_offboard: number; // Held until offboard broadcast, including change
+  pending_exit: number; // Exit committed onchain; awaiting claim
 }
 
 export interface OnchainBalanceResult {

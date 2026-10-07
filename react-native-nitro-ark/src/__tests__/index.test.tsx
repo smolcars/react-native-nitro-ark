@@ -7,7 +7,6 @@ jest.mock('react-native-nitro-modules', () => {
       total_fee_sat: 1500,
       fee_rate_sat_per_vb: 2,
       txs_to_broadcast: 4,
-      fundable: true,
     })
   );
   const updateHistoryMetadata = jest.fn(() => Promise.resolve());
@@ -95,7 +94,6 @@ describe('estimateEmergencyExitFee', () => {
       total_fee_sat: 1500,
       fee_rate_sat_per_vb: 2,
       txs_to_broadcast: 4,
-      fundable: true,
     });
   });
 });

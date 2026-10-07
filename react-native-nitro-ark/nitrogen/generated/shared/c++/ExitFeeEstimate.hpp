@@ -44,11 +44,10 @@ namespace margelo::nitro::nitroark {
     double total_fee_sat     SWIFT_PRIVATE;
     double fee_rate_sat_per_vb     SWIFT_PRIVATE;
     double txs_to_broadcast     SWIFT_PRIVATE;
-    bool fundable     SWIFT_PRIVATE;
 
   public:
     ExitFeeEstimate() = default;
-    explicit ExitFeeEstimate(double exit_broadcast_fee_sat, double claim_fee_sat, double total_fee_sat, double fee_rate_sat_per_vb, double txs_to_broadcast, bool fundable): exit_broadcast_fee_sat(exit_broadcast_fee_sat), claim_fee_sat(claim_fee_sat), total_fee_sat(total_fee_sat), fee_rate_sat_per_vb(fee_rate_sat_per_vb), txs_to_broadcast(txs_to_broadcast), fundable(fundable) {}
+    explicit ExitFeeEstimate(double exit_broadcast_fee_sat, double claim_fee_sat, double total_fee_sat, double fee_rate_sat_per_vb, double txs_to_broadcast): exit_broadcast_fee_sat(exit_broadcast_fee_sat), claim_fee_sat(claim_fee_sat), total_fee_sat(total_fee_sat), fee_rate_sat_per_vb(fee_rate_sat_per_vb), txs_to_broadcast(txs_to_broadcast) {}
 
   public:
     friend bool operator==(const ExitFeeEstimate& lhs, const ExitFeeEstimate& rhs) = default;
@@ -68,8 +67,7 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "claim_fee_sat"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_vb"))),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txs_to_broadcast"))),
-        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fundable")))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txs_to_broadcast")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::ExitFeeEstimate& arg) {
@@ -79,7 +77,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat"), JSIConverter<double>::toJSI(runtime, arg.total_fee_sat));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_vb"), JSIConverter<double>::toJSI(runtime, arg.fee_rate_sat_per_vb));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "txs_to_broadcast"), JSIConverter<double>::toJSI(runtime, arg.txs_to_broadcast));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "fundable"), JSIConverter<bool>::toJSI(runtime, arg.fundable));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -95,7 +92,6 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total_fee_sat")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fee_rate_sat_per_vb")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "txs_to_broadcast")))) return false;
-      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fundable")))) return false;
       return true;
     }
   };
