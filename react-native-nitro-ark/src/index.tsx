@@ -82,6 +82,7 @@ export type BlockRef = NitroExitBlockRefResult;
 export type ExitTxOrigin = NitroExitTxOriginResult;
 export type ExitTxStatus = NitroExitTxStatusResult;
 export type ExitTx = NitroExitTxResult;
+/** Swept exits include spent_inputs as txid:vout strings in current and historical details. */
 export type ExitStateDetails = Omit<NitroExitStateDetailsResult, 'kind'> & {
   kind: ExitStateKind;
 };

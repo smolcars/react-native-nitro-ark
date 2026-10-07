@@ -1202,6 +1202,7 @@ struct ExitTxResult final {
 struct ExitStateDetailsResult final {
   ::rust::String kind;
   ::std::uint32_t tip_height CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::rust::String> spent_inputs;
   ::rust::Vec<::bark_cxx::ExitTxResult> transactions;
   bool has_confirmed_block CXX_DEFAULT_VALUE(false);
   ::bark_cxx::ExitBlockRefResult confirmed_block;

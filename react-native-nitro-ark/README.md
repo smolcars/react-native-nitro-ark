@@ -63,6 +63,29 @@ Omit `feeMargin` for Bark's default `1.2` multiplier. `1` adds no margin; `0` pr
 
 Already-confirmed transactions and sufficiently funded mempool packages avoid additional broadcast costs. Call `syncExit()` for fresh tracked chain state. Estimating does not start or progress an exit, and an empty VTXO list estimates zero fees. The example's **Exit Fee Estimate** section exposes these inputs and the funding breakdown.
 
+### Swept exit details
+
+When a required exit-chain input was spent onchain, Bark reports the terminal
+`VtxoSwept` state with `state_details.kind === 'vtxo-swept'`. Its
+`spent_inputs` field contains outpoint strings (`txid:vout`), including an empty
+array when none are reported. The field is undefined for other state kinds.
+
+```ts
+import { getExitStatus } from 'react-native-nitro-ark';
+
+const status = await getExitStatus(vtxoId, true, false);
+if (status?.state_details.kind === 'vtxo-swept') {
+  console.log(status.state_details.spent_inputs);
+}
+```
+
+The field is preserved in exit progress, VTXO listings, and detailed status,
+including `history_details` when available. Use `getExitStatus()` to inspect a
+finished exit: finished exits are no longer actively tracked after loading the
+wallet. The example's **Exit Overview → Get Exit Status** shows the spent inputs
+and explains that the exit cannot continue. A delegated refresh may still be
+possible, depending on what spent the inputs; it is not guaranteed to succeed.
+
 ### VTXO recovery key gap
 
 Set `config.vtxo_key_gap_limit` when creating or opening a wallet to control how many consecutive unused key indices recovery and VTXO imports scan. It defaults to 250 when omitted. Increase it for wallets that issued many addresses without receiving into them. Values must be integers from 0 to 100,000; larger scans take more work.

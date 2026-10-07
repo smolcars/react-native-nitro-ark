@@ -115,6 +115,36 @@ fn cancel_exit_rejects_invalid_id_before_wallet_access() {
 }
 
 #[test]
+fn swept_exit_details_preserve_outpoints_and_tip_height() {
+    let tip = bitcoin_ext::BlockHeight::new(321);
+    let expected = [
+        format!("{}:0", "11".repeat(32)),
+        format!("{}:{}", "22".repeat(32), u32::MAX),
+    ];
+    let inputs = expected
+        .iter()
+        .map(|input| bark::ark::bitcoin::OutPoint::from_str(input).unwrap())
+        .collect();
+    let state = bark::exit::ExitState::new_vtxo_swept(tip, inputs);
+    let result = cxx::exit_state_details_to_ffi(&state);
+    assert_eq!(result.kind, "vtxo-swept");
+    assert_eq!(result.tip_height, 321);
+    assert_eq!(result.spent_inputs, expected);
+
+    for state in [
+        bark::exit::ExitState::new_vtxo_swept(tip, Vec::new()),
+        bark::exit::ExitState::new_start(tip),
+        bark::exit::ExitState::new_vtxo_already_spent(tip),
+    ] {
+        assert!(
+            cxx::exit_state_details_to_ffi(&state)
+                .spent_inputs
+                .is_empty()
+        );
+    }
+}
+
+#[test]
 fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
     let result = cxx::estimate_emergency_exit_fee(
         vec!["not-a-vtxo-id".to_string()],

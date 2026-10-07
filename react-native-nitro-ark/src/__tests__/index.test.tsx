@@ -1,5 +1,8 @@
 jest.mock('react-native-nitro-modules', () => {
   const cancelExit = jest.fn(() => Promise.resolve());
+  const getExitStatus = jest.fn();
+  const getExitVtxos = jest.fn();
+  const progressExits = jest.fn();
   const estimateEmergencyExitFee = jest.fn(() =>
     Promise.resolve({
       exit_broadcast_fee_sat: 1200,
@@ -28,6 +31,9 @@ jest.mock('react-native-nitro-modules', () => {
     NitroModules: {
       createHybridObject: () => ({
         cancelExit,
+        getExitStatus,
+        getExitVtxos,
+        progressExits,
         estimateEmergencyExitFee,
         updateHistoryMetadata,
         payLightningInvoice,
@@ -61,6 +67,9 @@ import {
   NitroArkHybridObject,
   cancelExit,
   estimateEmergencyExitFee,
+  getExitStatus,
+  getExitVtxos,
+  progressExits,
   payLightningInvoice,
   payLightningOffer,
   payLightningAddress,
@@ -77,6 +86,52 @@ describe('cancelExit', () => {
     await cancelExit('vtxo-id');
 
     expect(mockCancelExit).toHaveBeenCalledWith('vtxo-id');
+  });
+});
+
+describe('swept exit details', () => {
+  it('preserves spent inputs in current and historical exit responses', async () => {
+    const details = {
+      kind: 'vtxo-swept',
+      tip_height: 321,
+      spent_inputs: [`${'11'.repeat(32)}:0`, `${'22'.repeat(32)}:4294967295`],
+    };
+    const exit = {
+      vtxo_id: 'vtxo-id',
+      state: 'VtxoSwept',
+      state_details: details,
+      history: ['Start', 'VtxoSwept'],
+      history_details: [{ kind: 'start', tip_height: 300 }, details],
+      transactions: [],
+    };
+    jest.mocked(NitroArkHybridObject.getExitStatus).mockResolvedValue(exit);
+    jest.mocked(NitroArkHybridObject.getExitVtxos).mockResolvedValue([
+      {
+        ...exit,
+        amount_sat: 1000,
+        txids: [],
+        is_claimable: false,
+        is_initialized: false,
+      },
+    ]);
+    jest.mocked(NitroArkHybridObject.progressExits).mockResolvedValue([exit]);
+
+    const status = await getExitStatus('vtxo-id', true, false);
+    const [vtxo] = await getExitVtxos();
+    const [progress] = await progressExits();
+    for (const result of [status, vtxo, progress]) {
+      expect(result?.state).toBe('VtxoSwept');
+      expect(result?.state_details).toEqual(details);
+    }
+    for (const result of [status, vtxo]) {
+      expect(result?.history_details).toEqual(exit.history_details);
+      expect(result?.history_details[0]?.spent_inputs).toBeUndefined();
+    }
+    expect(NitroArkHybridObject.getExitStatus).toHaveBeenCalledWith(
+      'vtxo-id',
+      true,
+      false
+    );
   });
 });
 

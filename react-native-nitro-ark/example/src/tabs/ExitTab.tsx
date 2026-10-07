@@ -27,6 +27,20 @@ const parseOptionalFeeRate = (value: string): number | undefined => {
   return parsed;
 };
 
+const formatExitResults = (
+  exits: Pick<ExitVtxoResult, 'vtxo_id' | 'state_details'>[]
+): string => {
+  const swept = exits
+    .filter((exit) => exit.state_details.kind === 'vtxo-swept')
+    .map(
+      (exit) =>
+        `Exit ${exit.vtxo_id}: swept (terminal). Required exit-chain inputs were spent onchain.\n` +
+        `Spent inputs:\n${exit.state_details.spent_inputs?.join('\n') || 'None reported.'}\n` +
+        'A delegated refresh may still be possible; success is not guaranteed.'
+    );
+  return [...swept, JSON.stringify(exits, null, 2)].join('\n\n');
+};
+
 export const ExitTab = ({
   results,
   setResults,
@@ -38,6 +52,7 @@ export const ExitTab = ({
 }: TabProps) => {
   const [progressFeeRate, setProgressFeeRate] = useState('');
   const [cancelVtxoId, setCancelVtxoId] = useState('');
+  const [statusVtxoId, setStatusVtxoId] = useState('');
   const [drainFeeRate, setDrainFeeRate] = useState('');
   const [drainDestinationAddress, setDrainDestinationAddress] = useState('');
   const [drainVtxoIdsInput, setDrainVtxoIdsInput] = useState('');
@@ -155,7 +170,7 @@ export const ExitTab = ({
         const summary =
           progress.length === 0
             ? 'No tracked exits still require progression.'
-            : JSON.stringify(progress, null, 2);
+            : formatExitResults(progress);
         setResults((prev) => ({
           ...prev,
           exitProgress: summary,
@@ -180,7 +195,29 @@ export const ExitTab = ({
 
         setResults((prev) => ({
           ...prev,
-          exitStatus: JSON.stringify(exitVtxos, null, 2),
+          exitStatus: formatExitResults(exitVtxos),
+        }));
+      }
+    );
+  };
+
+  const handleGetExitStatus = () => {
+    const vtxoId = statusVtxoId.trim();
+    if (!vtxoId) {
+      setSectionError('exitStatus', 'A VTXO ID is required');
+      return;
+    }
+
+    runOperation(
+      'getExitStatus',
+      () => NitroArk.getExitStatus(vtxoId, true, false),
+      'exitStatus',
+      (status) => {
+        setResults((prev) => ({
+          ...prev,
+          exitStatus: status
+            ? formatExitResults([status])
+            : `No exit status found for ${vtxoId}.`,
         }));
       }
     );
@@ -375,13 +412,27 @@ export const ExitTab = ({
       </Section>
 
       <Section title="Exit Overview">
+        <InputField
+          label="Exit VTXO ID to Inspect"
+          value={statusVtxoId}
+          onChangeText={setStatusVtxoId}
+          placeholder="Enter a live or finished exit VTXO ID"
+        />
         <ButtonGrid>
+          <CustomButton
+            title="Get Exit Status"
+            onPress={handleGetExitStatus}
+            disabled={exitOpsDisabled}
+            color={COLORS.secondary}
+          />
           <CustomButton
             title="Get Exit VTXOs"
             onPress={handleGetExitVtxos}
             disabled={exitOpsDisabled}
             color={COLORS.secondary}
           />
+        </ButtonGrid>
+        <ButtonGrid>
           <CustomButton
             title="Has Pending Exits"
             onPress={handleHasPendingExits}
@@ -392,6 +443,8 @@ export const ExitTab = ({
             onPress={handlePendingExitTotal}
             disabled={exitOpsDisabled}
           />
+        </ButtonGrid>
+        <ButtonGrid>
           <CustomButton
             title="All Claimable Height"
             onPress={handleAllClaimableAtHeight}

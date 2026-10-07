@@ -34,9 +34,9 @@ namespace margelo::nitro::nitroark { struct ExitTxResult; }
 namespace margelo::nitro::nitroark { struct ExitBlockRefResult; }
 
 #include <string>
-#include "ExitTxResult.hpp"
 #include <vector>
 #include <optional>
+#include "ExitTxResult.hpp"
 #include "ExitBlockRefResult.hpp"
 
 namespace margelo::nitro::nitroark {
@@ -48,6 +48,7 @@ namespace margelo::nitro::nitroark {
   public:
     std::string kind     SWIFT_PRIVATE;
     double tip_height     SWIFT_PRIVATE;
+    std::optional<std::vector<std::string>> spent_inputs     SWIFT_PRIVATE;
     std::optional<std::vector<ExitTxResult>> transactions     SWIFT_PRIVATE;
     std::optional<ExitBlockRefResult> confirmed_block     SWIFT_PRIVATE;
     std::optional<double> claimable_height     SWIFT_PRIVATE;
@@ -59,7 +60,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     ExitStateDetailsResult() = default;
-    explicit ExitStateDetailsResult(std::string kind, double tip_height, std::optional<std::vector<ExitTxResult>> transactions, std::optional<ExitBlockRefResult> confirmed_block, std::optional<double> claimable_height, std::optional<ExitBlockRefResult> claimable_since, std::optional<ExitBlockRefResult> last_scanned_block, std::optional<std::string> claim_txid, std::optional<std::string> txid, std::optional<ExitBlockRefResult> block): kind(kind), tip_height(tip_height), transactions(transactions), confirmed_block(confirmed_block), claimable_height(claimable_height), claimable_since(claimable_since), last_scanned_block(last_scanned_block), claim_txid(claim_txid), txid(txid), block(block) {}
+    explicit ExitStateDetailsResult(std::string kind, double tip_height, std::optional<std::vector<std::string>> spent_inputs, std::optional<std::vector<ExitTxResult>> transactions, std::optional<ExitBlockRefResult> confirmed_block, std::optional<double> claimable_height, std::optional<ExitBlockRefResult> claimable_since, std::optional<ExitBlockRefResult> last_scanned_block, std::optional<std::string> claim_txid, std::optional<std::string> txid, std::optional<ExitBlockRefResult> block): kind(kind), tip_height(tip_height), spent_inputs(spent_inputs), transactions(transactions), confirmed_block(confirmed_block), claimable_height(claimable_height), claimable_since(claimable_since), last_scanned_block(last_scanned_block), claim_txid(claim_txid), txid(txid), block(block) {}
 
   public:
     friend bool operator==(const ExitStateDetailsResult& lhs, const ExitStateDetailsResult& rhs) = default;
@@ -77,6 +78,7 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::ExitStateDetailsResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tip_height"))),
+        JSIConverter<std::optional<std::vector<std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "spent_inputs"))),
         JSIConverter<std::optional<std::vector<margelo::nitro::nitroark::ExitTxResult>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transactions"))),
         JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "confirmed_block"))),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "claimable_height"))),
@@ -91,6 +93,7 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "kind"), JSIConverter<std::string>::toJSI(runtime, arg.kind));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "tip_height"), JSIConverter<double>::toJSI(runtime, arg.tip_height));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "spent_inputs"), JSIConverter<std::optional<std::vector<std::string>>>::toJSI(runtime, arg.spent_inputs));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "transactions"), JSIConverter<std::optional<std::vector<margelo::nitro::nitroark::ExitTxResult>>>::toJSI(runtime, arg.transactions));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "confirmed_block"), JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::toJSI(runtime, arg.confirmed_block));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "claimable_height"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.claimable_height));
@@ -111,6 +114,7 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "kind")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tip_height")))) return false;
+      if (!JSIConverter<std::optional<std::vector<std::string>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "spent_inputs")))) return false;
       if (!JSIConverter<std::optional<std::vector<margelo::nitro::nitroark::ExitTxResult>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transactions")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::nitroark::ExitBlockRefResult>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "confirmed_block")))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "claimable_height")))) return false;

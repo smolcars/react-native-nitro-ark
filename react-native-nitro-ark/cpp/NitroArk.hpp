@@ -181,6 +181,13 @@ inline ExitStateDetailsResult convertRustExitStateDetails(const bark_cxx::ExitSt
   state.kind = std::string(state_rs.kind.data(), state_rs.kind.length());
   state.tip_height = static_cast<double>(state_rs.tip_height);
 
+  if (state.kind == "vtxo-swept") {
+    state.spent_inputs = std::vector<std::string>();
+    state.spent_inputs->reserve(state_rs.spent_inputs.size());
+    for (const auto& input : state_rs.spent_inputs) {
+      state.spent_inputs->emplace_back(input.data(), input.length());
+    }
+  }
   if (!state_rs.transactions.empty()) {
     state.transactions = std::vector<ExitTxResult>();
     state.transactions->reserve(state_rs.transactions.size());

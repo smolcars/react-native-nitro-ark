@@ -146,6 +146,8 @@ export interface ExitTxResult {
 export interface ExitStateDetailsResult {
   kind: string;
   tip_height: number;
+  /** Present for vtxo-swept; spent exit-chain inputs formatted as txid:vout. */
+  spent_inputs?: string[];
   transactions?: ExitTxResult[];
   confirmed_block?: ExitBlockRefResult;
   claimable_height?: number;

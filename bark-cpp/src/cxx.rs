@@ -149,6 +149,7 @@ pub(crate) mod ffi {
     pub struct ExitStateDetailsResult {
         kind: String,
         tip_height: u32,
+        spent_inputs: Vec<String>,
         transactions: Vec<ExitTxResult>,
         has_confirmed_block: bool,
         confirmed_block: ExitBlockRefResult,
@@ -1497,6 +1498,7 @@ fn empty_exit_state_details(
     ffi::ExitStateDetailsResult {
         kind: kind.to_string(),
         tip_height: tip_height.to_u32(),
+        spent_inputs: Vec::new(),
         transactions: Vec::new(),
         has_confirmed_block: false,
         confirmed_block: empty_exit_block_ref(),
@@ -1512,7 +1514,9 @@ fn empty_exit_state_details(
     }
 }
 
-fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDetailsResult {
+pub(crate) fn exit_state_details_to_ffi(
+    state: &bark::exit::ExitState,
+) -> ffi::ExitStateDetailsResult {
     match state {
         bark::exit::ExitState::Start(state) => {
             let bark::exit::ExitStartState { tip_height } = state;
@@ -1586,9 +1590,10 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             let bark::exit::ExitVtxoAlreadySpentState { tip_height } = state;
             empty_exit_state_details("vtxo-already-spent", *tip_height)
         }
-        bark::exit::ExitState::VtxoSwept(state) => {
-            empty_exit_state_details("vtxo-swept", state.tip_height)
-        }
+        bark::exit::ExitState::VtxoSwept(state) => ffi::ExitStateDetailsResult {
+            spent_inputs: state.spent_inputs.iter().map(ToString::to_string).collect(),
+            ..empty_exit_state_details("vtxo-swept", state.tip_height)
+        },
         bark::exit::ExitState::Canceled(state) => {
             let bark::exit::ExitCanceledState { tip_height } = state;
             empty_exit_state_details("canceled", *tip_height)
