@@ -10,7 +10,7 @@ jest.mock('react-native-nitro-modules', () => {
     })
   );
   const updateHistoryMetadata = jest.fn(() => Promise.resolve());
-  const payLightningInvoiceWithOrigin = jest.fn(() =>
+  const lightningPaymentResult = () =>
     Promise.resolve({
       state: 'in_progress',
       invoice: 'lntbs1example',
@@ -18,8 +18,11 @@ jest.mock('react-native-nitro-modules', () => {
       amount: 1000,
       htlc_vtxos: [],
       movement_id: 42,
-    })
-  );
+    });
+  const payLightningInvoice = jest.fn(lightningPaymentResult);
+  const payLightningOffer = jest.fn(lightningPaymentResult);
+  const payLightningAddress = jest.fn(lightningPaymentResult);
+  const payLightningInvoiceWithOrigin = jest.fn(lightningPaymentResult);
 
   return {
     NitroModules: {
@@ -27,6 +30,9 @@ jest.mock('react-native-nitro-modules', () => {
         cancelExit,
         estimateEmergencyExitFee,
         updateHistoryMetadata,
+        payLightningInvoice,
+        payLightningOffer,
+        payLightningAddress,
         payLightningInvoiceWithOrigin,
       }),
     },
@@ -55,6 +61,9 @@ import {
   NitroArkHybridObject,
   cancelExit,
   estimateEmergencyExitFee,
+  payLightningInvoice,
+  payLightningOffer,
+  payLightningAddress,
   payLightningInvoiceWithOrigin,
   updateHistoryMetadata,
 } from '../index';
@@ -145,7 +154,8 @@ describe('payLightningInvoiceWithOrigin', () => {
     expect(mockPayLightningInvoiceWithOrigin).toHaveBeenCalledWith(
       'lntbs1example',
       origin,
-      true
+      true,
+      undefined
     );
     expect(result).toEqual({
       state: 'in_progress',
@@ -168,4 +178,71 @@ describe('payLightningInvoiceWithOrigin', () => {
 
     expect(invalidOrigin.value).toBe('lntbs1example');
   });
+});
+
+describe.each([
+  {
+    name: 'payLightningInvoice',
+    native: NitroArkHybridObject.payLightningInvoice,
+    call: (wait: boolean, retry?: number) =>
+      payLightningInvoice('invoice', wait, undefined, retry),
+    args: (wait: boolean, retry?: number) => [
+      'invoice',
+      wait,
+      undefined,
+      retry,
+    ],
+  },
+  {
+    name: 'payLightningOffer',
+    native: NitroArkHybridObject.payLightningOffer,
+    call: (wait: boolean, retry?: number) =>
+      payLightningOffer('offer', wait, 1000, retry),
+    args: (wait: boolean, retry?: number) => ['offer', wait, 1000, retry],
+  },
+  {
+    name: 'payLightningAddress',
+    native: NitroArkHybridObject.payLightningAddress,
+    call: (wait: boolean, retry?: number) =>
+      payLightningAddress('alice@example.com', 1000, 'Hi', wait, retry),
+    args: (wait: boolean, retry?: number) => [
+      'alice@example.com',
+      1000,
+      'Hi',
+      wait,
+      retry,
+    ],
+  },
+  {
+    name: 'payLightningInvoiceWithOrigin',
+    native: NitroArkHybridObject.payLightningInvoiceWithOrigin,
+    call: (wait: boolean, retry?: number) =>
+      payLightningInvoiceWithOrigin(
+        'invoice',
+        { method: 'custom', value: 'destination' },
+        wait,
+        retry
+      ),
+    args: (wait: boolean, retry?: number) => [
+      'invoice',
+      { method: 'custom', value: 'destination' },
+      wait,
+      retry,
+    ],
+  },
+])('$name retry controls', ({ native, call, args }) => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it.each([undefined, 0, 30, 0xffffffff])(
+    'forwards retry duration %p independently of wait',
+    async (retry) => {
+      for (const wait of [false, true]) {
+        const result = await call(wait, retry);
+        expect(native).toHaveBeenLastCalledWith(...args(wait, retry));
+        expect(result.state).toBe('in_progress');
+      }
+    }
+  );
 });

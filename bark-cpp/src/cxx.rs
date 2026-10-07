@@ -221,6 +221,13 @@ pub(crate) mod ffi {
         vtxo_xpub: String,
     }
 
+    #[derive(Clone, Copy)]
+    pub struct LightningSendOptions {
+        wait: bool,
+        has_retry_for: bool,
+        retry_for_seconds: f64,
+    }
+
     pub struct ConfigOpts {
         ark: String,
         user_agent: String,
@@ -479,24 +486,24 @@ pub(crate) mod ffi {
         unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         fn pay_lightning_invoice_with_origin(
             invoice: &str,
             origin_method: &str,
             origin_value: &str,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         unsafe fn pay_lightning_offer(
             offer: &str,
             amount_sat: *const u64,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
             comment: &str,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         unsafe fn progress_exits(
             fee_rate_sat_per_kvb: *const u64,
@@ -1269,19 +1276,40 @@ fn lightning_payment_result_to_ffi(
     }
 }
 
+pub(crate) fn lightning_send_options(
+    options: ffi::LightningSendOptions,
+) -> anyhow::Result<bark::LightningSendOptions> {
+    let retry_for = if options.has_retry_for {
+        let seconds = options.retry_for_seconds;
+        if !seconds.is_finite()
+            || seconds.fract() != 0.0
+            || !(0.0..=f64::from(u32::MAX)).contains(&seconds)
+        {
+            bail!("retryForSeconds must be a finite unsigned 32-bit integer");
+        }
+        Some(std::time::Duration::from_secs(seconds as u64))
+    } else {
+        None
+    };
+    Ok(bark::LightningSendOptions::default()
+        .wait(options.wait)
+        .retry_for(retry_for))
+}
+
 pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_invoice", || {
+        let options = lightning_send_options(options)?;
         let amount_opt =
             unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
         let invoice = lightning::Invoice::from_str(destination)?;
 
         let send_result = crate::TOKIO_RUNTIME
-            .block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
+            .block_on(crate::pay_lightning_invoice(invoice, amount_opt, options))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
     })
@@ -1291,14 +1319,15 @@ pub(crate) fn pay_lightning_invoice_with_origin(
     invoice: &str,
     origin_method: &str,
     origin_value: &str,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_invoice_with_origin", || {
+        let options = lightning_send_options(options)?;
         let origin = crate::parse_lightning_payment_origin(origin_method, origin_value)?;
         let invoice = lightning::Invoice::from_str(invoice)?;
 
         let send_result = crate::TOKIO_RUNTIME.block_on(
-            crate::pay_lightning_invoice_with_origin(invoice, origin, wait),
+            crate::pay_lightning_invoice_with_origin(invoice, origin, options),
         )?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
@@ -1308,9 +1337,10 @@ pub(crate) fn pay_lightning_invoice_with_origin(
 pub(crate) fn pay_lightning_offer(
     offer: &str,
     amount_sat: *const u64,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_offer", || {
+        let options = lightning_send_options(options)?;
         let amount_opt =
             unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
@@ -1320,7 +1350,7 @@ pub(crate) fn pay_lightning_offer(
         let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(
             offer.clone(),
             amount_opt,
-            wait,
+            options,
         ))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
@@ -1331,9 +1361,10 @@ pub(crate) fn pay_lightning_address(
     addr: &str,
     amount_sat: u64,
     comment: &str,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_address", || {
+        let options = lightning_send_options(options)?;
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let comment_opt = if comment.is_empty() {
             None
@@ -1344,7 +1375,7 @@ pub(crate) fn pay_lightning_address(
             addr,
             amount,
             comment_opt,
-            wait,
+            options,
         ))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))

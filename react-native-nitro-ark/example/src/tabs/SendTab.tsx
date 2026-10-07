@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Switch, Text } from 'react-native';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkFeeEstimate,
@@ -34,6 +34,14 @@ export const SendTab = ({
   const [arkAmount, setArkAmount] = useState('');
   const [arkComment, setArkComment] = useState('');
   const [arkoorAddressToValidate, setArkoorAddressToValidate] = useState('');
+
+  // Lightning send controls
+  const [lightningRetrySeconds, setLightningRetrySeconds] = useState('');
+  const [waitForLightning, setWaitForLightning] = useState(false);
+  const retryForSeconds =
+    lightningRetrySeconds.trim() === ''
+      ? undefined
+      : Number(lightningRetrySeconds);
 
   // Lightning payment check
   const [paymentHash, setPaymentHash] = useState('');
@@ -264,7 +272,12 @@ export const SendTab = ({
         if (amount !== undefined) {
           await showLightningSendFeeEstimate(amount);
         }
-        return NitroArk.payLightningInvoice(arkDestination, false, amount);
+        return NitroArk.payLightningInvoice(
+          arkDestination,
+          waitForLightning,
+          amount,
+          retryForSeconds
+        );
       },
       'lightning'
     );
@@ -282,7 +295,12 @@ export const SendTab = ({
         if (amount !== undefined) {
           await showLightningSendFeeEstimate(amount);
         }
-        return NitroArk.payLightningOffer(arkDestination, false, amount);
+        return NitroArk.payLightningOffer(
+          arkDestination,
+          waitForLightning,
+          amount,
+          retryForSeconds
+        );
       },
       'lightning'
     );
@@ -308,7 +326,8 @@ export const SendTab = ({
           arkDestination,
           amount,
           arkComment,
-          false
+          waitForLightning,
+          retryForSeconds
         );
       },
       'lightning'
@@ -563,6 +582,27 @@ export const SendTab = ({
 
       {/* Lightning Payments */}
       <Section title="Lightning Payments">
+        <InputField
+          label="Retry duration (seconds)"
+          value={lightningRetrySeconds}
+          onChangeText={setLightningRetrySeconds}
+          placeholder="Server default"
+          keyboardType="numeric"
+        />
+        <Text style={styles.lightningHelp}>
+          Leave blank for the server default. 0 requests one attempt; longer
+          durations are capped by the server. Resumed payments keep their
+          original duration.
+        </Text>
+        <View style={styles.waitControl}>
+          <Text style={styles.waitLabel}>Wait for completion</Text>
+          <Switch
+            accessibilityLabel="Wait for Lightning payment completion"
+            value={waitForLightning}
+            onValueChange={setWaitForLightning}
+            disabled={isLoading}
+          />
+        </View>
         <ButtonGrid>
           <CustomButton
             title="Estimate Send Fee"
@@ -694,5 +734,18 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  lightningHelp: {
+    color: COLORS.textMuted,
+    marginBottom: 12,
+  },
+  waitControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  waitLabel: {
+    color: COLORS.text,
   },
 });

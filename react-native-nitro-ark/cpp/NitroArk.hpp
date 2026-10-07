@@ -1487,15 +1487,17 @@ public:
   // --- Lightning Operations ---
 
   std::shared_ptr<Promise<LightningPaymentResult>> payLightningInvoice(const std::string& destination, bool wait,
-                                                                       std::optional<double> amountSat) override {
-    return Promise<LightningPaymentResult>::async([destination, wait, amountSat]() {
+                                                                       std::optional<double> amountSat,
+                                                                       std::optional<double> retryForSeconds) override {
+    return Promise<LightningPaymentResult>::async([destination, wait, amountSat, retryForSeconds]() {
       try {
+        bark_cxx::LightningSendOptions options{wait, retryForSeconds.has_value(), retryForSeconds.value_or(0)};
         bark_cxx::LightningPaymentResult rust_result;
         if (amountSat.has_value()) {
           uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-          rust_result = bark_cxx::pay_lightning_invoice(destination, &amountSat_val, wait);
+          rust_result = bark_cxx::pay_lightning_invoice(destination, &amountSat_val, options);
         } else {
-          rust_result = bark_cxx::pay_lightning_invoice(destination, nullptr, wait);
+          rust_result = bark_cxx::pay_lightning_invoice(destination, nullptr, options);
         }
 
         return convertRustLightningPaymentResult(rust_result);
@@ -1508,11 +1510,13 @@ public:
   // Pay an invoice resolved by the caller while preserving the durable,
   // user-facing origin in Bark instead of storing only the one-time invoice.
   std::shared_ptr<Promise<LightningPaymentResult>>
-  payLightningInvoiceWithOrigin(const std::string& invoice, const LightningPaymentOrigin& origin, bool wait) override {
-    return Promise<LightningPaymentResult>::async([invoice, origin, wait]() {
+  payLightningInvoiceWithOrigin(const std::string& invoice, const LightningPaymentOrigin& origin, bool wait,
+                                std::optional<double> retryForSeconds) override {
+    return Promise<LightningPaymentResult>::async([invoice, origin, wait, retryForSeconds]() {
       try {
+        bark_cxx::LightningSendOptions options{wait, retryForSeconds.has_value(), retryForSeconds.value_or(0)};
         bark_cxx::LightningPaymentResult rust_result = bark_cxx::pay_lightning_invoice_with_origin(
-            invoice, lightningPaymentOriginMethodToString(origin.method), origin.value, wait);
+            invoice, lightningPaymentOriginMethodToString(origin.method), origin.value, options);
 
         return convertRustLightningPaymentResult(rust_result);
       } catch (const rust::Error& e) {
@@ -1522,15 +1526,17 @@ public:
   }
 
   std::shared_ptr<Promise<LightningPaymentResult>> payLightningOffer(const std::string& offer, bool wait,
-                                                                     std::optional<double> amountSat) override {
-    return Promise<LightningPaymentResult>::async([offer, wait, amountSat]() {
+                                                                     std::optional<double> amountSat,
+                                                                     std::optional<double> retryForSeconds) override {
+    return Promise<LightningPaymentResult>::async([offer, wait, amountSat, retryForSeconds]() {
       try {
+        bark_cxx::LightningSendOptions options{wait, retryForSeconds.has_value(), retryForSeconds.value_or(0)};
         bark_cxx::LightningPaymentResult rust_result;
         if (amountSat.has_value()) {
           uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-          rust_result = bark_cxx::pay_lightning_offer(offer, &amountSat_val, wait);
+          rust_result = bark_cxx::pay_lightning_offer(offer, &amountSat_val, options);
         } else {
-          rust_result = bark_cxx::pay_lightning_offer(offer, nullptr, wait);
+          rust_result = bark_cxx::pay_lightning_offer(offer, nullptr, options);
         }
 
         return convertRustLightningPaymentResult(rust_result);
@@ -1541,11 +1547,13 @@ public:
   }
 
   std::shared_ptr<Promise<LightningPaymentResult>> payLightningAddress(const std::string& addr, double amountSat,
-                                                                       const std::string& comment, bool wait) override {
-    return Promise<LightningPaymentResult>::async([addr, amountSat, comment, wait]() {
+                                                                       const std::string& comment, bool wait,
+                                                                       std::optional<double> retryForSeconds) override {
+    return Promise<LightningPaymentResult>::async([addr, amountSat, comment, wait, retryForSeconds]() {
       try {
+        bark_cxx::LightningSendOptions options{wait, retryForSeconds.has_value(), retryForSeconds.value_or(0)};
         bark_cxx::LightningPaymentResult rust_result =
-            bark_cxx::pay_lightning_address(addr, static_cast<uint64_t>(amountSat), comment, wait);
+            bark_cxx::pay_lightning_address(addr, static_cast<uint64_t>(amountSat), comment, options);
 
         return convertRustLightningPaymentResult(rust_result);
       } catch (const rust::Error& e) {

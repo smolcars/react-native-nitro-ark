@@ -988,6 +988,7 @@ namespace bark_cxx {
   struct ExitStatusResult;
   struct CxxArkInfo;
   struct WalletDebugInfo;
+  struct LightningSendOptions;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
@@ -1305,6 +1306,17 @@ struct WalletDebugInfo final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
+struct LightningSendOptions final {
+  bool wait CXX_DEFAULT_VALUE(false);
+  bool has_retry_for CXX_DEFAULT_VALUE(false);
+  double retry_for_seconds CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
@@ -1713,13 +1725,13 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::BarkFeeEstimate estimate_lightning_send_fee(::std::uint64_t amount_sat);
 
-::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_invoice_with_origin(::rust::Str invoice, ::rust::Str origin_method, ::rust::Str origin_value, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_invoice_with_origin(::rust::Str invoice, ::rust::Str origin_method, ::rust::Str origin_value, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment, ::bark_cxx::LightningSendOptions options);
 
 ::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
 

@@ -38,6 +38,63 @@ fn bark_version_matches_resolved_build_metadata() {
 }
 
 #[test]
+fn lightning_send_options_preserve_defaults_zero_and_wait() {
+    for wait in [false, true] {
+        for seconds in [None, Some(0), Some(30), Some(u32::MAX)] {
+            let options = cxx::lightning_send_options(ffi::LightningSendOptions {
+                wait,
+                has_retry_for: seconds.is_some(),
+                retry_for_seconds: f64::from(seconds.unwrap_or(0)),
+            })
+            .unwrap();
+            assert_eq!(options.wait, wait);
+            assert_eq!(
+                options.retry_for,
+                seconds.map(|s| std::time::Duration::from_secs(s.into()))
+            );
+        }
+    }
+}
+
+#[test]
+fn lightning_sends_reject_invalid_retry_before_parsing_or_wallet_access() {
+    for seconds in [
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        -1.0,
+        0.5,
+        f64::from(u32::MAX) + 1.0,
+    ] {
+        let options = ffi::LightningSendOptions {
+            wait: false,
+            has_retry_for: true,
+            retry_for_seconds: seconds,
+        };
+        for result in [
+            cxx::pay_lightning_invoice("invalid invoice", std::ptr::null(), options),
+            cxx::pay_lightning_offer("invalid offer", std::ptr::null(), options),
+            cxx::pay_lightning_address("invalid address", 1000, "", options),
+            cxx::pay_lightning_invoice_with_origin(
+                "invalid invoice",
+                "invalid origin",
+                "",
+                options,
+            ),
+        ] {
+            let error = result
+                .err()
+                .expect("invalid retry must reject before starting a payment");
+            assert!(
+                error
+                    .to_string()
+                    .contains("retryForSeconds must be a finite unsigned 32-bit integer")
+            );
+        }
+    }
+}
+
+#[test]
 fn unlock_vtxos_rejects_invalid_ids_before_wallet_access() {
     let result = cxx::unlock_vtxos(vec!["not-a-vtxo-id".to_string()]);
     assert!(result.is_err());
@@ -733,8 +790,15 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000, std::ptr::null(), std::ptr::null()).unwrap();
     let amount: u64 = 5000;
-    let send_res =
-        cxx::pay_lightning_invoice(&invoice.bolt11_invoice, &amount as *const u64, false);
+    let send_res = cxx::pay_lightning_invoice(
+        &invoice.bolt11_invoice,
+        &amount as *const u64,
+        ffi::LightningSendOptions {
+            wait: false,
+            has_retry_for: false,
+            retry_for_seconds: 0.0,
+        },
+    );
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",

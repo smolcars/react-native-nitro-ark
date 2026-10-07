@@ -511,7 +511,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoice(
     destination: string,
     wait: boolean,
-    amountSat?: number
+    amountSat?: number,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   /**
    * Pays an invoice already resolved by the caller while preserving the
@@ -520,18 +521,21 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoiceWithOrigin(
     invoice: string,
     origin: LightningPaymentOrigin,
-    wait: boolean
+    wait: boolean,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   payLightningOffer(
     offer: string,
     wait: boolean,
-    amountSat?: number
+    amountSat?: number,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,
     comment: string,
-    wait: boolean
+    wait: boolean,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   estimateLightningSendFee(amountSat: number): Promise<BarkFeeEstimate>;
   sendOnchain(destination: string, amountSat: number): Promise<string>;

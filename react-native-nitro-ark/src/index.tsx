@@ -1090,17 +1090,22 @@ export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
  * @param destination The Lightning invoice.
  * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningInvoice(
   destination: string,
   wait: boolean,
-  amountSat?: number
+  amountSat?: number,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningInvoice(
     destination,
     wait,
-    amountSat
+    amountSat,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
@@ -1130,17 +1135,22 @@ export function payLightningInvoice(
  * @param invoice The already-resolved Bolt11 invoice to pay.
  * @param origin The original destination to store in Bark's movement history.
  * @param wait Whether to wait for the payment to complete.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningInvoiceWithOrigin(
   invoice: string,
   origin: LightningPaymentOrigin,
-  wait: boolean
+  wait: boolean,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningInvoiceWithOrigin(
     invoice,
     origin,
-    wait
+    wait,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
@@ -1152,19 +1162,26 @@ export function payLightningInvoiceWithOrigin(
  * @param offer The Bolt12 offer.
  * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningOffer(
   offer: string,
   wait: boolean,
-  amountSat?: number
+  amountSat?: number,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
-  return NitroArkHybridObject.payLightningOffer(offer, wait, amountSat).then(
-    (result) => ({
-      ...result,
-      state: result.state as LightningPaymentState,
-    })
-  );
+  return NitroArkHybridObject.payLightningOffer(
+    offer,
+    wait,
+    amountSat,
+    retryForSeconds
+  ).then((result) => ({
+    ...result,
+    state: result.state as LightningPaymentState,
+  }));
 }
 
 /**
@@ -1173,19 +1190,24 @@ export function payLightningOffer(
  * @param amountSat The amount in satoshis to send.
  * @param comment An optional comment.
  * @param wait Whether to wait for the payment to complete.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningAddress(
   addr: string,
   amountSat: number,
   comment: string,
-  wait: boolean
+  wait: boolean,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningAddress(
     addr,
     amountSat,
     comment,
-    wait
+    wait,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
