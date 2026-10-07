@@ -987,6 +987,7 @@ namespace bark_cxx {
   struct ExitTransactionPackageResult;
   struct ExitStatusResult;
   struct CxxArkInfo;
+  struct WalletDebugInfo;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
@@ -1293,6 +1294,17 @@ struct CxxArkInfo final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+struct WalletDebugInfo final {
+  ::rust::String network;
+  ::rust::String mailbox_id;
+  ::rust::String vtxo_xpub;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
@@ -1620,6 +1632,8 @@ void close_wallet();
 ::bark_cxx::WalletSnapshotInfo validate_wallet_snapshot(::rust::Str path, ::bark_cxx::WalletSnapshotExpectation expected);
 
 ::bark_cxx::CxxArkInfo get_ark_info();
+
+::bark_cxx::WalletDebugInfo debug_info();
 
 ::bark_cxx::OffchainBalance offchain_balance();
 

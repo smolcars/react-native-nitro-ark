@@ -473,6 +473,13 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
     }
 }
 
+pub async fn debug_info() -> anyhow::Result<bark::DebugInfo> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.debug_info().await })
+        .await
+}
+
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager

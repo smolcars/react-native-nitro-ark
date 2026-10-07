@@ -3,6 +3,7 @@ import type {
   NitroArk,
   BarkCreateOpts,
   BarkArkInfo,
+  WalletDebugInfo,
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
@@ -630,6 +631,14 @@ export function getArkInfo(): Promise<BarkArkInfo> {
  */
 export function offchainBalance(): Promise<OffchainBalanceResult> {
   return NitroArkHybridObject.offchainBalance();
+}
+
+/**
+ * Returns the loaded wallet's network, mailbox ID and VTXO extended public key.
+ * Uses local wallet data; rejects if no wallet is loaded.
+ */
+export function debugInfo(): Promise<WalletDebugInfo> {
+  return NitroArkHybridObject.debugInfo();
 }
 
 /**
@@ -1336,6 +1345,7 @@ export type {
   BarkCreateOpts,
   BarkConfigOpts,
   BarkArkInfo,
+  WalletDebugInfo,
   Bolt11Invoice,
   BoardResult,
   DelegatedRoundState,

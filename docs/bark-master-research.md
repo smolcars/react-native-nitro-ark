@@ -2,7 +2,7 @@
 
 Research snapshot from **2026-10-07**, before implementation. The baseline below records the dependency and master revisions at that point.
 
-Implementation update: richer balances are now exposed by `offchainBalance()`, and [the dependencies](../bark-cpp/Cargo.toml) pin master commit `8661f24e902698047f32481545672b5cefd7b9cc`. The other optional API additions below remain follow-ups.
+Implementation update: richer balances and wallet diagnostics are now exposed by `offchainBalance()` and `debugInfo()`, and [the dependencies](../bark-cpp/Cargo.toml) pin master commit `8661f24e902698047f32481545672b5cefd7b9cc`. The other optional API additions below remain follow-ups.
 
 ## Comparison baseline
 

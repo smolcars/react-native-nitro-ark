@@ -924,6 +924,21 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<WalletDebugInfo>> debugInfo() override {
+    return Promise<WalletDebugInfo>::async([]() {
+      try {
+        bark_cxx::WalletDebugInfo rust_info = bark_cxx::debug_info();
+        WalletDebugInfo info;
+        info.network = std::string(rust_info.network.data(), rust_info.network.length());
+        info.mailbox_id = std::string(rust_info.mailbox_id.data(), rust_info.mailbox_id.length());
+        info.vtxo_xpub = std::string(rust_info.vtxo_xpub.data(), rust_info.vtxo_xpub.length());
+        return info;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() override {
     return Promise<OffchainBalanceResult>::async([]() {
       try {

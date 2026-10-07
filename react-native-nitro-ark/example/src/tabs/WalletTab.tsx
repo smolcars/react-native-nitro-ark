@@ -241,6 +241,10 @@ export const WalletTab = ({
   };
 
   // --- Wallet Info ---
+  const handleDebugInfo = () => {
+    runOperation('debugInfo', () => NitroArk.debugInfo(), 'debugInfo');
+  };
+
   const handleGetArkInfo = () => {
     runOperation('getArkInfo', () => NitroArk.getArkInfo(), 'info', setArkInfo);
   };
@@ -522,6 +526,16 @@ export const WalletTab = ({
           />
         </ButtonGrid>
         <ResultBox result={results.wallet} error={error.wallet} />
+      </Section>
+
+      {/* Wallet Diagnostics */}
+      <Section title="Wallet Diagnostics">
+        <CustomButton
+          title="Debug Info"
+          onPress={handleDebugInfo}
+          disabled={isLoading || !isWalletLoaded}
+        />
+        <ResultBox result={results.debugInfo} error={error.debugInfo} />
       </Section>
 
       {/* Sync Operations */}

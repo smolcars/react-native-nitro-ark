@@ -215,6 +215,12 @@ pub(crate) mod ffi {
         ln_receive_anti_dos_required: bool,
     }
 
+    pub struct WalletDebugInfo {
+        network: String,
+        mailbox_id: String,
+        vtxo_xpub: String,
+    }
+
     pub struct ConfigOpts {
         ark: String,
         user_agent: String,
@@ -414,6 +420,7 @@ pub(crate) mod ffi {
             expected: WalletSnapshotExpectation,
         ) -> Result<WalletSnapshotInfo>;
         fn get_ark_info() -> Result<CxxArkInfo>;
+        fn debug_info() -> Result<WalletDebugInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
         fn peek_keypair(index: u32) -> Result<KeyPairResult>;
@@ -687,6 +694,17 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
             required_board_confirmations: info.required_board_confirmations as u8,
             min_board_amount: info.min_board_amount.to_sat(),
             ln_receive_anti_dos_required: info.ln_receive_anti_dos_required,
+        })
+    })
+}
+
+pub(crate) fn debug_info() -> anyhow::Result<ffi::WalletDebugInfo> {
+    ffi_boundary("debug_info", || {
+        let info = crate::TOKIO_RUNTIME.block_on(crate::debug_info())?;
+        Ok(ffi::WalletDebugInfo {
+            network: info.network.to_string(),
+            mailbox_id: info.mailbox_id.to_string(),
+            vtxo_xpub: info.vtxo_xpub.to_string(),
         })
     })
 }

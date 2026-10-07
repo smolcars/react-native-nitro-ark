@@ -48,6 +48,13 @@ export interface BarkArkInfo {
   ln_receive_anti_dos_required: boolean;
 }
 
+/** Public identity information for diagnosing a loaded wallet. */
+export interface WalletDebugInfo {
+  network: string;
+  mailbox_id: string;
+  vtxo_xpub: string; // Base58 extended public key for VTXO derivation
+}
+
 // Helper interface for sendManyOnchain
 export interface BarkSendManyOutput {
   destination: string;
@@ -412,6 +419,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
+  debugInfo(): Promise<WalletDebugInfo>;
   offchainBalance(): Promise<OffchainBalanceResult>;
   deriveStoreNextKeypair(): Promise<KeyPairResult>;
   peekKeyPair(index: number): Promise<KeyPairResult>;
