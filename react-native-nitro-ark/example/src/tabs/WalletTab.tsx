@@ -77,13 +77,13 @@ export const WalletTab = ({
   const handleClearMnemonic = async () => {
     try {
       if (await NitroArk.isWalletLoaded()) await NitroArk.closeWallet();
+      setIsWalletLoaded(false);
       await AsyncStorage.removeItem(MNEMONIC_STORAGE_KEY);
       RNFSTurbo.unlink(ARK_DATA_PATH);
       setMnemonic(undefined);
       setArkInfo(undefined);
       setOnchainBalance(undefined);
       setOffchainBalance(undefined);
-      setIsWalletLoaded(false);
       setResults((prev) => ({ ...prev, wallet: 'Wallet data cleared!' }));
     } catch (err: any) {
       setError((prev) => ({
