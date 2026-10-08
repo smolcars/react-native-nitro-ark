@@ -968,6 +968,9 @@ std::size_t align_of() {
 namespace bark_cxx {
   struct BarkVtxo;
   struct BoardResult;
+  struct RecoveryGroup;
+  struct RecoveryReport;
+  struct RestoreWalletResult;
   struct NewAddressResult;
   struct Bolt11Invoice;
   struct LightningPaymentResult;
@@ -1038,6 +1041,42 @@ struct BoardResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RecoveryGroup
+#define CXXBRIDGE1_STRUCT_bark_cxx$RecoveryGroup
+struct RecoveryGroup final {
+  ::rust::Vec<::rust::String> vtxo_ids;
+  ::std::uint64_t known_amount_sat CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$RecoveryGroup
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RecoveryReport
+#define CXXBRIDGE1_STRUCT_bark_cxx$RecoveryReport
+struct RecoveryReport final {
+  bool is_complete CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::RecoveryGroup recovered;
+  ::bark_cxx::RecoveryGroup skipped;
+  ::bark_cxx::RecoveryGroup exited;
+  ::bark_cxx::RecoveryGroup failed;
+  ::bark_cxx::RecoveryGroup foreign;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$RecoveryReport
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RestoreWalletResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$RestoreWalletResult
+struct RestoreWalletResult final {
+  ::rust::String status;
+  bool has_report CXX_DEFAULT_VALUE(false);
+  ::bark_cxx::RecoveryReport report;
+  ::rust::String error;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$RestoreWalletResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
@@ -1709,6 +1748,8 @@ void sync();
 void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts config);
+
+::bark_cxx::RestoreWalletResult restore_wallet_from_ark_server(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::bark_cxx::BoardResult board_amount(::std::uint64_t amount_sat);
 

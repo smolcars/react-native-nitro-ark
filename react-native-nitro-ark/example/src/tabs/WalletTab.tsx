@@ -45,6 +45,7 @@ export const WalletTab = ({
   const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
   const [vtxoIdToDrop, setVtxoIdToDrop] = useState('');
   const [vtxoIdsToUnlock, setVtxoIdsToUnlock] = useState('');
+  const [restoreMnemonic, setRestoreMnemonic] = useState('');
 
   const canUseWallet = !!mnemonic;
   const walletOpsDisabled = isLoading || !canUseWallet;
@@ -75,6 +76,7 @@ export const WalletTab = ({
 
   const handleClearMnemonic = async () => {
     try {
+      if (await NitroArk.isWalletLoaded()) await NitroArk.closeWallet();
       await AsyncStorage.removeItem(MNEMONIC_STORAGE_KEY);
       RNFSTurbo.unlink(ARK_DATA_PATH);
       setMnemonic(undefined);
@@ -128,6 +130,55 @@ export const WalletTab = ({
       () => {
         setIsWalletLoaded(false);
         setResults((prev) => ({ ...prev, wallet: 'Wallet closed!' }));
+      }
+    );
+  };
+
+  const handleRestoreWallet = () => {
+    const seed = restoreMnemonic.trim();
+    runOperation(
+      'restoreWalletFromArkServer',
+      async () => {
+        const result = await NitroArk.restoreWalletFromArkServer(
+          ARK_DATA_PATH,
+          getWalletConfig(seed)
+        );
+        setMnemonic(seed);
+        setRestoreMnemonic('');
+        setIsWalletLoaded(true);
+        const warnings: string[] = [];
+        try {
+          await AsyncStorage.setItem(MNEMONIC_STORAGE_KEY, seed);
+        } catch (err: any) {
+          warnings.push(`Failed to save mnemonic: ${err.message}`);
+        }
+        let pendingRounds;
+        try {
+          const [offchain, onchain, rounds] = await Promise.all([
+            NitroArk.offchainBalance(),
+            NitroArk.onchainBalance(),
+            NitroArk.syncPendingRounds(),
+          ]);
+          setOffchainBalance(offchain);
+          setOnchainBalance(onchain);
+          pendingRounds = rounds;
+        } catch (err: any) {
+          warnings.push(`Failed to refresh restored wallet: ${err.message}`);
+        }
+        return { ...result, pending_rounds: pendingRounds, warnings };
+      },
+      'restore',
+      (result) => {
+        const message =
+          result.status === 'failed'
+            ? 'Restore failed. Wallet is loaded; preserve its data.'
+            : result.report?.is_complete
+              ? 'Seed scan completed. Wallet is loaded.'
+              : 'Seed scan completed with missing candidates. Wallet is loaded.';
+        setResults((prev) => ({
+          ...prev,
+          restore: `${message}\n\n${JSON.stringify(result, null, 2)}`,
+        }));
       }
     );
   };
@@ -526,6 +577,29 @@ export const WalletTab = ({
           />
         </ButtonGrid>
         <ResultBox result={results.wallet} error={error.wallet} />
+      </Section>
+
+      {/* Seed Recovery */}
+      <Section title="Restore from Ark Server">
+        <Text style={styles.statusText}>
+          Enter the original seed. Close the wallet first; the destination must
+          be new or empty. Restore preserves existing data. Onchain Sync is
+          separate.
+        </Text>
+        <InputField
+          label="Recovery mnemonic"
+          value={restoreMnemonic}
+          onChangeText={setRestoreMnemonic}
+          placeholder="Original BIP39 seed phrase"
+          secureTextEntry
+        />
+        <CustomButton
+          title="Restore Wallet from Ark Server"
+          onPress={handleRestoreWallet}
+          disabled={isLoading || isWalletLoaded || !restoreMnemonic.trim()}
+          color={COLORS.success}
+        />
+        <ResultBox result={results.restore} error={error.restore} />
       </Section>
 
       {/* Wallet Diagnostics */}

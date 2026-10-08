@@ -547,6 +547,181 @@ fn invalid_mnemonic_errors_do_not_include_the_supplied_value() {
         load_dir.path().to_str().unwrap(),
         load_opts,
     ));
+
+    let (restore_dir, mut restore_opts) = setup_test_wallet_opts();
+    restore_opts.mnemonic = INVALID_MNEMONIC_SENTINEL.to_string();
+    assert_invalid_mnemonic_is_redacted(cxx::restore_wallet_from_ark_server(
+        restore_dir.path().to_str().unwrap(),
+        restore_opts,
+    ));
+    assert_eq!(fs::read_dir(restore_dir.path()).unwrap().count(), 0);
+}
+
+#[test]
+fn recovery_report_preserves_groups_unknown_amounts_and_incompleteness() {
+    use bark::ark::bitcoin::{OutPoint, secp256k1::PublicKey};
+    use bark::ark::{Vtxo, VtxoId, VtxoPolicy};
+    let key =
+        PublicKey::from_str("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+            .unwrap();
+    let vtxo = |index| {
+        let point = OutPoint::from_str(&format!("{}:{index}", "11".repeat(32))).unwrap();
+        Vtxo::new(
+            point,
+            VtxoPolicy::new_pubkey(key),
+            Amount::from_sat(1000),
+            bitcoin_ext::BlockHeight::new(100),
+            key,
+            bitcoin_ext::BlockDelta::from(12u16),
+            point,
+        )
+    };
+    let unknown = VtxoId::from(vtxo(5).point());
+    let mut report = bark::RecoveryReport::default();
+    assert!(cxx::recovery_report_to_ffi(&report).is_complete);
+    report.push_recovered(&vtxo(0));
+    report.push_skipped(&vtxo(1));
+    report.push_exited(&vtxo(2));
+    report.push_failed(vtxo(4).id(), Some(Amount::from_sat(2000)));
+    report.push_failed(unknown, None);
+    let mapped = cxx::recovery_report_to_ffi(&report);
+    assert!(!mapped.is_complete);
+    assert_eq!(
+        mapped.failed.vtxo_ids,
+        vec![vtxo(4).id().to_string(), unknown.to_string()]
+    );
+    assert_eq!(mapped.failed.known_amount_sat, 2000);
+    for (group, index) in [
+        (mapped.recovered, 0),
+        (mapped.skipped, 1),
+        (mapped.exited, 2),
+    ] {
+        assert_eq!(group.vtxo_ids, vec![vtxo(index).id().to_string()]);
+        assert_eq!(group.known_amount_sat, 1000);
+    }
+    let mut foreign = bark::RecoveryReport::default();
+    foreign.push_foreign(&vtxo(3));
+    let mapped = cxx::recovery_report_to_ffi(&foreign);
+    assert!(!mapped.is_complete);
+    assert_eq!(mapped.foreign.vtxo_ids, vec![vtxo(3).id().to_string()]);
+    assert_eq!(mapped.foreign.known_amount_sat, 1000);
+}
+
+#[test]
+fn restore_initialization_failure_preserves_partial_data() {
+    let (dir, mut opts) = setup_test_wallet_opts();
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    opts.config.ark = format!("http://{}", listener.local_addr().unwrap());
+    drop(listener);
+    let error = cxx::restore_wallet_from_ark_server(dir.path().to_str().unwrap(), opts)
+        .err()
+        .expect("unavailable server must reject initialization");
+    assert!(
+        error
+            .to_string()
+            .contains("Failed to open wallet for Ark server recovery")
+    );
+    let db = dir.path().join(crate::utils::DB_FILE);
+    let before = fs::read(&db).unwrap();
+    assert!(!before.is_empty());
+    let (_, opts) = setup_test_wallet_opts();
+    assert!(cxx::restore_wallet_from_ark_server(dir.path().to_str().unwrap(), opts).is_err());
+    assert_eq!(fs::read(db).unwrap(), before);
+}
+
+#[test]
+#[ignore = "requires an isolated funded captaind and Bitcoin Core regtest container; set NITRO_ARK_RESTORE_CAPTAIND and NITRO_ARK_RESTORE_BITCOIND"]
+fn restore_recovers_delegated_round_completed_without_local_data() {
+    cxx::init_logger();
+    fn bitcoin(container: &str, args: &[&str]) {
+        let output = std::process::Command::new("docker")
+            .args([
+                "exec",
+                container,
+                "bitcoin-cli",
+                "-regtest",
+                "-rpcuser=second",
+                "-rpcpassword=ark",
+                "-rpcwallet=restore-test",
+            ])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "Bitcoin RPC failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    let captaind =
+        std::env::var("NITRO_ARK_RESTORE_CAPTAIND").expect("isolated captaind binary required");
+    let container =
+        std::env::var("NITRO_ARK_RESTORE_BITCOIND").expect("isolated regtest container required");
+    let (dir, mut opts) = setup_test_wallet_opts();
+    opts.config.ark = "http://127.0.0.1:3535".into();
+    opts.mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".into();
+    opts.config.esplora.clear();
+    opts.config.bitcoind = "http://127.0.0.1:18443".into();
+    opts.config.bitcoind_user = "second".into();
+    opts.config.bitcoind_pass = "ark".into();
+    opts.config.round_tx_required_confirmations = 1;
+    opts.config.fallback_fee_rate = 10_000;
+    let source = dir.path().join("source");
+    let restored = dir.path().join("restored");
+    cxx::create_wallet(source.to_str().unwrap(), opts.clone()).unwrap();
+    cxx::load_wallet(source.to_str().unwrap(), opts.clone()).unwrap();
+    // Reject before writing a destination while another wallet is loaded.
+    assert!(cxx::restore_wallet_from_ark_server(restored.to_str().unwrap(), opts.clone()).is_err());
+    assert!(!restored.exists());
+    let address = cxx::onchain_address().unwrap();
+    bitcoin(&container, &["sendtoaddress", &address, "0.01"]);
+    bitcoin(&container, &["-generate", "6"]);
+    cxx::onchain_sync().unwrap();
+    cxx::board_amount(100_000).unwrap();
+    bitcoin(&container, &["-generate", "6"]);
+    let mut board_id = None;
+    for _ in 0..50 {
+        cxx::sync_pending_boards().unwrap();
+        board_id = cxx::vtxos()
+            .unwrap()
+            .into_iter()
+            .find(|v| v.state == "Spendable")
+            .map(|v| v.id);
+        if board_id.is_some() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+    let board_id = board_id.expect("confirmed board");
+    cxx::refresh_vtxos_delegated(vec![board_id.clone()]).unwrap();
+    cxx::close_wallet().unwrap();
+    fs::remove_dir_all(&source).unwrap();
+    let output = std::process::Command::new(captaind)
+        .args(["rpc", "trigger-round"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "trigger round: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    std::thread::sleep(std::time::Duration::from_secs(6));
+    bitcoin(&container, &["-generate", "6"]);
+    let result =
+        cxx::restore_wallet_from_ark_server(restored.to_str().unwrap(), opts.clone()).unwrap();
+    assert_eq!(result.status, "completed", "{}", result.error);
+    assert!(result.has_report && result.report.is_complete);
+    assert!(cxx::is_wallet_loaded());
+    let recovered = cxx::vtxos()
+        .unwrap()
+        .into_iter()
+        .filter(|v| v.state == "Spendable")
+        .collect::<Vec<_>>();
+    assert_eq!(recovered.len(), 1);
+    assert_ne!(recovered[0].id, board_id);
+    assert!(recovered[0].amount > 0);
+    cxx::close_wallet().unwrap();
+    assert!(cxx::restore_wallet_from_ark_server(restored.to_str().unwrap(), opts).is_err());
 }
 
 /// A test fixture to ensure the wallet is loaded for a test and closed afterward.

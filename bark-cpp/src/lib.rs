@@ -41,6 +41,7 @@ mod cxx;
 mod exit;
 mod mailbox;
 mod onchain;
+mod recovery;
 mod state_changes;
 mod subscriptions;
 mod utils;
@@ -57,6 +58,7 @@ use utils::try_create_wallet;
 
 pub use backup::*;
 pub use exit::*;
+pub use recovery::*;
 pub use state_changes::*;
 pub use subscriptions::*;
 pub use utils::*;

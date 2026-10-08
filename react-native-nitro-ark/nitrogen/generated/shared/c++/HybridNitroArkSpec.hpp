@@ -15,6 +15,8 @@
 
 // Forward declaration of `BarkCreateOpts` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
+// Forward declaration of `RestoreWalletResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct RestoreWalletResult; }
 // Forward declaration of `WalletSnapshotInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct WalletSnapshotInfo; }
 // Forward declaration of `WalletSnapshotExpectation` to properly resolve imports.
@@ -83,6 +85,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <string>
 #include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
+#include "RestoreWalletResult.hpp"
 #include "WalletSnapshotInfo.hpp"
 #include "WalletSnapshotExpectation.hpp"
 #include <optional>
@@ -155,6 +158,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
       virtual std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& config) = 0;
+      virtual std::shared_ptr<Promise<RestoreWalletResult>> restoreWalletFromArkServer(const std::string& datadir, const BarkCreateOpts& opts) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<WalletSnapshotInfo>> createWalletSnapshot(const std::string& destinationPath) = 0;

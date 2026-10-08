@@ -53,6 +53,27 @@ pub(crate) mod ffi {
         funding_txid: String,
     }
 
+    pub struct RecoveryGroup {
+        vtxo_ids: Vec<String>,
+        known_amount_sat: u64,
+    }
+
+    pub struct RecoveryReport {
+        is_complete: bool,
+        recovered: RecoveryGroup,
+        skipped: RecoveryGroup,
+        exited: RecoveryGroup,
+        failed: RecoveryGroup,
+        foreign: RecoveryGroup,
+    }
+
+    pub struct RestoreWalletResult {
+        status: String,
+        has_report: bool,
+        report: RecoveryReport,
+        error: String,
+    }
+
     pub struct NewAddressResult {
         user_pubkey: String,
         ark_id: String,
@@ -229,6 +250,7 @@ pub(crate) mod ffi {
         retry_for_seconds: f64,
     }
 
+    #[derive(Clone)]
     pub struct ConfigOpts {
         ark: String,
         user_agent: String,
@@ -245,6 +267,7 @@ pub(crate) mod ffi {
         round_tx_required_confirmations: u32,
     }
 
+    #[derive(Clone)]
     pub struct CreateOpts {
         regtest: bool,
         signet: bool,
@@ -476,6 +499,10 @@ pub(crate) mod ffi {
         fn sync() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
+        fn restore_wallet_from_ark_server(
+            datadir: &str,
+            opts: CreateOpts,
+        ) -> Result<RestoreWalletResult>;
         fn board_amount(amount_sat: u64) -> Result<BoardResult>;
         fn board_all() -> Result<BoardResult>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
@@ -1091,6 +1118,49 @@ pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Res
         let (config, _) = utils::merge_config_opts(create_opts)?;
 
         crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
+    })
+}
+
+pub(crate) fn recovery_report_to_ffi(report: &bark::RecoveryReport) -> ffi::RecoveryReport {
+    fn group(entry: &bark::RecoveryReportEntry) -> ffi::RecoveryGroup {
+        let mut vtxo_ids = entry.ids().map(|id| id.to_string()).collect::<Vec<_>>();
+        vtxo_ids.sort();
+        ffi::RecoveryGroup {
+            vtxo_ids,
+            known_amount_sat: entry.total_amount().to_sat(),
+        }
+    }
+    ffi::RecoveryReport {
+        is_complete: report.is_complete(),
+        recovered: group(report.recovered()),
+        skipped: group(report.skipped()),
+        exited: group(report.exited()),
+        failed: group(report.failed()),
+        foreign: group(report.foreign()),
+    }
+}
+
+pub(crate) fn restore_wallet_from_ark_server(
+    datadir: &str,
+    opts: ffi::CreateOpts,
+) -> anyhow::Result<ffi::RestoreWalletResult> {
+    ffi_boundary("restore_wallet_from_ark_server", || {
+        let opts = utils::ffi_config_to_config(opts)?;
+        let result = TOKIO_RUNTIME.block_on(crate::restore_wallet_from_ark_server(
+            Path::new(datadir),
+            opts,
+        ))?;
+        Ok(ffi::RestoreWalletResult {
+            status: if result.error.is_some() {
+                "failed"
+            } else {
+                "completed"
+            }
+            .into(),
+            has_report: result.report.is_some(),
+            report: recovery_report_to_ffi(&result.report.unwrap_or_default()),
+            error: result.error.unwrap_or_default(),
+        })
     })
 }
 
