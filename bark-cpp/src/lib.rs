@@ -32,7 +32,7 @@ use bark::round::RoundStatus;
 use bark::{OpenWalletArgs, WalletSeed};
 use bdk_wallet::bitcoin::key::Keypair;
 use bdk_wallet::bitcoin::{Txid, bip32};
-use bitcoin_ext::BlockHeight;
+use bitcoin_ext::{BlockDelta, BlockHeight};
 use tokio::runtime::Runtime;
 use tokio::sync::{Mutex, RwLock};
 use tokio_util::sync::CancellationToken;
@@ -473,6 +473,13 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
     }
 }
 
+pub async fn debug_info() -> anyhow::Result<bark::DebugInfo> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.debug_info().await })
+        .await
+}
+
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -791,7 +798,7 @@ pub async fn unlock_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<()> {
         .await
 }
 
-pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
+pub async fn get_expiring_vtxos(threshold: BlockDelta) -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
 
     manager
@@ -976,14 +983,14 @@ pub async fn check_lightning_payment(
 pub async fn pay_lightning_invoice(
     destination: lightning::Invoice,
     amount_sat: Option<Amount>,
-    wait: bool,
+    options: bark::LightningSendOptions,
 ) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let invoice = ctx
                 .wallet
-                .pay_lightning_invoice(destination, amount_sat, wait)
+                .pay_lightning_invoice_with(destination, amount_sat, options)
                 .await?;
             let payment_hash = invoice.payment_hash();
             let payment_amount = invoice.get_payment_amount(amount_sat)?;
@@ -1004,7 +1011,7 @@ pub async fn pay_lightning_invoice(
 pub async fn pay_lightning_invoice_with_origin(
     invoice: lightning::Invoice,
     origin: PaymentMethod,
-    wait: bool,
+    options: bark::LightningSendOptions,
 ) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -1013,7 +1020,7 @@ pub async fn pay_lightning_invoice_with_origin(
             let payment_amount = invoice.get_payment_amount(None)?;
 
             ctx.wallet
-                .make_lightning_payment(&invoice, origin, None, wait)
+                .make_lightning_payment_with(&invoice, origin, None, options)
                 .await?;
 
             let state = ctx.wallet.lightning_send_state(payment_hash).await?;
@@ -1028,12 +1035,15 @@ pub async fn pay_lightning_invoice_with_origin(
 pub async fn pay_lightning_offer(
     offer: Offer,
     amount: Option<Amount>,
-    wait: bool,
+    options: bark::LightningSendOptions,
 ) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            let invoice = ctx.wallet.pay_lightning_offer(offer, amount, wait).await?;
+            let invoice = ctx
+                .wallet
+                .pay_lightning_offer_with(offer, amount, options)
+                .await?;
             let payment_hash = invoice.payment_hash();
             let payment_amount = invoice.get_payment_amount(amount)?;
             let state = ctx.wallet.lightning_send_state(payment_hash).await?;
@@ -1074,7 +1084,7 @@ pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
-    wait: bool,
+    options: bark::LightningSendOptions,
 ) -> anyhow::Result<LightningPaymentResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -1084,7 +1094,7 @@ pub async fn pay_lightning_address(
 
             let invoice = ctx
                 .wallet
-                .pay_lightning_address(&lightning_address, amount, comment, wait)
+                .pay_lightning_address_with(&lightning_address, amount, comment, options)
                 .await?;
             let payment_hash = invoice.payment_hash();
             let state = ctx.wallet.lightning_send_state(payment_hash).await?;

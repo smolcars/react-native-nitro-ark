@@ -1,5 +1,6 @@
 ENV['RCT_NEW_ARCH_ENABLED'] = '1'
-platform :ios, '16.6'
+minimum_ios_version = '16.6'
+platform :ios, minimum_ios_version
 
 
 # Resolve react_native_pods.rb with node to allow for hoisting
@@ -33,5 +34,14 @@ target 'NitroArkExample' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    installer.pods_project.targets.each do |pod_target|
+      pod_target.build_configurations.each do |build_config|
+        deployment_target = build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] || '0'
+        if Gem::Version.new(deployment_target) < Gem::Version.new(minimum_ios_version)
+          build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum_ios_version
+        end
+      end
+    end
   end
 end

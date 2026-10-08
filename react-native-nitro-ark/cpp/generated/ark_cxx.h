@@ -987,6 +987,8 @@ namespace bark_cxx {
   struct ExitTransactionPackageResult;
   struct ExitStatusResult;
   struct CxxArkInfo;
+  struct WalletDebugInfo;
+  struct LightningSendOptions;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
@@ -1104,9 +1106,8 @@ struct ExitFeeEstimate final {
   ::std::uint64_t exit_broadcast_fee_sat CXX_DEFAULT_VALUE(0);
   ::std::uint64_t claim_fee_sat CXX_DEFAULT_VALUE(0);
   ::std::uint64_t total_fee_sat CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
+  double fee_rate_sat_per_vb CXX_DEFAULT_VALUE(0);
   ::std::uint64_t txs_to_broadcast CXX_DEFAULT_VALUE(0);
-  bool fundable CXX_DEFAULT_VALUE(false);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1201,6 +1202,7 @@ struct ExitTxResult final {
 struct ExitStateDetailsResult final {
   ::rust::String kind;
   ::std::uint32_t tip_height CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::rust::String> spent_inputs;
   ::rust::Vec<::bark_cxx::ExitTxResult> transactions;
   bool has_confirmed_block CXX_DEFAULT_VALUE(false);
   ::bark_cxx::ExitBlockRefResult confirmed_block;
@@ -1295,6 +1297,28 @@ struct CxxArkInfo final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+struct WalletDebugInfo final {
+  ::rust::String network;
+  ::rust::String mailbox_id;
+  ::rust::String vtxo_xpub;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$WalletDebugInfo
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
+struct LightningSendOptions final {
+  bool wait CXX_DEFAULT_VALUE(false);
+  bool has_retry_for CXX_DEFAULT_VALUE(false);
+  double retry_for_seconds CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningSendOptions
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
@@ -1375,18 +1399,28 @@ struct LightningReceive final {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 #define CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 struct OffchainBalance final {
-  // Coins that are spendable in the Ark, either in-round or out-of-round.
+  // All amounts are in satoshis. Available to pay now.
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
+  // Expired VTXOs or VTXOs at the server's exit-depth limit.
+  ::std::uint64_t needs_refresh CXX_DEFAULT_VALUE(0);
+  // Sum of the seven pending categories below.
+  ::std::uint64_t pending CXX_DEFAULT_VALUE(0);
+  // spendable + needs_refresh + pending; summary fields overlap the breakdown.
+  ::std::uint64_t total CXX_DEFAULT_VALUE(0);
+  // Coins held by outgoing Ark payments, including change.
+  ::std::uint64_t pending_arkoor_send CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of being received over Lightning.
+  // Received HTLC coins whose preimage has been revealed.
   ::std::uint64_t claimable_lightning_receive CXX_DEFAULT_VALUE(0);
-  // Coins locked in a round.
+  // Coins locked as round inputs.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of unilaterally exiting the Ark.
+  // Coins whose exit committed onchain, awaiting claim.
   ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
   // Coins that are pending sufficient confirmations from board transactions.
   ::std::uint64_t pending_board CXX_DEFAULT_VALUE(0);
+  // Coins held until offboard broadcast, including change.
+  ::std::uint64_t pending_offboard CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1612,6 +1646,8 @@ void close_wallet();
 
 ::bark_cxx::CxxArkInfo get_ark_info();
 
+::bark_cxx::WalletDebugInfo debug_info();
+
 ::bark_cxx::OffchainBalance offchain_balance();
 
 ::bark_cxx::KeyPairResult derive_store_next_keypair();
@@ -1690,17 +1726,17 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::BarkFeeEstimate estimate_lightning_send_fee(::std::uint64_t amount_sat);
 
-::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_invoice_with_origin(::rust::Str invoice, ::rust::Str origin_method, ::rust::Str origin_value, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_invoice_with_origin(::rust::Str invoice, ::rust::Str origin_method, ::rust::Str origin_value, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat, ::bark_cxx::LightningSendOptions options);
 
-::bark_cxx::LightningPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment, bool wait);
+::bark_cxx::LightningPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment, ::bark_cxx::LightningSendOptions options);
 
 ::rust::Vec<::bark_cxx::ExitProgressStatusResult> progress_exits(::std::uint64_t const *fee_rate_sat_per_kvb);
 
-::bark_cxx::ExitFeeEstimate estimate_emergency_exit_fee(::rust::Vec<::rust::String> vtxo_ids, ::std::uint64_t const *fee_rate_sat_per_kvb, ::rust::String const *destination_address);
+::bark_cxx::ExitFeeEstimate estimate_emergency_exit_fee(::rust::Vec<::rust::String> vtxo_ids, ::std::uint64_t const *fee_rate_sat_per_kvb, ::rust::String const *destination_address, double const *fee_margin);
 
 ::rust::Vec<::bark_cxx::ExitVtxoResult> get_exit_vtxos();
 

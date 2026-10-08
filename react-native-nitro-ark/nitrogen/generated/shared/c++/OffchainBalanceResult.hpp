@@ -40,15 +40,20 @@ namespace margelo::nitro::nitroark {
   struct OffchainBalanceResult final {
   public:
     double spendable     SWIFT_PRIVATE;
+    double needs_refresh     SWIFT_PRIVATE;
+    double pending     SWIFT_PRIVATE;
+    double total     SWIFT_PRIVATE;
+    double pending_arkoor_send     SWIFT_PRIVATE;
     double pending_lightning_send     SWIFT_PRIVATE;
     double claimable_lightning_receive     SWIFT_PRIVATE;
     double pending_in_round     SWIFT_PRIVATE;
-    double pending_exit     SWIFT_PRIVATE;
     double pending_board     SWIFT_PRIVATE;
+    double pending_offboard     SWIFT_PRIVATE;
+    double pending_exit     SWIFT_PRIVATE;
 
   public:
     OffchainBalanceResult() = default;
-    explicit OffchainBalanceResult(double spendable, double pending_lightning_send, double claimable_lightning_receive, double pending_in_round, double pending_exit, double pending_board): spendable(spendable), pending_lightning_send(pending_lightning_send), claimable_lightning_receive(claimable_lightning_receive), pending_in_round(pending_in_round), pending_exit(pending_exit), pending_board(pending_board) {}
+    explicit OffchainBalanceResult(double spendable, double needs_refresh, double pending, double total, double pending_arkoor_send, double pending_lightning_send, double claimable_lightning_receive, double pending_in_round, double pending_board, double pending_offboard, double pending_exit): spendable(spendable), needs_refresh(needs_refresh), pending(pending), total(total), pending_arkoor_send(pending_arkoor_send), pending_lightning_send(pending_lightning_send), claimable_lightning_receive(claimable_lightning_receive), pending_in_round(pending_in_round), pending_board(pending_board), pending_offboard(pending_offboard), pending_exit(pending_exit) {}
 
   public:
     friend bool operator==(const OffchainBalanceResult& lhs, const OffchainBalanceResult& rhs) = default;
@@ -65,21 +70,31 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::OffchainBalanceResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "spendable"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "needs_refresh"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_arkoor_send"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_lightning_send"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "claimable_lightning_receive"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_in_round"))),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_exit"))),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_board")))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_board"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_offboard"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_exit")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::OffchainBalanceResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "spendable"), JSIConverter<double>::toJSI(runtime, arg.spendable));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "needs_refresh"), JSIConverter<double>::toJSI(runtime, arg.needs_refresh));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending"), JSIConverter<double>::toJSI(runtime, arg.pending));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "total"), JSIConverter<double>::toJSI(runtime, arg.total));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_arkoor_send"), JSIConverter<double>::toJSI(runtime, arg.pending_arkoor_send));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_lightning_send"), JSIConverter<double>::toJSI(runtime, arg.pending_lightning_send));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "claimable_lightning_receive"), JSIConverter<double>::toJSI(runtime, arg.claimable_lightning_receive));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_in_round"), JSIConverter<double>::toJSI(runtime, arg.pending_in_round));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_exit"), JSIConverter<double>::toJSI(runtime, arg.pending_exit));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_board"), JSIConverter<double>::toJSI(runtime, arg.pending_board));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_offboard"), JSIConverter<double>::toJSI(runtime, arg.pending_offboard));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "pending_exit"), JSIConverter<double>::toJSI(runtime, arg.pending_exit));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -91,11 +106,16 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "spendable")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "needs_refresh")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_arkoor_send")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_lightning_send")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "claimable_lightning_receive")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_in_round")))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_exit")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_board")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_offboard")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pending_exit")))) return false;
       return true;
     }
   };

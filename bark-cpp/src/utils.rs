@@ -150,9 +150,12 @@ impl ConfigOpts {
         if let Some(v) = self.bitcoind_pass {
             cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v.into()) };
         }
-        cfg.htlc_recv_claim_delta = self.htlc_recv_claim_delta;
-        cfg.vtxo_exit_margin = self.vtxo_exit_margin;
-        cfg.round_tx_required_confirmations = self.round_tx_required_confirmations;
+        cfg.htlc_recv_claim_delta = self.htlc_recv_claim_delta.into();
+        cfg.vtxo_exit_margin = self.vtxo_exit_margin.into();
+        cfg.round_tx_required_confirmations = self
+            .round_tx_required_confirmations
+            .try_into()
+            .context("round_tx_required_confirmations must be at most 65535 blocks")?;
         cfg.vtxo_refresh_expiry_threshold = self
             .vtxo_refresh_expiry_threshold
             .try_into()
@@ -378,9 +381,9 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
     crate::cxx::ffi::BarkVtxo {
         id: wallet_vtxo.vtxo.id().to_string(),
         amount: wallet_vtxo.vtxo.amount().to_sat(),
-        expiry_height: wallet_vtxo.vtxo.expiry_height(),
+        expiry_height: wallet_vtxo.vtxo.expiry_height().to_u32(),
         server_pubkey: wallet_vtxo.vtxo.server_pubkey().to_string(),
-        exit_delta: wallet_vtxo.vtxo.exit_delta(),
+        exit_delta: wallet_vtxo.vtxo.exit_delta().to_u16(),
         anchor_point: format!(
             "{}:{}",
             wallet_vtxo.vtxo.chain_anchor().txid,
@@ -399,9 +402,9 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     crate::cxx::ffi::BarkVtxo {
         id: vtxo.id().to_string(),
         amount: vtxo.amount().to_sat(),
-        expiry_height: vtxo.expiry_height(),
+        expiry_height: vtxo.expiry_height().to_u32(),
         server_pubkey: vtxo.server_pubkey().to_string(),
-        exit_delta: vtxo.exit_delta(),
+        exit_delta: vtxo.exit_delta().to_u16(),
         anchor_point: format!("{}:{}", vtxo.chain_anchor().txid, vtxo.chain_anchor().vout),
         point: format!("{}:{}", vtxo.point().txid, vtxo.point().vout),
         state: "unknown".to_string(),
@@ -426,6 +429,7 @@ pub fn exit_state_name(state: &bark::exit::ExitState) -> &'static str {
         bark::exit::ExitState::ClaimInProgress(..) => "ClaimInProgress",
         bark::exit::ExitState::Claimed(..) => "Claimed",
         bark::exit::ExitState::VtxoAlreadySpent(..) => "VtxoAlreadySpent",
+        bark::exit::ExitState::VtxoSwept(..) => "VtxoSwept",
         bark::exit::ExitState::Canceled(..) => "Canceled",
     }
 }

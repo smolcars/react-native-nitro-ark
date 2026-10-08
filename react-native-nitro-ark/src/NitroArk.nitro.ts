@@ -20,6 +20,7 @@ export interface BarkConfigOpts {
   fallback_fee_rate: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;
+  /** Required round confirmations (0–65535). */
   round_tx_required_confirmations: number;
 }
 
@@ -45,6 +46,13 @@ export interface BarkArkInfo {
   required_board_confirmations: number; // u8
   min_board_amount: number; // u64
   ln_receive_anti_dos_required: boolean;
+}
+
+/** Public identity information for diagnosing a loaded wallet. */
+export interface WalletDebugInfo {
+  network: string;
+  mailbox_id: string;
+  vtxo_xpub: string; // Base58 extended public key for VTXO derivation
 }
 
 // Helper interface for sendManyOnchain
@@ -88,12 +96,11 @@ export interface BarkFeeEstimate {
 }
 
 export interface ExitFeeEstimate {
-  exit_broadcast_fee_sat: number; // u64
-  claim_fee_sat: number; // u64
-  total_fee_sat: number; // u64
-  fee_rate_sat_per_vb: number; // u64
-  txs_to_broadcast: number; // u64
-  fundable: boolean;
+  exit_broadcast_fee_sat: number; // Upfront funding from confirmed onchain funds, including margin
+  claim_fee_sat: number; // Later claim fee deducted from recovered funds
+  total_fee_sat: number; // Broadcast + claim fees
+  fee_rate_sat_per_vb: number; // Base broadcast rate in sat/vB, before margin; may be fractional
+  txs_to_broadcast: number; // Transactions still requiring broadcast/CPFP
 }
 
 export interface BarkFeeRates {
@@ -139,6 +146,8 @@ export interface ExitTxResult {
 export interface ExitStateDetailsResult {
   kind: string;
   tip_height: number;
+  /** Present for vtxo-swept; spent exit-chain inputs formatted as txid:vout. */
+  spent_inputs?: string[];
   transactions?: ExitTxResult[];
   confirmed_block?: ExitBlockRefResult;
   claimable_height?: number;
@@ -217,13 +226,20 @@ export interface OnchainPaymentResult {
   destination_address: string; // Destination address
 }
 
+/** All amounts are integer satoshis. Summary fields overlap the breakdown. */
 export interface OffchainBalanceResult {
-  spendable: number; // u64
-  pending_lightning_send: number; // u64
-  claimable_lightning_receive: number; // u64
-  pending_in_round: number; // u64
-  pending_exit: number; // u64
-  pending_board: number; // u64
+  spendable: number; // Available to pay now
+  needs_refresh: number; // Expired or at the server's exit-depth limit
+  pending: number; // Sum of the seven pending categories below
+  total: number; // spendable + needs_refresh + pending
+
+  pending_arkoor_send: number; // Held by outgoing Ark payments, including change
+  pending_lightning_send: number; // Held by outgoing Lightning payments
+  claimable_lightning_receive: number; // Preimage revealed; awaiting spendable VTXOs
+  pending_in_round: number; // Locked round inputs
+  pending_board: number; // Awaiting board confirmations
+  pending_offboard: number; // Held until offboard broadcast, including change
+  pending_exit: number; // Exit committed onchain; awaiting claim
 }
 
 export interface OnchainBalanceResult {
@@ -382,7 +398,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   estimateEmergencyExitFee(
     vtxoIds: string[],
     feeRateSatPerKvb?: number,
-    destinationAddress?: string
+    destinationAddress?: string,
+    feeMargin?: number
   ): Promise<ExitFeeEstimate>;
   getExitVtxos(): Promise<ExitVtxoResult[]>;
   listClaimable(): Promise<ExitVtxoResult[]>;
@@ -405,6 +422,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
+  debugInfo(): Promise<WalletDebugInfo>;
   offchainBalance(): Promise<OffchainBalanceResult>;
   deriveStoreNextKeypair(): Promise<KeyPairResult>;
   peekKeyPair(index: number): Promise<KeyPairResult>;
@@ -496,7 +514,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoice(
     destination: string,
     wait: boolean,
-    amountSat?: number
+    amountSat?: number,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   /**
    * Pays an invoice already resolved by the caller while preserving the
@@ -505,18 +524,21 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoiceWithOrigin(
     invoice: string,
     origin: LightningPaymentOrigin,
-    wait: boolean
+    wait: boolean,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   payLightningOffer(
     offer: string,
     wait: boolean,
-    amountSat?: number
+    amountSat?: number,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,
     comment: string,
-    wait: boolean
+    wait: boolean,
+    retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   estimateLightningSendFee(amountSat: number): Promise<BarkFeeEstimate>;
   sendOnchain(destination: string, amountSat: number): Promise<string>;

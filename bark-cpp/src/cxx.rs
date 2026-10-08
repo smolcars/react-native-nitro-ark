@@ -93,9 +93,8 @@ pub(crate) mod ffi {
         exit_broadcast_fee_sat: u64,
         claim_fee_sat: u64,
         total_fee_sat: u64,
-        fee_rate_sat_per_vb: u64,
+        fee_rate_sat_per_vb: f64,
         txs_to_broadcast: u64,
-        fundable: bool,
     }
 
     pub struct BarkFeeRates {
@@ -150,6 +149,7 @@ pub(crate) mod ffi {
     pub struct ExitStateDetailsResult {
         kind: String,
         tip_height: u32,
+        spent_inputs: Vec<String>,
         transactions: Vec<ExitTxResult>,
         has_confirmed_block: bool,
         confirmed_block: ExitBlockRefResult,
@@ -216,6 +216,19 @@ pub(crate) mod ffi {
         ln_receive_anti_dos_required: bool,
     }
 
+    pub struct WalletDebugInfo {
+        network: String,
+        mailbox_id: String,
+        vtxo_xpub: String,
+    }
+
+    #[derive(Clone, Copy)]
+    pub struct LightningSendOptions {
+        wait: bool,
+        has_retry_for: bool,
+        retry_for_seconds: f64,
+    }
+
     pub struct ConfigOpts {
         ark: String,
         user_agent: String,
@@ -271,18 +284,28 @@ pub(crate) mod ffi {
     }
 
     pub struct OffchainBalance {
-        /// Coins that are spendable in the Ark, either in-round or out-of-round.
+        /// All amounts are in satoshis. Available to pay now.
         pub spendable: u64,
+        /// Expired VTXOs or VTXOs at the server's exit-depth limit.
+        pub needs_refresh: u64,
+        /// Sum of the seven pending categories below.
+        pub pending: u64,
+        /// spendable + needs_refresh + pending; summary fields overlap the breakdown.
+        pub total: u64,
+        /// Coins held by outgoing Ark payments, including change.
+        pub pending_arkoor_send: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
-        /// Coins that are in the process of being received over Lightning.
+        /// Received HTLC coins whose preimage has been revealed.
         pub claimable_lightning_receive: u64,
-        /// Coins locked in a round.
+        /// Coins locked as round inputs.
         pub pending_in_round: u64,
-        /// Coins that are in the process of unilaterally exiting the Ark.
+        /// Coins whose exit committed onchain, awaiting claim.
         pub pending_exit: u64,
         /// Coins that are pending sufficient confirmations from board transactions.
         pub pending_board: u64,
+        /// Coins held until offboard broadcast, including change.
+        pub pending_offboard: u64,
     }
 
     pub struct OnChainBalance {
@@ -405,6 +428,7 @@ pub(crate) mod ffi {
             expected: WalletSnapshotExpectation,
         ) -> Result<WalletSnapshotInfo>;
         fn get_ark_info() -> Result<CxxArkInfo>;
+        fn debug_info() -> Result<WalletDebugInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
         fn peek_keypair(index: u32) -> Result<KeyPairResult>;
@@ -463,24 +487,24 @@ pub(crate) mod ffi {
         unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         fn pay_lightning_invoice_with_origin(
             invoice: &str,
             origin_method: &str,
             origin_value: &str,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         unsafe fn pay_lightning_offer(
             offer: &str,
             amount_sat: *const u64,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
             comment: &str,
-            wait: bool,
+            options: LightningSendOptions,
         ) -> Result<LightningPaymentResult>;
         unsafe fn progress_exits(
             fee_rate_sat_per_kvb: *const u64,
@@ -489,6 +513,7 @@ pub(crate) mod ffi {
             vtxo_ids: Vec<String>,
             fee_rate_sat_per_kvb: *const u64,
             destination_address: *const String,
+            fee_margin: *const f64,
         ) -> Result<ExitFeeEstimate>;
         fn get_exit_vtxos() -> Result<Vec<ExitVtxoResult>>;
         fn list_claimable() -> Result<Vec<ExitVtxoResult>>;
@@ -671,9 +696,9 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
             mailbox_pubkey: info.mailbox_pubkey.to_string(),
             round_interval: info.round_interval.as_secs(),
             nb_round_nonces: info.nb_round_nonces as u16,
-            vtxo_exit_delta: info.vtxo_exit_delta,
-            vtxo_lifetime: info.vtxo_lifetime,
-            htlc_send_expiry_delta: info.htlc_send_expiry_delta,
+            vtxo_exit_delta: info.vtxo_exit_delta.to_u16(),
+            vtxo_lifetime: info.vtxo_lifetime.to_u16(),
+            htlc_send_expiry_delta: info.htlc_send_expiry_delta.to_u16(),
             max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
             required_board_confirmations: info.required_board_confirmations as u8,
             min_board_amount: info.min_board_amount.to_sat(),
@@ -682,19 +707,38 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     })
 }
 
+pub(crate) fn debug_info() -> anyhow::Result<ffi::WalletDebugInfo> {
+    ffi_boundary("debug_info", || {
+        let info = crate::TOKIO_RUNTIME.block_on(crate::debug_info())?;
+        Ok(ffi::WalletDebugInfo {
+            network: info.network.to_string(),
+            mailbox_id: info.mailbox_id.to_string(),
+            vtxo_xpub: info.vtxo_xpub.to_string(),
+        })
+    })
+}
+
 pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     ffi_boundary("offchain_balance", || {
         let balance = crate::TOKIO_RUNTIME.block_on(crate::balance())?;
-        Ok(ffi::OffchainBalance {
-            spendable: balance.spendable.to_sat(),
-            claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
-            pending_lightning_send: balance.pending_lightning_send.to_sat(),
-
-            pending_in_round: balance.pending_in_round.to_sat(),
-            pending_exit: balance.pending_exit.map_or(0, |a| a.to_sat()),
-            pending_board: balance.pending_board.to_sat(),
-        })
+        Ok(offchain_balance_to_ffi(&balance))
     })
+}
+
+pub(crate) fn offchain_balance_to_ffi(balance: &bark::Balance) -> ffi::OffchainBalance {
+    ffi::OffchainBalance {
+        spendable: balance.spendable.to_sat(),
+        needs_refresh: balance.needs_refresh.to_sat(),
+        pending: balance.pending().to_sat(),
+        total: balance.total().to_sat(),
+        pending_arkoor_send: balance.pending_arkoor_send.to_sat(),
+        pending_lightning_send: balance.pending_lightning_send.to_sat(),
+        claimable_lightning_receive: balance.claimable_lightning_receive.to_sat(),
+        pending_in_round: balance.pending_in_round.to_sat(),
+        pending_exit: balance.pending_exit.to_sat(),
+        pending_board: balance.pending_board.to_sat(),
+        pending_offboard: balance.pending_offboard.to_sat(),
+    }
 }
 
 pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> {
@@ -877,6 +921,9 @@ pub(crate) fn unlock_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<()> {
 
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
     ffi_boundary("get_expiring_vtxos", || {
+        let threshold = threshold
+            .try_into()
+            .context("threshold must be at most 65535 blocks")?;
         let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
         Ok(expiring_vtxos
             .into_iter()
@@ -915,7 +962,7 @@ pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32
         let blockheight =
             crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -926,7 +973,7 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
         let blockheight =
             crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -1231,19 +1278,40 @@ fn lightning_payment_result_to_ffi(
     }
 }
 
+pub(crate) fn lightning_send_options(
+    options: ffi::LightningSendOptions,
+) -> anyhow::Result<bark::LightningSendOptions> {
+    let retry_for = if options.has_retry_for {
+        let seconds = options.retry_for_seconds;
+        if !seconds.is_finite()
+            || seconds.fract() != 0.0
+            || !(0.0..=f64::from(u32::MAX)).contains(&seconds)
+        {
+            bail!("retryForSeconds must be a finite unsigned 32-bit integer");
+        }
+        Some(std::time::Duration::from_secs(seconds as u64))
+    } else {
+        None
+    };
+    Ok(bark::LightningSendOptions::default()
+        .wait(options.wait)
+        .retry_for(retry_for))
+}
+
 pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_invoice", || {
+        let options = lightning_send_options(options)?;
         let amount_opt =
             unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
         let invoice = lightning::Invoice::from_str(destination)?;
 
         let send_result = crate::TOKIO_RUNTIME
-            .block_on(crate::pay_lightning_invoice(invoice, amount_opt, wait))?;
+            .block_on(crate::pay_lightning_invoice(invoice, amount_opt, options))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
     })
@@ -1253,14 +1321,15 @@ pub(crate) fn pay_lightning_invoice_with_origin(
     invoice: &str,
     origin_method: &str,
     origin_value: &str,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_invoice_with_origin", || {
+        let options = lightning_send_options(options)?;
         let origin = crate::parse_lightning_payment_origin(origin_method, origin_value)?;
         let invoice = lightning::Invoice::from_str(invoice)?;
 
         let send_result = crate::TOKIO_RUNTIME.block_on(
-            crate::pay_lightning_invoice_with_origin(invoice, origin, wait),
+            crate::pay_lightning_invoice_with_origin(invoice, origin, options),
         )?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
@@ -1270,9 +1339,10 @@ pub(crate) fn pay_lightning_invoice_with_origin(
 pub(crate) fn pay_lightning_offer(
     offer: &str,
     amount_sat: *const u64,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_offer", || {
+        let options = lightning_send_options(options)?;
         let amount_opt =
             unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
@@ -1282,7 +1352,7 @@ pub(crate) fn pay_lightning_offer(
         let send_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(
             offer.clone(),
             amount_opt,
-            wait,
+            options,
         ))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
@@ -1293,9 +1363,10 @@ pub(crate) fn pay_lightning_address(
     addr: &str,
     amount_sat: u64,
     comment: &str,
-    wait: bool,
+    options: ffi::LightningSendOptions,
 ) -> anyhow::Result<ffi::LightningPaymentResult> {
     ffi_boundary("pay_lightning_address", || {
+        let options = lightning_send_options(options)?;
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let comment_opt = if comment.is_empty() {
             None
@@ -1306,7 +1377,7 @@ pub(crate) fn pay_lightning_address(
             addr,
             amount,
             comment_opt,
-            wait,
+            options,
         ))?;
 
         Ok(lightning_payment_result_to_ffi(send_result))
@@ -1322,7 +1393,7 @@ fn empty_exit_block_ref() -> ffi::ExitBlockRefResult {
 
 fn exit_block_ref_to_ffi(block: bitcoin_ext::BlockRef) -> ffi::ExitBlockRefResult {
     ffi::ExitBlockRefResult {
-        height: block.height,
+        height: block.height.to_u32(),
         hash: block.hash.to_string(),
     }
 }
@@ -1420,10 +1491,14 @@ fn exit_tx_to_ffi(tx: &bark::exit::ExitTx) -> ffi::ExitTxResult {
     }
 }
 
-fn empty_exit_state_details(kind: &str, tip_height: u32) -> ffi::ExitStateDetailsResult {
+fn empty_exit_state_details(
+    kind: &str,
+    tip_height: bitcoin_ext::BlockHeight,
+) -> ffi::ExitStateDetailsResult {
     ffi::ExitStateDetailsResult {
         kind: kind.to_string(),
-        tip_height,
+        tip_height: tip_height.to_u32(),
+        spent_inputs: Vec::new(),
         transactions: Vec::new(),
         has_confirmed_block: false,
         confirmed_block: empty_exit_block_ref(),
@@ -1439,7 +1514,9 @@ fn empty_exit_state_details(kind: &str, tip_height: u32) -> ffi::ExitStateDetail
     }
 }
 
-fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDetailsResult {
+pub(crate) fn exit_state_details_to_ffi(
+    state: &bark::exit::ExitState,
+) -> ffi::ExitStateDetailsResult {
     match state {
         bark::exit::ExitState::Start(state) => {
             let bark::exit::ExitStartState { tip_height } = state;
@@ -1464,7 +1541,7 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             ffi::ExitStateDetailsResult {
                 has_confirmed_block: true,
                 confirmed_block: exit_block_ref_to_ffi(*confirmed_block),
-                claimable_height: *claimable_height,
+                claimable_height: claimable_height.to_u32(),
                 ..empty_exit_state_details("awaiting-delta", *tip_height)
             }
         }
@@ -1513,6 +1590,10 @@ fn exit_state_details_to_ffi(state: &bark::exit::ExitState) -> ffi::ExitStateDet
             let bark::exit::ExitVtxoAlreadySpentState { tip_height } = state;
             empty_exit_state_details("vtxo-already-spent", *tip_height)
         }
+        bark::exit::ExitState::VtxoSwept(state) => ffi::ExitStateDetailsResult {
+            spent_inputs: state.spent_inputs.iter().map(ToString::to_string).collect(),
+            ..empty_exit_state_details("vtxo-swept", state.tip_height)
+        },
         bark::exit::ExitState::Canceled(state) => {
             let bark::exit::ExitCanceledState { tip_height } = state;
             empty_exit_state_details("canceled", *tip_height)
@@ -1527,9 +1608,8 @@ pub(crate) fn exit_fee_estimate_to_ffi(
         exit_broadcast_fee_sat: estimate.exit_broadcast_fee.to_sat(),
         claim_fee_sat: estimate.claim_fee.to_sat(),
         total_fee_sat: estimate.total().to_sat(),
-        fee_rate_sat_per_vb: estimate.fee_rate.to_sat_per_vb_ceil(),
+        fee_rate_sat_per_vb: fee_rate_to_sat_per_vbyte(estimate.fee_rate),
         txs_to_broadcast: estimate.txs_to_broadcast as u64,
-        fundable: estimate.fundable,
     }
 }
 
@@ -1565,6 +1645,7 @@ pub(crate) fn estimate_emergency_exit_fee(
     vtxo_ids: Vec<String>,
     fee_rate_sat_per_kvb: *const u64,
     destination_address: *const String,
+    fee_margin: *const f64,
 ) -> anyhow::Result<ffi::ExitFeeEstimate> {
     ffi_boundary("estimate_emergency_exit_fee", || {
         let fee_rate = unsafe {
@@ -1584,6 +1665,7 @@ pub(crate) fn estimate_emergency_exit_fee(
             vtxo_ids,
             fee_rate,
             destination,
+            unsafe { fee_margin.as_ref().copied() },
         ))?;
 
         Ok(exit_fee_estimate_to_ffi(&estimate))
@@ -1711,7 +1793,7 @@ pub(crate) fn all_claimable_at_height() -> anyhow::Result<*const u32> {
     ffi_boundary("all_claimable_at_height", || {
         let blockheight = TOKIO_RUNTIME.block_on(crate::all_claimable_at_height())?;
         match blockheight {
-            Some(height) => Ok(Box::into_raw(Box::new(height)) as *const u32),
+            Some(height) => Ok(Box::into_raw(Box::new(height.to_u32())) as *const u32),
             None => Ok(std::ptr::null()),
         }
     })
@@ -2112,7 +2194,7 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                 }),
                 bark::onchain::Utxo::Exit(exit) => serde_json::json!({
                     "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
-                    "height": exit.height
+                    "height": exit.height.to_u32()
                 }),
             })
             .collect::<Vec<_>>();
@@ -2144,7 +2226,7 @@ pub(crate) fn onchain_transactions() -> anyhow::Result<Vec<OnchainTransactionInf
             .map(|tx_info| {
                 let (has_confirmation, confirmation_height, confirmation_hash) =
                     match tx_info.confirmation {
-                        Some(block) => (true, block.height, block.hash.to_string()),
+                        Some(block) => (true, block.height.to_u32(), block.hash.to_string()),
                         None => (false, 0, String::new()),
                     };
 

@@ -3,6 +3,7 @@ import type {
   NitroArk,
   BarkCreateOpts,
   BarkArkInfo,
+  WalletDebugInfo,
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
@@ -63,6 +64,7 @@ export type ExitProgressState =
   | 'ClaimInProgress'
   | 'Claimed'
   | 'VtxoAlreadySpent'
+  | 'VtxoSwept'
   | 'Canceled';
 
 export type ExitStateKind =
@@ -73,12 +75,14 @@ export type ExitStateKind =
   | 'claim-in-progress'
   | 'claimed'
   | 'vtxo-already-spent'
+  | 'vtxo-swept'
   | 'canceled';
 
 export type BlockRef = NitroExitBlockRefResult;
 export type ExitTxOrigin = NitroExitTxOriginResult;
 export type ExitTxStatus = NitroExitTxStatusResult;
 export type ExitTx = NitroExitTxResult;
+/** Swept exits include spent_inputs as txid:vout strings in current and historical details. */
 export type ExitStateDetails = Omit<NitroExitStateDetailsResult, 'kind'> & {
   kind: ExitStateKind;
 };
@@ -479,22 +483,26 @@ export function progressExits(
 
 /**
  * Estimates the onchain fees required to unilaterally exit selected VTXOs.
- * The estimate itself does not synchronize or mutate the wallet; synchronize
- * first when current chain and mempool state is required.
+ * Call syncExit() first when fresh chain and mempool state is required.
+ * Estimating does not start or progress an exit and works before funding the onchain wallet.
  * @param vtxoIds VTXO IDs to include in the emergency exit estimate.
- * @param feeRateSatPerKvb Optional fee-rate override in sat/kvB, applied to both fee legs.
+ * @param feeRateSatPerKvb Optional nonnegative safe integer in sat/kvB, applied to both fee legs.
  * @param destinationAddress Optional claim destination, which affects the claim transaction weight.
+ * @param feeMargin Optional finite, nonnegative broadcast-fee multiplier. Defaults to 1.2;
+ * 1.0 adds no margin, and 0 produces a zero broadcast estimate. The claim fee is unchanged.
  * @returns A promise resolving to the CPFP broadcast and later claim fee breakdown.
  */
 export function estimateEmergencyExitFee(
   vtxoIds: string[],
   feeRateSatPerKvb?: number,
-  destinationAddress?: string
+  destinationAddress?: string,
+  feeMargin?: number
 ): Promise<ExitFeeEstimate> {
   return NitroArkHybridObject.estimateEmergencyExitFee(
     vtxoIds,
     feeRateSatPerKvb,
-    destinationAddress
+    destinationAddress,
+    feeMargin
   );
 }
 
@@ -546,7 +554,8 @@ export function hasPendingExits(): Promise<boolean> {
 }
 
 /**
- * Returns the total amount, in sats, still waiting on pending exit confirmations.
+ * Returns sats whose exit committed onchain and which have not been claimed yet.
+ * Matches offchainBalance().pending_exit; cancelable exits are excluded.
  * @returns A promise resolving to the pending exit total in satoshis.
  */
 export function pendingExitTotal(): Promise<number> {
@@ -620,10 +629,21 @@ export function getArkInfo(): Promise<BarkArkInfo> {
 
 /**
  * Gets the offchain balance for the loaded wallet.
+ * All values are satoshis. Use spendable for available funds and total for
+ * funds owned; pending and total overlap the individual pending categories.
+ * Call sync() first to update the wallet state.
  * @returns A promise resolving to the OffchainBalanceResult object.
  */
 export function offchainBalance(): Promise<OffchainBalanceResult> {
   return NitroArkHybridObject.offchainBalance();
+}
+
+/**
+ * Returns the loaded wallet's network, mailbox ID and VTXO extended public key.
+ * Uses local wallet data; rejects if no wallet is loaded.
+ */
+export function debugInfo(): Promise<WalletDebugInfo> {
+  return NitroArkHybridObject.debugInfo();
 }
 
 /**
@@ -894,7 +914,7 @@ export function getNextRequiredRefreshBlockheight(): Promise<
 
 /**
  * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
- * @param threshold The block height threshold to check for expiring VTXOs.
+ * @param threshold Number of blocks ahead to check for expiring VTXOs (0–65535).
  * @returns A promise resolving BarkVtxo[] array.
  */
 
@@ -1075,17 +1095,22 @@ export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
  * @param destination The Lightning invoice.
  * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningInvoice(
   destination: string,
   wait: boolean,
-  amountSat?: number
+  amountSat?: number,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningInvoice(
     destination,
     wait,
-    amountSat
+    amountSat,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
@@ -1115,17 +1140,22 @@ export function payLightningInvoice(
  * @param invoice The already-resolved Bolt11 invoice to pay.
  * @param origin The original destination to store in Bark's movement history.
  * @param wait Whether to wait for the payment to complete.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningInvoiceWithOrigin(
   invoice: string,
   origin: LightningPaymentOrigin,
-  wait: boolean
+  wait: boolean,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningInvoiceWithOrigin(
     invoice,
     origin,
-    wait
+    wait,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
@@ -1137,19 +1167,26 @@ export function payLightningInvoiceWithOrigin(
  * @param offer The Bolt12 offer.
  * @param wait Whether to wait for the payment to complete.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningOffer(
   offer: string,
   wait: boolean,
-  amountSat?: number
+  amountSat?: number,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
-  return NitroArkHybridObject.payLightningOffer(offer, wait, amountSat).then(
-    (result) => ({
-      ...result,
-      state: result.state as LightningPaymentState,
-    })
-  );
+  return NitroArkHybridObject.payLightningOffer(
+    offer,
+    wait,
+    amountSat,
+    retryForSeconds
+  ).then((result) => ({
+    ...result,
+    state: result.state as LightningPaymentState,
+  }));
 }
 
 /**
@@ -1158,19 +1195,24 @@ export function payLightningOffer(
  * @param amountSat The amount in satoshis to send.
  * @param comment An optional comment.
  * @param wait Whether to wait for the payment to complete.
+ * @param retryForSeconds Server retry duration in whole seconds (0–4294967295).
+ * Omit for the server default; 0 requests one attempt. The server caps its duration.
+ * Independent of wait; resumed payments keep their original retry duration.
  * @returns A promise resolving to the current Lightning payment state.
  */
 export function payLightningAddress(
   addr: string,
   amountSat: number,
   comment: string,
-  wait: boolean
+  wait: boolean,
+  retryForSeconds?: number
 ): Promise<LightningPayment> {
   return NitroArkHybridObject.payLightningAddress(
     addr,
     amountSat,
     comment,
-    wait
+    wait,
+    retryForSeconds
   ).then((result) => ({
     ...result,
     state: result.state as LightningPaymentState,
@@ -1330,6 +1372,7 @@ export type {
   BarkCreateOpts,
   BarkConfigOpts,
   BarkArkInfo,
+  WalletDebugInfo,
   Bolt11Invoice,
   BoardResult,
   DelegatedRoundState,

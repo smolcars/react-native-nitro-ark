@@ -241,6 +241,10 @@ export const WalletTab = ({
   };
 
   // --- Wallet Info ---
+  const handleDebugInfo = () => {
+    runOperation('debugInfo', () => NitroArk.debugInfo(), 'debugInfo');
+  };
+
   const handleGetArkInfo = () => {
     runOperation('getArkInfo', () => NitroArk.getArkInfo(), 'info', setArkInfo);
   };
@@ -524,6 +528,16 @@ export const WalletTab = ({
         <ResultBox result={results.wallet} error={error.wallet} />
       </Section>
 
+      {/* Wallet Diagnostics */}
+      <Section title="Wallet Diagnostics">
+        <CustomButton
+          title="Debug Info"
+          onPress={handleDebugInfo}
+          disabled={isLoading || !isWalletLoaded}
+        />
+        <ResultBox result={results.debugInfo} error={error.debugInfo} />
+      </Section>
+
       {/* Sync Operations */}
       <Section title="Sync Operations">
         <ButtonGrid>
@@ -614,12 +628,32 @@ export const WalletTab = ({
             title="Offchain (Ark)"
             balances={[
               {
+                label: 'Total',
+                value: formatSats(offchainBalance.total),
+              },
+              {
                 label: 'Spendable',
                 value: formatSats(offchainBalance.spendable),
               },
               {
+                label: 'Needs Refresh',
+                value: formatSats(offchainBalance.needs_refresh),
+              },
+              {
+                label: 'Pending Total',
+                value: formatSats(offchainBalance.pending),
+              },
+              {
+                label: 'Pending Ark Send',
+                value: formatSats(offchainBalance.pending_arkoor_send),
+              },
+              {
                 label: 'Pending LN Send',
                 value: formatSats(offchainBalance.pending_lightning_send),
+              },
+              {
+                label: 'Claimable LN Receive',
+                value: formatSats(offchainBalance.claimable_lightning_receive),
               },
               {
                 label: 'Pending Round',
@@ -632,6 +666,10 @@ export const WalletTab = ({
               {
                 label: 'Pending Board',
                 value: formatSats(offchainBalance.pending_board),
+              },
+              {
+                label: 'Pending Offboard',
+                value: formatSats(offchainBalance.pending_offboard),
               },
             ]}
           />

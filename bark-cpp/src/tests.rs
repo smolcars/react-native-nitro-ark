@@ -38,6 +38,63 @@ fn bark_version_matches_resolved_build_metadata() {
 }
 
 #[test]
+fn lightning_send_options_preserve_defaults_zero_and_wait() {
+    for wait in [false, true] {
+        for seconds in [None, Some(0), Some(30), Some(u32::MAX)] {
+            let options = cxx::lightning_send_options(ffi::LightningSendOptions {
+                wait,
+                has_retry_for: seconds.is_some(),
+                retry_for_seconds: f64::from(seconds.unwrap_or(0)),
+            })
+            .unwrap();
+            assert_eq!(options.wait, wait);
+            assert_eq!(
+                options.retry_for,
+                seconds.map(|s| std::time::Duration::from_secs(s.into()))
+            );
+        }
+    }
+}
+
+#[test]
+fn lightning_sends_reject_invalid_retry_before_parsing_or_wallet_access() {
+    for seconds in [
+        f64::NAN,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        -1.0,
+        0.5,
+        f64::from(u32::MAX) + 1.0,
+    ] {
+        let options = ffi::LightningSendOptions {
+            wait: false,
+            has_retry_for: true,
+            retry_for_seconds: seconds,
+        };
+        for result in [
+            cxx::pay_lightning_invoice("invalid invoice", std::ptr::null(), options),
+            cxx::pay_lightning_offer("invalid offer", std::ptr::null(), options),
+            cxx::pay_lightning_address("invalid address", 1000, "", options),
+            cxx::pay_lightning_invoice_with_origin(
+                "invalid invoice",
+                "invalid origin",
+                "",
+                options,
+            ),
+        ] {
+            let error = result
+                .err()
+                .expect("invalid retry must reject before starting a payment");
+            assert!(
+                error
+                    .to_string()
+                    .contains("retryForSeconds must be a finite unsigned 32-bit integer")
+            );
+        }
+    }
+}
+
+#[test]
 fn unlock_vtxos_rejects_invalid_ids_before_wallet_access() {
     let result = cxx::unlock_vtxos(vec!["not-a-vtxo-id".to_string()]);
     assert!(result.is_err());
@@ -58,9 +115,40 @@ fn cancel_exit_rejects_invalid_id_before_wallet_access() {
 }
 
 #[test]
+fn swept_exit_details_preserve_outpoints_and_tip_height() {
+    let tip = bitcoin_ext::BlockHeight::new(321);
+    let expected = [
+        format!("{}:0", "11".repeat(32)),
+        format!("{}:{}", "22".repeat(32), u32::MAX),
+    ];
+    let inputs = expected
+        .iter()
+        .map(|input| bark::ark::bitcoin::OutPoint::from_str(input).unwrap())
+        .collect();
+    let state = bark::exit::ExitState::new_vtxo_swept(tip, inputs);
+    let result = cxx::exit_state_details_to_ffi(&state);
+    assert_eq!(result.kind, "vtxo-swept");
+    assert_eq!(result.tip_height, 321);
+    assert_eq!(result.spent_inputs, expected);
+
+    for state in [
+        bark::exit::ExitState::new_vtxo_swept(tip, Vec::new()),
+        bark::exit::ExitState::new_start(tip),
+        bark::exit::ExitState::new_vtxo_already_spent(tip),
+    ] {
+        assert!(
+            cxx::exit_state_details_to_ffi(&state)
+                .spent_inputs
+                .is_empty()
+        );
+    }
+}
+
+#[test]
 fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
     let result = cxx::estimate_emergency_exit_fee(
         vec!["not-a-vtxo-id".to_string()],
+        std::ptr::null(),
         std::ptr::null(),
         std::ptr::null(),
     );
@@ -76,22 +164,84 @@ fn emergency_exit_fee_rejects_invalid_ids_before_wallet_access() {
 
 #[test]
 fn emergency_exit_fee_conversion_preserves_the_breakdown() {
-    let estimate = bark::exit::ExitFeeEstimate {
-        exit_broadcast_fee: Amount::from_sat(1_200),
-        claim_fee: Amount::from_sat(300),
-        fee_rate: FeeRate::from_sat_per_vb(2).unwrap(),
-        txs_to_broadcast: 4,
-        fundable: true,
-    };
+    for (sat_per_kwu, sat_per_vb) in [(500, 2.0), (375, 1.5)] {
+        let estimate = bark::exit::ExitFeeEstimate {
+            exit_broadcast_fee: Amount::from_sat(1_200),
+            claim_fee: Amount::from_sat(300),
+            fee_rate: FeeRate::from_sat_per_kwu(sat_per_kwu),
+            txs_to_broadcast: 4,
+        };
 
-    let result = cxx::exit_fee_estimate_to_ffi(&estimate);
+        let result = cxx::exit_fee_estimate_to_ffi(&estimate);
 
-    assert_eq!(result.exit_broadcast_fee_sat, 1_200);
-    assert_eq!(result.claim_fee_sat, 300);
-    assert_eq!(result.total_fee_sat, 1_500);
-    assert_eq!(result.fee_rate_sat_per_vb, 2);
-    assert_eq!(result.txs_to_broadcast, 4);
-    assert!(result.fundable);
+        assert_eq!(result.exit_broadcast_fee_sat, 1_200);
+        assert_eq!(result.claim_fee_sat, 300);
+        assert_eq!(result.total_fee_sat, 1_500);
+        assert_eq!(result.fee_rate_sat_per_vb, sat_per_vb);
+        assert_eq!(result.txs_to_broadcast, 4);
+    }
+}
+
+#[test]
+fn emergency_exit_fee_validates_margins_before_wallet_access() {
+    for margin in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.5] {
+        let error = cxx::estimate_emergency_exit_fee(
+            vec!["not-a-vtxo-id".to_string()],
+            std::ptr::null(),
+            std::ptr::null(),
+            &margin,
+        )
+        .err()
+        .expect("invalid margin should be rejected");
+        assert!(
+            error
+                .to_string()
+                .contains("feeMargin must be finite and non-negative")
+        );
+    }
+
+    for margin in [0.0, 1.0, 1.2, 1.5] {
+        let error = cxx::estimate_emergency_exit_fee(
+            vec!["not-a-vtxo-id".to_string()],
+            std::ptr::null(),
+            std::ptr::null(),
+            &margin,
+        )
+        .err()
+        .expect("invalid VTXO ID should be rejected");
+        assert!(error.to_string().contains("Invalid VTXO ID"));
+    }
+}
+
+#[test]
+fn offchain_balance_conversion_preserves_categories_and_totals() {
+    for unit in [0, 5_000_000_000] {
+        let balance = bark::Balance {
+            spendable: Amount::from_sat(1_000 + unit),
+            needs_refresh: Amount::from_sat(200 + unit),
+            pending_arkoor_send: Amount::from_sat(unit),
+            pending_lightning_send: Amount::from_sat(2 * unit),
+            claimable_lightning_receive: Amount::from_sat(4 * unit),
+            pending_in_round: Amount::from_sat(8 * unit),
+            pending_board: Amount::from_sat(16 * unit),
+            pending_offboard: Amount::from_sat(32 * unit),
+            pending_exit: Amount::from_sat(64 * unit),
+        };
+
+        let result = cxx::offchain_balance_to_ffi(&balance);
+
+        assert_eq!(result.spendable, 1_000 + unit);
+        assert_eq!(result.needs_refresh, 200 + unit);
+        assert_eq!(result.pending_arkoor_send, unit);
+        assert_eq!(result.pending_lightning_send, 2 * unit);
+        assert_eq!(result.claimable_lightning_receive, 4 * unit);
+        assert_eq!(result.pending_in_round, 8 * unit);
+        assert_eq!(result.pending_board, 16 * unit);
+        assert_eq!(result.pending_offboard, 32 * unit);
+        assert_eq!(result.pending_exit, 64 * unit);
+        assert_eq!(result.pending, 127 * unit);
+        assert_eq!(result.total, 1_200 + 129 * unit);
+    }
 }
 
 #[test]
@@ -289,6 +439,41 @@ fn merge_config_opts_rejects_overflowing_refresh_thresholds() {
         assert!(
             crate::utils::format_error_chain(&error)
                 .contains("vtxo_refresh_expiry_threshold must be at most 65535 blocks")
+        );
+    }
+}
+
+#[test]
+fn block_delta_inputs_are_checked_at_the_ffi_boundary() {
+    for confirmations in [0, u16::MAX as u32] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.round_tx_required_confirmations = confirmations;
+        let opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let (config, _) = crate::utils::merge_config_opts(opts).unwrap();
+        assert_eq!(
+            u32::from(config.round_tx_required_confirmations),
+            confirmations
+        );
+    }
+
+    for value in [u16::MAX as u32 + 1, u32::MAX] {
+        let (_temp_dir, mut opts) = setup_test_wallet_opts();
+        opts.config.round_tx_required_confirmations = value;
+        let opts = crate::utils::ffi_config_to_config(opts).unwrap();
+        let error = crate::utils::merge_config_opts(opts).unwrap_err();
+        assert!(
+            crate::utils::format_error_chain(&error)
+                .contains("round_tx_required_confirmations must be at most 65535 blocks")
+        );
+
+        let error = match cxx::get_expiring_vtxos(value) {
+            Ok(_) => panic!("overflowing block delta should be rejected"),
+            Err(error) => error,
+        };
+        assert!(
+            error
+                .to_string()
+                .contains("threshold must be at most 65535 blocks")
         );
     }
 }
@@ -669,8 +854,15 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000, std::ptr::null(), std::ptr::null()).unwrap();
     let amount: u64 = 5000;
-    let send_res =
-        cxx::pay_lightning_invoice(&invoice.bolt11_invoice, &amount as *const u64, false);
+    let send_res = cxx::pay_lightning_invoice(
+        &invoice.bolt11_invoice,
+        &amount as *const u64,
+        ffi::LightningSendOptions {
+            wait: false,
+            has_retry_for: false,
+            retry_for_seconds: 0.0,
+        },
+    );
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",
