@@ -494,6 +494,49 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<RestoreWalletResult>> restoreWalletFromArkServer(const std::string& datadir, const BarkCreateOpts& opts) override {
+    return Promise<RestoreWalletResult>::async([datadir, opts]() {
+      try {
+        bark_cxx::CreateOpts create_opts;
+        create_opts.regtest = opts.regtest.value_or(false);
+        create_opts.signet = opts.signet.value_or(false);
+        create_opts.bitcoin = opts.bitcoin.value_or(true);
+        create_opts.mnemonic = opts.mnemonic;
+        uint32_t birthday_height_val;
+        if (opts.birthday_height.has_value()) {
+          birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
+          create_opts.birthday_height = &birthday_height_val;
+        } else {
+          create_opts.birthday_height = nullptr;
+        }
+        create_opts.config = createConfigOpts(opts.config);
+        auto restored = bark_cxx::restore_wallet_from_ark_server(datadir, create_opts);
+        RestoreWalletResult result;
+        result.status = std::string(restored.status);
+        if (restored.has_report) {
+          auto group = [](const bark_cxx::RecoveryGroup& entry) {
+            RecoveryGroup converted;
+            for (const auto& id : entry.vtxo_ids) converted.vtxo_ids.emplace_back(std::string(id));
+            converted.known_amount_sat = static_cast<double>(entry.known_amount_sat);
+            return converted;
+          };
+          RecoveryReport report;
+          report.is_complete = restored.report.is_complete;
+          report.recovered = group(restored.report.recovered);
+          report.skipped = group(restored.report.skipped);
+          report.exited = group(restored.report.exited);
+          report.failed = group(restored.report.failed);
+          report.foreign = group(restored.report.foreign);
+          result.report = std::move(report);
+        }
+        if (!restored.error.empty()) result.error = std::string(restored.error);
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> closeWallet() override {
     stopAllSubscriptions();
 

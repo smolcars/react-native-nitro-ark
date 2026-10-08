@@ -49,6 +49,7 @@ interface InputFieldProps {
   placeholder?: string;
   keyboardType?: 'default' | 'numeric' | 'email-address';
   multiline?: boolean;
+  secureTextEntry?: boolean;
 }
 
 export const InputField = ({
@@ -58,6 +59,7 @@ export const InputField = ({
   placeholder,
   keyboardType = 'default',
   multiline = false,
+  secureTextEntry = false,
 }: InputFieldProps) => (
   <View style={styles.inputContainer}>
     <Text style={styles.inputLabel}>{label}</Text>
@@ -70,6 +72,8 @@ export const InputField = ({
       keyboardType={keyboardType}
       autoCapitalize="none"
       multiline={multiline}
+      secureTextEntry={secureTextEntry}
+      autoCorrect={!secureTextEntry}
     />
   </View>
 );

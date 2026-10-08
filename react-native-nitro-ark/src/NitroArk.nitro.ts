@@ -33,6 +33,29 @@ export interface BarkCreateOpts {
   config?: BarkConfigOpts;
 }
 
+export interface RecoveryGroup {
+  vtxo_ids: string[];
+  /** Sum of known amounts; failed fetches may have no known amount. */
+  known_amount_sat: number;
+}
+
+export interface RecoveryReport {
+  /** False when the scan has failed or foreign candidates. */
+  is_complete: boolean;
+  recovered: RecoveryGroup;
+  skipped: RecoveryGroup;
+  exited: RecoveryGroup;
+  failed: RecoveryGroup;
+  /** Keys not found within the configured VTXO key gap. */
+  foreign: RecoveryGroup;
+}
+
+export interface RestoreWalletResult {
+  status: string;
+  report?: RecoveryReport;
+  error?: string;
+}
+
 export interface BarkArkInfo {
   network: string;
   server_pubkey: string;
@@ -372,6 +395,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   createMnemonic(): Promise<string>;
   createWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
+  restoreWalletFromArkServer(
+    datadir: string,
+    opts: BarkCreateOpts
+  ): Promise<RestoreWalletResult>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
   createWalletSnapshot(destinationPath: string): Promise<WalletSnapshotInfo>;

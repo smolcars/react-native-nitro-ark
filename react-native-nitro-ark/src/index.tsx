@@ -2,6 +2,7 @@ import { NitroModules } from 'react-native-nitro-modules';
 import type {
   NitroArk,
   BarkCreateOpts,
+  RestoreWalletResult as NitroRestoreWalletResult,
   BarkArkInfo,
   WalletDebugInfo,
   Bolt11Invoice,
@@ -42,6 +43,10 @@ import type {
 } from './NitroArk.nitro';
 
 export type VtxoState = 'Spendable' | 'Spent' | 'Locked' | 'Exited' | 'unknown';
+
+export type RestoreWalletResult = Omit<NitroRestoreWalletResult, 'status'> & {
+  status: 'completed' | 'failed';
+};
 
 export type BarkVtxo = {
   id: string;
@@ -329,6 +334,24 @@ export function loadWallet(
   config: BarkCreateOpts
 ): Promise<void> {
   return NitroArkHybridObject.loadWallet(datadir, config);
+}
+
+/**
+ * Opens a fresh wallet and restores seed-linked VTXOs from the Ark server.
+ * Requires a new or empty directory and no loaded wallet. Initialization errors
+ * reject; preserve any data written. A resolved result leaves the wallet loaded,
+ * even when status is failed. Completed means the scan finished: also inspect
+ * report.is_complete. The report covers the seed scan, not delegated round sync.
+ * Recovery trusts the server; onchainSync remains a separate operation.
+ */
+export async function restoreWalletFromArkServer(
+  datadir: string,
+  opts: BarkCreateOpts
+): Promise<RestoreWalletResult> {
+  return (await NitroArkHybridObject.restoreWalletFromArkServer(
+    datadir,
+    opts
+  )) as RestoreWalletResult;
 }
 
 /**
@@ -1375,6 +1398,8 @@ export type {
   WalletDebugInfo,
   Bolt11Invoice,
   BoardResult,
+  RecoveryGroup,
+  RecoveryReport,
   DelegatedRoundState,
   BarkSendManyOutput,
   ArkoorPaymentResult,

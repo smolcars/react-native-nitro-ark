@@ -90,6 +90,28 @@ possible, depending on what spent the inputs; it is not guaranteed to succeed.
 
 Set `config.vtxo_key_gap_limit` when creating or opening a wallet to control how many consecutive unused key indices recovery and VTXO imports scan. It defaults to 250 when omitted. Increase it for wallets that issued many addresses without receiving into them. Values must be integers from 0 to 100,000; larger scans take more work.
 
+### Restore from the Ark server
+
+`restoreWalletFromArkServer(datadir, opts)` opens a fresh wallet using the original mnemonic and scans both seed-linked mailboxes. It then replays regular mailbox messages and syncs pending rounds, including delegated outputs completed while local data was missing. `createWallet` and `loadWallet` retain their existing behavior.
+
+```ts
+import { restoreWalletFromArkServer } from 'react-native-nitro-ark';
+
+const result = await restoreWalletFromArkServer(
+  newDirectory,
+  optionsWithOriginalSeed
+);
+if (result.status === 'failed' || !result.report?.is_complete) {
+  // Preserve this directory and inspect result.error and the report's candidates.
+}
+```
+
+Close any loaded wallet first. The destination must be absent or empty; existing data is never overwritten. Validation and initialization errors reject the promise and may leave a partial database. Once the call resolves, the wallet is loaded even if `status` is `failed`.
+
+`completed` means the scan and follow-up sync calls finished. Check `report.is_complete` separately: `failed` candidates could not be decided; `foreign` candidates could not be matched within the key gap. The report also groups `recovered`, `skipped` (spent or in-flight), and `exited` VTXOs. Each group contains `vtxo_ids` and `known_amount_sat`; unknown amounts are excluded from the sum. This is the seed scan's report, not a delegated-round completion guarantee; inspect `syncPendingRounds()` for remaining rounds. Follow-up RPC failures return `status: 'failed'` while preserving any scan report.
+
+Recovery trusts the server's records and status responses. An empty or complete report does not prove the server supplied every VTXO. Onchain recovery still requires `onchainSync()`; `birthday_height` does not change this scan. Existing-wallet rescans are unavailable with the pinned Bark API; repeat a full scan in another fresh directory, preserving previous data. The example app has a masked seed input and restore results under **Restore from Ark Server**.
+
 ### Wallet snapshots
 
 `createWalletSnapshot` uses SQLite Online Backup to create a consistent database image while the wallet remains loaded. The destination's parent directory must exist, and an existing destination is never overwritten.
