@@ -41,10 +41,11 @@ namespace margelo::nitro::nitroark {
   public:
     double amount_sat     SWIFT_PRIVATE;
     std::string destination_pubkey     SWIFT_PRIVATE;
+    double movement_id     SWIFT_PRIVATE;
 
   public:
     ArkoorPaymentResult() = default;
-    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey): amount_sat(amount_sat), destination_pubkey(destination_pubkey) {}
+    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, double movement_id): amount_sat(amount_sat), destination_pubkey(destination_pubkey), movement_id(movement_id) {}
 
   public:
     friend bool operator==(const ArkoorPaymentResult& lhs, const ArkoorPaymentResult& rhs) = default;
@@ -61,13 +62,15 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::ArkoorPaymentResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"))),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey")))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey"))),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "movement_id")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::ArkoorPaymentResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "amount_sat"), JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey"), JSIConverter<std::string>::toJSI(runtime, arg.destination_pubkey));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "movement_id"), JSIConverter<double>::toJSI(runtime, arg.movement_id));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -80,6 +83,7 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "amount_sat")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination_pubkey")))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "movement_id")))) return false;
       return true;
     }
   };

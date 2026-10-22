@@ -65,6 +65,7 @@ pub(crate) mod ffi {
         exited: RecoveryGroup,
         failed: RecoveryGroup,
         foreign: RecoveryGroup,
+        not_found: RecoveryGroup,
     }
 
     pub struct RestoreWalletResult {
@@ -101,6 +102,28 @@ pub(crate) mod ffi {
     pub struct ArkoorPaymentResult {
         amount_sat: u64,
         destination_pubkey: String,
+        movement_id: u32,
+    }
+
+    pub struct OffboardResult {
+        txid: String,
+        movement_id: u32,
+    }
+
+    pub struct PaymentRequestOption {
+        method_type: String,
+        value: String,
+        errors: Vec<String>,
+    }
+
+    pub struct ParsedPaymentRequest {
+        has_amount: bool,
+        amount_sat: u64,
+        label: String,
+        message: String,
+        options: Vec<PaymentRequestOption>,
+        has_default_option: bool,
+        default_option_index: u32,
     }
 
     pub struct BarkFeeEstimate {
@@ -507,6 +530,7 @@ pub(crate) mod ffi {
         fn board_all() -> Result<BoardResult>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
+        fn parse_payment_request(payment: &str) -> Result<ParsedPaymentRequest>;
         fn estimate_arkoor_payment_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn estimate_board_offchain_fee(amount_sat: u64) -> Result<BarkFeeEstimate>;
         fn estimate_refresh_fee(vtxo_ids: Vec<String>) -> Result<BarkFeeEstimate>;
@@ -559,10 +583,13 @@ pub(crate) mod ffi {
         ) -> Result<String>;
         fn extract_transaction(psbt: &str) -> Result<String>;
         fn broadcast_transaction(tx_hex: &str) -> Result<String>;
-        fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
+        fn send_onchain(destination: &str, amount_sat: u64) -> Result<OffboardResult>;
         fn estimate_send_onchain(destination: &str, amount_sat: u64) -> Result<BarkFeeEstimate>;
-        fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
-        fn offboard_all(destination_address: &str) -> Result<String>;
+        fn offboard_specific(
+            vtxo_ids: Vec<String>,
+            destination_address: &str,
+        ) -> Result<OffboardResult>;
+        fn offboard_all(destination_address: &str) -> Result<OffboardResult>;
         fn estimate_offboard_all(destination_address: &str) -> Result<BarkFeeEstimate>;
         fn try_claim_lightning_receive(
             payment_hash: String,
@@ -1137,6 +1164,7 @@ pub(crate) fn recovery_report_to_ffi(report: &bark::RecoveryReport) -> ffi::Reco
         exited: group(report.exited()),
         failed: group(report.failed()),
         foreign: group(report.foreign()),
+        not_found: group(report.not_found()),
     }
 }
 
@@ -1211,13 +1239,51 @@ pub(crate) fn send_arkoor_payment(
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let dest = bark::ark::Address::from_str(destination)
             .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
-        crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
+        let movement_id =
+            crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
         Ok(ArkoorPaymentResult {
             destination_pubkey: destination.to_string(),
             amount_sat,
+            movement_id: movement_id.0,
         })
     })
+}
+
+pub(crate) fn parse_payment_request(payment: &str) -> anyhow::Result<ffi::ParsedPaymentRequest> {
+    ffi_boundary("parse_payment_request", || {
+        let request = crate::TOKIO_RUNTIME.block_on(crate::parse_payment_request(payment))?;
+        let default_option_index = request
+            .default_option()
+            .and_then(|default| request.options.iter().position(|o| o == default));
+        Ok(ffi::ParsedPaymentRequest {
+            has_amount: request.amount.is_some(),
+            amount_sat: request.amount.map_or(0, |a| a.to_sat()),
+            label: request.label.unwrap_or_default(),
+            message: request.message.unwrap_or_default(),
+            options: request
+                .options
+                .iter()
+                .map(|option| {
+                    let (method_type, value) = utils::payment_method_to_ffi(&option.method);
+                    ffi::PaymentRequestOption {
+                        method_type,
+                        value,
+                        errors: option.errors.iter().map(ToString::to_string).collect(),
+                    }
+                })
+                .collect(),
+            has_default_option: default_option_index.is_some(),
+            default_option_index: default_option_index.unwrap_or(0) as u32,
+        })
+    })
+}
+
+fn offboard_result_to_ffi(result: bark::OffboardResult) -> ffi::OffboardResult {
+    ffi::OffboardResult {
+        txid: result.txid.to_string(),
+        movement_id: result.movement_id.0,
+    }
 }
 
 pub(crate) fn estimate_arkoor_payment_fee(amount_sat: u64) -> anyhow::Result<BarkFeeEstimate> {
@@ -1925,7 +1991,10 @@ pub(crate) fn broadcast_transaction(tx_hex: &str) -> anyhow::Result<String> {
     })
 }
 
-pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
+pub(crate) fn send_onchain(
+    destination: &str,
+    amount_sat: u64,
+) -> anyhow::Result<ffi::OffboardResult> {
     ffi_boundary("send_onchain", || {
         let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
         let address_unchecked = bitcoin::Address::from_str(destination)
@@ -1945,7 +2014,7 @@ pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result
         let result =
             crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address, amount))?;
 
-        Ok(result.to_string())
+        Ok(offboard_result_to_ffi(result))
     })
 }
 
@@ -1988,7 +2057,7 @@ pub(crate) fn estimate_send_onchain(
 pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<ffi::OffboardResult> {
     ffi_boundary("offboard_specific", || {
         let ids = vtxo_ids
             .into_iter()
@@ -2028,11 +2097,11 @@ pub(crate) fn offboard_specific(
         let offboard_specific_result =
             crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, addr))?;
 
-        Ok(offboard_specific_result.to_string())
+        Ok(offboard_result_to_ffi(offboard_specific_result))
     })
 }
 
-pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> {
+pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<ffi::OffboardResult> {
     ffi_boundary("offboard_all", || {
         let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
@@ -2058,7 +2127,7 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 
         let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
-        Ok(offboard_all_result.to_string())
+        Ok(offboard_result_to_ffi(offboard_all_result))
     })
 }
 

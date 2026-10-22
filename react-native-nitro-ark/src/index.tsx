@@ -8,6 +8,9 @@ import type {
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  OffboardResult,
+  ParsedPaymentRequest as NitroParsedPaymentRequest,
+  PaymentRequestOption as NitroPaymentRequestOption,
   BarkFeeEstimate,
   ExitFeeEstimate,
   BarkFeeRates,
@@ -145,16 +148,29 @@ export type LightningReceive =
       settled_at: number;
     });
 
+export type PaymentMethodType =
+  | 'ark'
+  | 'bitcoin'
+  | 'output-script'
+  | 'invoice'
+  | 'offer'
+  | 'lightning-address'
+  | 'lnurl'
+  | 'custom';
+
 export type BarkMovementDestination = NitroBarkMovementDestination & {
-  payment_method:
-    | 'ark'
-    | 'bitcoin'
-    | 'output-script'
-    | 'invoice'
-    | 'offer'
-    | 'lightning-address'
-    | 'lnurl'
-    | 'custom';
+  payment_method: PaymentMethodType;
+};
+
+export type PaymentRequestOption = NitroPaymentRequestOption & {
+  method_type: PaymentMethodType;
+};
+
+export type ParsedPaymentRequest = Omit<
+  NitroParsedPaymentRequest,
+  'options'
+> & {
+  options: PaymentRequestOption[];
 };
 
 export type BarkMovement = NitroBarkMovement & {
@@ -1295,6 +1311,22 @@ export function sendArkoorPayment(
 }
 
 /**
+ * Parses a pasted payment string into the payment options it offers.
+ * Accepts BIP 321 and lightning: URIs, BOLT11 invoices, BOLT12 offers,
+ * lightning addresses, LNURL-pay links (including lnurlp://), Ark and bitcoin
+ * addresses. Requires a loaded wallet.
+ * @param payment The payment string.
+ * @returns A promise resolving to the parsed request; throws if nothing payable is found.
+ */
+export function parsePaymentRequest(
+  payment: string
+): Promise<ParsedPaymentRequest> {
+  return NitroArkHybridObject.parsePaymentRequest(
+    payment
+  ) as Promise<ParsedPaymentRequest>;
+}
+
+/**
  * Estimates the fee for an Arkoor payment.
  * @param amountSat The amount in satoshis to send.
  * @returns A promise resolving to the fee estimate.
@@ -1332,12 +1364,12 @@ export function estimateRefreshFee(
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
- * @returns A promise resolving to txid string.
+ * @returns A promise resolving to the offboard txid and its movement id.
  */
 export function sendOnchain(
   destination: string,
   amountSat: number
-): Promise<string> {
+): Promise<OffboardResult> {
   return NitroArkHybridObject.sendOnchain(destination, amountSat);
 }
 
@@ -1360,21 +1392,23 @@ export function estimateSendOnchain(
  * Offboards specific VTXOs to a destination address.
  * @param vtxoIds Array of VtxoId strings to offboard.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @returns A promise resolving to the txid string.
+ * @returns A promise resolving to the offboard txid and its movement id.
  */
 export function offboardSpecific(
   vtxoIds: string[],
   destinationAddress: string
-): Promise<string> {
+): Promise<OffboardResult> {
   return NitroArkHybridObject.offboardSpecific(vtxoIds, destinationAddress);
 }
 
 /**
  * Offboards all VTXOs to a destination address.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @returns A promise resolving to the txid string.
+ * @returns A promise resolving to the offboard txid and its movement id.
  */
-export function offboardAll(destinationAddress: string): Promise<string> {
+export function offboardAll(
+  destinationAddress: string
+): Promise<OffboardResult> {
   return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
@@ -1403,6 +1437,7 @@ export type {
   DelegatedRoundState,
   BarkSendManyOutput,
   ArkoorPaymentResult,
+  OffboardResult,
   BarkFeeEstimate,
   ExitFeeEstimate,
   BarkFeeRates,

@@ -20,6 +20,13 @@ namespace margelo::nitro::nitroark {
 
 using namespace margelo::nitro;
 
+inline OffboardResult toOffboardResult(const bark_cxx::OffboardResult& result) {
+  OffboardResult converted;
+  converted.txid = std::string(result.txid);
+  converted.movement_id = static_cast<double>(result.movement_id);
+  return converted;
+}
+
 inline std::string lightningPaymentOriginMethodToString(LightningPaymentOriginMethod method) {
   switch (method) {
     case LightningPaymentOriginMethod::LIGHTNING_ADDRESS:
@@ -527,6 +534,7 @@ public:
           report.exited = group(restored.report.exited);
           report.failed = group(restored.report.failed);
           report.foreign = group(restored.report.foreign);
+          report.not_found = group(restored.report.not_found);
           result.report = std::move(report);
         }
         if (!restored.error.empty()) result.error = std::string(restored.error);
@@ -1767,6 +1775,34 @@ public:
         result.amount_sat = static_cast<double>(rust_result.amount_sat);
         result.destination_pubkey =
             std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
+        result.movement_id = static_cast<double>(rust_result.movement_id);
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<ParsedPaymentRequest>> parsePaymentRequest(const std::string& payment) override {
+    return Promise<ParsedPaymentRequest>::async([payment]() {
+      try {
+        bark_cxx::ParsedPaymentRequest parsed = bark_cxx::parse_payment_request(payment);
+
+        ParsedPaymentRequest result;
+        if (parsed.has_amount) result.amount_sat = static_cast<double>(parsed.amount_sat);
+        if (!parsed.label.empty()) result.label = std::string(parsed.label);
+        if (!parsed.message.empty()) result.message = std::string(parsed.message);
+        for (const auto& option : parsed.options) {
+          PaymentRequestOption converted;
+          converted.method_type = std::string(option.method_type);
+          converted.value = std::string(option.value);
+          for (const auto& error : option.errors) converted.errors.emplace_back(std::string(error));
+          result.options.push_back(std::move(converted));
+        }
+        if (parsed.has_default_option) {
+          result.default_option_index = static_cast<double>(parsed.default_option_index);
+        }
 
         return result;
       } catch (const rust::Error& e) {
@@ -1853,11 +1889,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) override {
-    return Promise<std::string>::async([destination, amountSat]() {
+  std::shared_ptr<Promise<OffboardResult>> sendOnchain(const std::string& destination, double amountSat) override {
+    return Promise<OffboardResult>::async([destination, amountSat]() {
       try {
-        rust::String result = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat));
-        return std::string(result);
+        return toOffboardResult(bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat)));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -1892,27 +1927,25 @@ public:
 
   // --- Offboarding / Exiting ---
 
-  std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds,
-                                                         const std::string& destinationAddress) override {
-    return Promise<std::string>::async([vtxoIds, destinationAddress]() {
+  std::shared_ptr<Promise<OffboardResult>> offboardSpecific(const std::vector<std::string>& vtxoIds,
+                                                            const std::string& destinationAddress) override {
+    return Promise<OffboardResult>::async([vtxoIds, destinationAddress]() {
       try {
         rust::Vec<rust::String> rust_vtxo_ids;
         for (const auto& id : vtxoIds) {
           rust_vtxo_ids.push_back(rust::String(id));
         }
-        rust::String result = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress);
-        return std::string(result);
+        return toOffboardResult(bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) override {
-    return Promise<std::string>::async([destinationAddress]() {
+  std::shared_ptr<Promise<OffboardResult>> offboardAll(const std::string& destinationAddress) override {
+    return Promise<OffboardResult>::async([destinationAddress]() {
       try {
-        rust::String result = bark_cxx::offboard_all(destinationAddress);
-        return std::string(result);
+        return toOffboardResult(bark_cxx::offboard_all(destinationAddress));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

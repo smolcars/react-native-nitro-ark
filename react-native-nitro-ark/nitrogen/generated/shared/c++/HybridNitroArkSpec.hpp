@@ -71,12 +71,16 @@ namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 namespace margelo::nitro::nitroark { struct BoardResult; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
+// Forward declaration of `ParsedPaymentRequest` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct ParsedPaymentRequest; }
 // Forward declaration of `BarkFeeEstimate` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkFeeEstimate; }
 // Forward declaration of `LightningPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningPaymentResult; }
 // Forward declaration of `LightningPaymentOrigin` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningPaymentOrigin; }
+// Forward declaration of `OffboardResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct OffboardResult; }
 // Forward declaration of `Bolt11Invoice` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct Bolt11Invoice; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
@@ -117,9 +121,11 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BarkSendManyOutput.hpp"
 #include "BoardResult.hpp"
 #include "ArkoorPaymentResult.hpp"
+#include "ParsedPaymentRequest.hpp"
 #include "BarkFeeEstimate.hpp"
 #include "LightningPaymentResult.hpp"
 #include "LightningPaymentOrigin.hpp"
+#include "OffboardResult.hpp"
 #include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
 
@@ -228,6 +234,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BoardResult>> boardAll() = 0;
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<ParsedPaymentRequest>> parsePaymentRequest(const std::string& payment) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateArkoorPaymentFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateBoardOffchainFee(double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateRefreshFee(const std::vector<std::string>& vtxoIds) = 0;
@@ -236,15 +243,15 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningOffer(const std::string& offer, bool wait, std::optional<double> amountSat, std::optional<double> retryForSeconds) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment, bool wait, std::optional<double> retryForSeconds) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateLightningSendFee(double amountSat) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<OffboardResult>> sendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateSendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountSat, const std::optional<std::string>& description, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<LightningReceive>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<LightningReceive>> tryClaimLightningReceive(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<OffboardResult>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<OffboardResult>> offboardAll(const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<BarkFeeEstimate>> estimateOffboardAll(const std::string& destinationAddress) = 0;
 
     protected:

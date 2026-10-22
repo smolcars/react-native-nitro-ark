@@ -46,10 +46,11 @@ namespace margelo::nitro::nitroark {
     RecoveryGroup exited     SWIFT_PRIVATE;
     RecoveryGroup failed     SWIFT_PRIVATE;
     RecoveryGroup foreign     SWIFT_PRIVATE;
+    RecoveryGroup not_found     SWIFT_PRIVATE;
 
   public:
     RecoveryReport() = default;
-    explicit RecoveryReport(bool is_complete, RecoveryGroup recovered, RecoveryGroup skipped, RecoveryGroup exited, RecoveryGroup failed, RecoveryGroup foreign): is_complete(is_complete), recovered(recovered), skipped(skipped), exited(exited), failed(failed), foreign(foreign) {}
+    explicit RecoveryReport(bool is_complete, RecoveryGroup recovered, RecoveryGroup skipped, RecoveryGroup exited, RecoveryGroup failed, RecoveryGroup foreign, RecoveryGroup not_found): is_complete(is_complete), recovered(recovered), skipped(skipped), exited(exited), failed(failed), foreign(foreign), not_found(not_found) {}
 
   public:
     friend bool operator==(const RecoveryReport& lhs, const RecoveryReport& rhs) = default;
@@ -70,7 +71,8 @@ namespace margelo::nitro {
         JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "skipped"))),
         JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "exited"))),
         JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "failed"))),
-        JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "foreign")))
+        JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "foreign"))),
+        JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "not_found")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::RecoveryReport& arg) {
@@ -81,6 +83,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "exited"), JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::toJSI(runtime, arg.exited));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "failed"), JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::toJSI(runtime, arg.failed));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "foreign"), JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::toJSI(runtime, arg.foreign));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "not_found"), JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::toJSI(runtime, arg.not_found));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -97,6 +100,7 @@ namespace margelo::nitro {
       if (!JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "exited")))) return false;
       if (!JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "failed")))) return false;
       if (!JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "foreign")))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::RecoveryGroup>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "not_found")))) return false;
       return true;
     }
   };

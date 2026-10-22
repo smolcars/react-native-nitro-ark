@@ -81,6 +81,14 @@ pub(crate) async fn lightning_payment_result_from_state(
                 None,
                 None,
             ),
+            Progress::InputsLocked { movement_id } => (
+                "in_progress",
+                Some(send.invoice),
+                Some(send.payment_amount),
+                Vec::new(),
+                Some(movement_id.0),
+                None,
+            ),
             Progress::HtlcReceived(htlcs) | Progress::PaymentInitiated(htlcs) => (
                 "in_progress",
                 Some(send.invoice),
@@ -434,7 +442,7 @@ pub fn exit_state_name(state: &bark::exit::ExitState) -> &'static str {
     }
 }
 
-fn payment_method_to_ffi(pm: &PaymentMethod) -> (String, String) {
+pub(crate) fn payment_method_to_ffi(pm: &PaymentMethod) -> (String, String) {
     match pm {
         PaymentMethod::Ark(addr) => ("ark".to_string(), addr.to_string()),
         PaymentMethod::Bitcoin(addr) => {

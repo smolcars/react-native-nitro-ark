@@ -48,6 +48,8 @@ export interface RecoveryReport {
   failed: RecoveryGroup;
   /** Keys not found within the configured VTXO key gap. */
   foreign: RecoveryGroup;
+  /** VTXO ids the Ark server reported as unknown; recovery does not retry them. */
+  not_found: RecoveryGroup;
 }
 
 export interface RestoreWalletResult {
@@ -109,6 +111,30 @@ export interface Bolt11Invoice {
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
+  movement_id: number; // u32, history entry of this payment
+}
+
+/** Result of an offboard or an on-chain send from Ark funds. */
+export interface OffboardResult {
+  txid: string;
+  movement_id: number; // u32, history entry of this offboard
+}
+
+export interface PaymentRequestOption {
+  /** Same values as a movement's payment_method: ark, bitcoin, output-script, invoice, offer, lightning-address, lnurl, custom. */
+  method_type: string;
+  value: string;
+  /** Validation problems, e.g. network mismatch. Non-empty means the option should not be paid. */
+  errors: string[];
+}
+
+export interface ParsedPaymentRequest {
+  amount_sat?: number; // u64
+  label?: string;
+  message?: string;
+  options: PaymentRequestOption[];
+  /** Bark's pick among error-free options: Ark, then Lightning, then on-chain. */
+  default_option_index?: number;
 }
 
 export interface BarkFeeEstimate {
@@ -535,6 +561,12 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat: number
   ): Promise<ArkoorPaymentResult>;
+  /**
+   * Parses anything a user may paste: BIP 321 and lightning: URIs, BOLT11
+   * invoices, BOLT12 offers, lightning addresses, LNURL-pay links, Ark and
+   * bitcoin addresses. Throws when no payment option is found.
+   */
+  parsePaymentRequest(payment: string): Promise<ParsedPaymentRequest>;
   estimateArkoorPaymentFee(amountSat: number): Promise<BarkFeeEstimate>;
   estimateBoardOffchainFee(amountSat: number): Promise<BarkFeeEstimate>;
   estimateRefreshFee(vtxoIds: string[]): Promise<BarkFeeEstimate>;
@@ -568,7 +600,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     retryForSeconds?: number
   ): Promise<LightningPaymentResult>;
   estimateLightningSendFee(amountSat: number): Promise<BarkFeeEstimate>;
-  sendOnchain(destination: string, amountSat: number): Promise<string>;
+  sendOnchain(destination: string, amountSat: number): Promise<OffboardResult>;
   estimateSendOnchain(
     destination: string,
     amountSat: number
@@ -595,7 +627,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   offboardSpecific(
     vtxoIds: string[],
     destinationAddress: string
-  ): Promise<string>;
-  offboardAll(destinationAddress: string): Promise<string>;
+  ): Promise<OffboardResult>;
+  offboardAll(destinationAddress: string): Promise<OffboardResult>;
   estimateOffboardAll(destinationAddress: string): Promise<BarkFeeEstimate>;
 }

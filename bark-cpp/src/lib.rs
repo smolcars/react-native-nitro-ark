@@ -30,8 +30,8 @@ use bark::persist::models::{PendingBoard, RoundStateId, SettledLightningReceive}
 use bark::persist::sqlite::SqliteClient;
 use bark::round::RoundStatus;
 use bark::{OpenWalletArgs, WalletSeed};
+use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
-use bdk_wallet::bitcoin::{Txid, bip32};
 use bitcoin_ext::{BlockDelta, BlockHeight};
 use tokio::runtime::Runtime;
 use tokio::sync::{Mutex, RwLock};
@@ -897,7 +897,7 @@ pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Res
 pub async fn send_arkoor_payment(
     destination: bark::ark::Address,
     amount_sat: Amount,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<MovementId> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -910,6 +910,12 @@ pub async fn send_arkoor_payment(
                 .await
         })
         .await
+}
+
+pub async fn parse_payment_request(payment: &str) -> anyhow::Result<bark::PaymentRequest> {
+    let manager = GLOBAL_WALLET_MANAGER.lock().await;
+    let wallet = manager.with_context_ref(|ctx| Ok(ctx.wallet.clone()))?;
+    wallet.parse_payment_request(payment).await
 }
 
 pub async fn estimate_arkoor_payment_fee(amount: Amount) -> anyhow::Result<FeeEstimateResult> {
@@ -1057,7 +1063,7 @@ pub async fn pay_lightning_offer(
         .await
 }
 
-pub async fn send_onchain(addr: Address, amount: Amount) -> anyhow::Result<Txid> {
+pub async fn send_onchain(addr: Address, amount: Amount) -> anyhow::Result<bark::OffboardResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.send_onchain(addr, amount).await })
@@ -1108,14 +1114,17 @@ pub async fn pay_lightning_address(
         .await
 }
 
-pub async fn offboard_specific(vtxo_ids: Vec<VtxoId>, address: Address) -> anyhow::Result<Txid> {
+pub async fn offboard_specific(
+    vtxo_ids: Vec<VtxoId>,
+    address: Address,
+) -> anyhow::Result<bark::OffboardResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_vtxos(vtxo_ids, address).await })
         .await
 }
 
-pub async fn offboard_all(address: Address) -> anyhow::Result<Txid> {
+pub async fn offboard_all(address: Address) -> anyhow::Result<bark::OffboardResult> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })
