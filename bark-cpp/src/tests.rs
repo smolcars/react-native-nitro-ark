@@ -605,6 +605,14 @@ fn recovery_report_preserves_groups_unknown_amounts_and_incompleteness() {
     assert!(!mapped.is_complete);
     assert_eq!(mapped.foreign.vtxo_ids, vec![vtxo(3).id().to_string()]);
     assert_eq!(mapped.foreign.known_amount_sat, 1000);
+    let mut not_found = bark::RecoveryReport::default();
+    not_found.push_failed(unknown, None);
+    not_found.push_not_found(unknown);
+    let mapped = cxx::recovery_report_to_ffi(&not_found);
+    assert!(mapped.is_complete);
+    assert!(mapped.failed.vtxo_ids.is_empty());
+    assert_eq!(mapped.not_found.vtxo_ids, vec![unknown.to_string()]);
+    assert_eq!(mapped.not_found.known_amount_sat, 0);
 }
 
 #[test]
@@ -739,7 +747,10 @@ impl WalletTestFixture {
             cxx::close_wallet().unwrap();
         }
 
-        cxx::create_wallet(datadir_str, opts)
+        cxx::create_wallet(datadir_str, opts.clone())
+            .with_context(|| "Failed to create wallet in test setup".to_string())
+            .unwrap();
+        cxx::load_wallet(datadir_str, opts)
             .with_context(|| "Failed to load wallet in test setup".to_string())
             .unwrap();
 
@@ -1019,6 +1030,39 @@ fn test_send_arkoot_payment_ffi() {
         "send_payment (OOR) failed: {:?}",
         send_res.err()
     );
+    let movement_id = send_res.unwrap().movement_id;
+    let history = cxx::history().unwrap();
+    assert!(history.iter().any(|m| m.id == movement_id));
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_parse_payment_request_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let ark = cxx::new_address().unwrap().address;
+
+    // Bark's BIP 321 parser takes only mainnet addresses in the URI path, so use the ark param.
+    let request = cxx::parse_payment_request(&format!("bitcoin:?amount=0.0001&ark={ark}")).unwrap();
+    assert!(request.has_amount);
+    assert_eq!(request.amount_sat, 10_000);
+    assert!(request.has_default_option);
+    let default = &request.options[request.default_option_index as usize];
+    assert_eq!(default.method_type, "ark");
+    assert_eq!(default.value, ark);
+    assert!(default.errors.is_empty());
+
+    let onchain = cxx::parse_payment_request(&cxx::onchain_address().unwrap()).unwrap();
+    assert!(!onchain.has_amount);
+    assert_eq!(onchain.options[0].method_type, "bitcoin");
+
+    let invoice = cxx::bolt11_invoice(1_000, std::ptr::null(), std::ptr::null())
+        .unwrap()
+        .bolt11_invoice;
+    let lightning = cxx::parse_payment_request(&format!("LIGHTNING:{invoice}")).unwrap();
+    assert_eq!(lightning.amount_sat, 1_000);
+    assert_eq!(lightning.options[0].method_type, "invoice");
+
+    assert!(cxx::parse_payment_request("not a payment").is_err());
 }
 
 #[test]

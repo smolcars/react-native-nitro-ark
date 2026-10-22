@@ -235,6 +235,18 @@ export const SendTab = ({
     );
   };
 
+  const handleParsePaymentRequest = () => {
+    if (!arkDestination) {
+      setError((prev) => ({ ...prev, ark: 'Destination required' }));
+      return;
+    }
+    runOperation(
+      'parsePaymentRequest',
+      () => NitroArk.parsePaymentRequest(arkDestination),
+      'ark'
+    );
+  };
+
   // --- Lightning Payments ---
   const handleEstimateLightningSendFee = () => {
     if (!arkAmount) {
@@ -555,6 +567,12 @@ export const SendTab = ({
           placeholder="Optional comment"
         />
         <ButtonGrid>
+          <CustomButton
+            title="Parse"
+            onPress={handleParsePaymentRequest}
+            disabled={walletOpsDisabled}
+            color={COLORS.secondary}
+          />
           <CustomButton
             title="Estimate Fee"
             onPress={handleEstimateArkoorPaymentFee}

@@ -975,6 +975,9 @@ namespace bark_cxx {
   struct Bolt11Invoice;
   struct LightningPaymentResult;
   struct ArkoorPaymentResult;
+  struct OffboardResult;
+  struct PaymentRequestOption;
+  struct ParsedPaymentRequest;
   struct BarkFeeEstimate;
   struct ExitFeeEstimate;
   struct BarkFeeRates;
@@ -1061,6 +1064,7 @@ struct RecoveryReport final {
   ::bark_cxx::RecoveryGroup exited;
   ::bark_cxx::RecoveryGroup failed;
   ::bark_cxx::RecoveryGroup foreign;
+  ::bark_cxx::RecoveryGroup not_found;
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1122,10 +1126,47 @@ struct LightningPaymentResult final {
 struct ArkoorPaymentResult final {
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
   ::rust::String destination_pubkey;
+  ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffboardResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$OffboardResult
+struct OffboardResult final {
+  ::rust::String txid;
+  ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$OffboardResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$PaymentRequestOption
+#define CXXBRIDGE1_STRUCT_bark_cxx$PaymentRequestOption
+struct PaymentRequestOption final {
+  ::rust::String method_type;
+  ::rust::String value;
+  ::rust::Vec<::rust::String> errors;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$PaymentRequestOption
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ParsedPaymentRequest
+#define CXXBRIDGE1_STRUCT_bark_cxx$ParsedPaymentRequest
+struct ParsedPaymentRequest final {
+  bool has_amount CXX_DEFAULT_VALUE(false);
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  ::rust::String label;
+  ::rust::String message;
+  ::rust::Vec<::bark_cxx::PaymentRequestOption> options;
+  bool has_default_option CXX_DEFAULT_VALUE(false);
+  ::std::uint32_t default_option_index CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ParsedPaymentRequest
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkFeeEstimate
@@ -1759,6 +1800,8 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
+::bark_cxx::ParsedPaymentRequest parse_payment_request(::rust::Str payment);
+
 ::bark_cxx::BarkFeeEstimate estimate_arkoor_payment_fee(::std::uint64_t amount_sat);
 
 ::bark_cxx::BarkFeeEstimate estimate_board_offchain_fee(::std::uint64_t amount_sat);
@@ -1797,13 +1840,13 @@ bool has_pending_exits();
 
 ::rust::String broadcast_transaction(::rust::Str tx_hex);
 
-::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
+::bark_cxx::OffboardResult send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::bark_cxx::BarkFeeEstimate estimate_send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
+::bark_cxx::OffboardResult offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
 
-::rust::String offboard_all(::rust::Str destination_address);
+::bark_cxx::OffboardResult offboard_all(::rust::Str destination_address);
 
 ::bark_cxx::BarkFeeEstimate estimate_offboard_all(::rust::Str destination_address);
 
